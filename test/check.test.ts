@@ -133,3 +133,13 @@ test("status fails when a document is approved above a draft", () => {
   const { fails } = chainStatus(project("Status: Draft\n", "Status: Approved (2026-11-18)\n"));
   expect(fails.some((f) => f.includes("FRD-01-a.md: approved, but") && f.includes("Draft"))).toBe(true);
 });
+
+import { checkSpec } from "../scripts/check.ts";
+test("spec: covers every FR with tests-first tasks and decides nothing", () => {
+  const frs = new Set(["FR-X-01-1", "FR-X-01-2"]);
+  const ok = `# Spec\n\nStatus: Draft\n\n## Context\nc\n## Files\nf\n## Interfaces\ni\n## Data\nNone\n## Tasks\n### Task 1: a\n- **Tests first:** FR-X-01-1, FR-X-01-2\n- **Build:** b\n- **Done when:** bun test\n## Out of scope\nn\n`;
+  expect(checkSpec(ok, frs)).toEqual([]);
+  expect(checkSpec(ok.replace("FR-X-01-1, ", ""), frs)).toContain("FR-X-01-1 has no task whose tests cover it");
+  expect(checkSpec(ok.replace("## Out of scope", "### TD-1: x\n## Out of scope"), frs).some((f) => f.includes("makes a decision"))).toBe(true);
+  expect(checkSpec(ok.replace("FR-X-01-2", "FR-X-01-9"), frs)).toContain("cites FR-X-01-9, not defined in this FRD");
+});

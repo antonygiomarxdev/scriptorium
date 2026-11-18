@@ -85,6 +85,32 @@ export function checkTp(text: string, adrDir: string, knownFrs: Set<string>): st
   return fails;
 }
 
+// A spec turns one TP into files, interfaces and ordered ATDD tasks. It decides nothing new.
+export function checkSpec(text: string, frdFrs: Set<string>): string[] {
+  const fails: string[] = [];
+  if (!/^\**Status:?\**\s*(Draft|Approved \(\d{4}-\d{2}-\d{2}\))/im.test(text)) fails.push("no Status line (Draft or Approved (YYYY-MM-DD))");
+  for (const h of ["Context", "Files", "Interfaces", "Data", "Tasks", "Out of scope"])
+    if (!new RegExp(`^## .*${h}`, "mi").test(text)) fails.push(`missing section: ## ${h}`);
+  if (/^### TD-\d+/m.test(text) || /^\s*[-*]\s+\*\*Option\b/im.test(text)) fails.push("makes a decision (TD or Option): decisions belong in the TP and an ADR");
+  const tasks = text.split(/^### (?=Task \d+)/m).slice(1);
+  if (!tasks.length) fails.push("no tasks written as ### Task n: title");
+  const tested = new Set<string>();
+  for (const t of tasks) {
+    const id = t.match(/^Task \d+/)![0];
+    const first = t.match(/^\s*[-*]\s+\*\*Tests first:?\*\*:?(.*)$/im);
+    if (!first) fails.push(`${id}: no "Tests first:" line`);
+    else for (const m of t.matchAll(/\bFR-[A-Z]+-\d{2}-\d+\b/g)) tested.add(m[0]);
+    if (!/^\s*[-*]\s+\*\*Done when:?\*\*/im.test(t)) fails.push(`${id}: no "Done when:" line`);
+  }
+  for (const fr of frdFrs) if (!tested.has(fr)) fails.push(`${fr} has no task whose tests cover it`);
+  // Ids with this FRD's prefix must exist in it; other slices' ids are allowed (contracts).
+  const prefix = [...frdFrs][0]?.replace(/-\d+$/, "-");
+  for (const m of new Set([...text.matchAll(/\bFR-[A-Z]+-\d{2}-\d+\b/g)].map((x) => x[0])))
+    if (prefix && m.startsWith(prefix) && !frdFrs.has(m)) fails.push(`cites ${m}, not defined in this FRD`);
+  if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
+  return fails;
+}
+
 export function checkAdr(text: string, name: string): string[] {
   const fails: string[] = [];
   for (const h of ["Status", "Context", "Decision", "Alternatives", "Consequences"])
@@ -194,6 +220,17 @@ if (import.meta.main) {
     const fails = [...checkTp(text, slice, frIds(root)), ...adrFiles.flatMap((f) => checkAdr(readFileSync(join(slice, f), "utf8"), f))];
     if (fails.length) { for (const f of fails) console.log("FAIL", f); process.exit(1); }
     console.log(`PASS ${target}: ${text.split(/^### (?=TD-\d+)/m).length - 1} decisions, ${adrFiles.length} ADRs`);
+    process.exit(0);
+  }
+  if (kind === "spec") {
+    // check.ts spec <SPEC.md> <FRD.md>
+    if (!target || !slice) { console.error("usage: check.ts spec <SPEC.md> <FRD.md>"); process.exit(2); }
+    const text = readFileSync(target, "utf8");
+    // The FRD defines an id where it is bold (**FR-X-NN-n.**); other mentions are references.
+    const frs = new Set([...readFileSync(slice, "utf8").matchAll(/\*\*(FR-[A-Z]+-\d{2}-\d+)/g)].map((m) => m[1]));
+    const fails = checkSpec(text, frs);
+    if (fails.length) { for (const f of fails) console.log("FAIL", f); process.exit(1); }
+    console.log(`PASS ${target}: ${text.split(/^### (?=Task \d+)/m).length - 1} tasks cover ${frs.size} FRs`);
     process.exit(0);
   }
   if (!kind || !target || !slice || !["prd", "frd"].includes(kind)) {

@@ -17,7 +17,7 @@ Nothing moves to the next document until the current one passes its check and th
 | Cross-cutting TP | `docs/tp/TP.md` | Written after the FRDs, so technology never shapes requirements: stack, storage, conventions, threat model | `check.ts tp` |
 | TPs per FRD | `src/<slice>/docs/tp/TP-NN-name.md` | 1..N proposals for one FRD, compared; one is chosen | not yet |
 | ADRs | `docs/adr/` (cross-cutting), `src/<slice>/docs/adr/` | One decision each: which proposal won and why | `check.ts tp` (checks the ADRs it links) |
-| Spec | `src/<slice>/docs/specs/SPEC-NN-name.md` | One per FRD: the concrete technical changes (files, interfaces, tasks) | not yet |
+| Spec | `src/<slice>/docs/specs/SPEC-NN-name.md` | One per FRD: the concrete technical changes (files, interfaces, ordered ATDD tasks); decides nothing new | `templates/SPEC.md`, `check.ts spec <SPEC> <FRD>` |
 | Implementation | code | ATDD: the FRD's acceptance criteria become executable tests first, then the code | not yet |
 
 PRD and FRDs name no technology, and their Given/When/Then tests are acceptance criteria. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md`; shared terms in `docs/GLOSSARY.md`. Templates are in this plugin's `templates/`.
