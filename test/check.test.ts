@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkPrd, checkFrds, checkTp, checkAdr } from "../scripts/check.ts";
+import { checkPrd, checkFrds, checkTp, checkAdr, chainStatus } from "../scripts/check.ts";
 
 const PRODUCT = `# P
 ## 4. Principles
@@ -111,4 +111,25 @@ test("an ADR needs its sections and a valid status", () => {
   const good = "## Status\nAccepted\n## Context\n## Decision\n## Alternatives\n## Consequences\n";
   expect(checkAdr(good, "a")).toEqual([]);
   expect(checkAdr(good.replace("Accepted", "Maybe"), "a")).toContain("a: Status must be Proposed, Accepted, Superseded or Rejected");
+});
+
+function project(prd: string, frd: string) {
+  const root = mkdtempSync(join(tmpdir(), "scriptorium-status-"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  mkdirSync(join(root, "src", "inbox", "docs", "frd"), { recursive: true });
+  writeFileSync(join(root, "docs", "PRODUCT.md"), "Status: Approved (2026-11-17)\n");
+  writeFileSync(join(root, "src", "inbox", "docs", "PRD.md"), prd);
+  writeFileSync(join(root, "src", "inbox", "docs", "frd", "FRD-01-a.md"), frd);
+  return root;
+}
+
+test("status passes when each approval rests on an approved document", () => {
+  const { docs, fails } = chainStatus(project("Status: Approved (2026-11-17)\n", "Status: Approved (2026-11-18)\n"));
+  expect(fails).toEqual([]);
+  expect(docs.filter((d) => d.approved).length).toBe(3);
+});
+
+test("status fails when a document is approved above a draft", () => {
+  const { fails } = chainStatus(project("Status: Draft\n", "Status: Approved (2026-11-18)\n"));
+  expect(fails.some((f) => f.includes("FRD-01-a.md: approved, but") && f.includes("Draft"))).toBe(true);
 });

@@ -52,3 +52,15 @@ The check only sees structure. A reviewer also looks for these, because the chec
 - **Hidden single-user assumptions:** one country, language, time zone, currency or number format, or an example from the FRD treated as the rule.
 - **Numbers with no stated reason:** limits, timeouts, intervals, caps.
 - **Facts about tools that may be out of date.** Check the current docs before rejecting an option for lacking a feature.
+
+## Status and approval
+
+Every chain document carries one status line. PRODUCT, PRD, FRD, TP and spec use `Status: Draft` or `Status: Approved (YYYY-MM-DD)`. ADRs use `## Status` followed by `Proposed`, `Accepted`, `Superseded` or `Rejected`.
+
+Only the owner approves. Approval is the owner's approval of the document's pull request, or an explicit "approved" in the conversation. The lead then commits the status change, with the date, in that pull request and merges it. What is on the main branch is approved; what is not is a draft.
+
+A document may be approved only when the document it rests on is approved: a PRD rests on PRODUCT, an FRD on its PRD, a TP per FRD on its FRD, a spec on its TP, and an ADR on the TP that cites it. Check it, and see what is still waiting:
+
+```bash
+bun <plugin>/scripts/check.ts status .
+```

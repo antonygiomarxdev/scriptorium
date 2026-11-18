@@ -107,6 +107,60 @@ function frIds(root: string): Set<string> {
   return ids;
 }
 
+// Status of every chain document. A document is approved only when the line "Status: Approved (YYYY-MM-DD)"
+// is present; anything else counts as a draft. ADRs use "## Status" followed by Proposed|Accepted|Superseded|Rejected.
+// A document may be approved only if the document it rests on is approved.
+export type Doc = { path: string; kind: string; approved: boolean; status: string; parent?: string };
+
+export function docStatus(text: string, isAdr: boolean): { approved: boolean; status: string } {
+  if (isAdr) {
+    const s = text.match(/^## Status\s*\n+\s*(\w+)/m)?.[1] ?? "missing";
+    return { approved: s === "Accepted", status: s };
+  }
+  const m = text.match(/^\**Status:?\**\s*Approved \((\d{4}-\d{2}-\d{2})\)/im);
+  return m ? { approved: true, status: `Approved ${m[1]}` } : { approved: false, status: "Draft" };
+}
+
+export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
+  const docs: Doc[] = [];
+  const add = (path: string, kind: string, parent?: string) => {
+    if (!existsSync(path)) return;
+    docs.push({ path, kind, parent, ...docStatus(readFileSync(path, "utf8"), kind === "ADR") });
+  };
+  const product = join(root, "docs", "PRODUCT.md");
+  const crossTp = join(root, "docs", "tp", "TP.md");
+  add(product, "PRODUCT");
+  add(crossTp, "TP", product);
+  const ls = (d: string, re: RegExp) => (existsSync(d) ? readdirSync(d).filter((f) => re.test(f)).sort() : []);
+  for (const f of ls(join(root, "docs", "adr"), /^ADR-\d{3}-.*\.md$/)) add(join(root, "docs", "adr", f), "ADR", crossTp);
+  const src = join(root, "src");
+  for (const slice of ls(src, /^[a-z0-9-]+$/)) {
+    const d = join(src, slice, "docs");
+    const prd = join(d, "PRD.md");
+    add(prd, "PRD", product);
+    for (const f of ls(join(d, "frd"), /^FRD-\d{2}-.*\.md$/)) add(join(d, "frd", f), "FRD", prd);
+    const tps = ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/);
+    for (const f of tps) add(join(d, "tp", f), "TP", join(d, "frd", `FRD-${f.slice(3, 5)}${f.slice(5)}`));
+    for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) add(join(d, "specs", f), "SPEC", join(d, "tp", `TP-${f.slice(5, 7)}${f.slice(7)}`));
+    // A slice ADR rests on the slice TP that cites it.
+    for (const f of ls(join(d, "adr"), /^ADR-\d{3}-.*\.md$/)) {
+      const id = f.slice(0, 7);
+      const tp = tps.find((t) => readFileSync(join(d, "tp", t), "utf8").includes(id));
+      add(join(d, "adr", f), "ADR", tp ? join(d, "tp", tp) : undefined);
+    }
+  }
+  const byPath = new Map(docs.map((x) => [x.path, x]));
+  const fails: string[] = [];
+  for (const x of docs) {
+    if (x.kind === "ADR" && !["Proposed", "Accepted", "Superseded", "Rejected"].includes(x.status)) fails.push(`${x.path}: ADR status "${x.status}" is not Proposed, Accepted, Superseded or Rejected`);
+    if (!x.approved || !x.parent) continue;
+    const p = byPath.get(x.parent);
+    if (!p) fails.push(`${x.path}: approved, but the document it rests on (${x.parent}) does not exist`);
+    else if (!p.approved) fails.push(`${x.path}: approved, but ${p.path} is still ${p.status}`);
+  }
+  return { docs, fails };
+}
+
 // Principles are the numbered list under the "Principles" heading of PRODUCT.md.
 function countPrinciples(product: string): number {
   const sec = product.split(/^## /m).find((p) => /^[\d. ]*Principles/i.test(p)) ?? "";
@@ -118,6 +172,18 @@ if (import.meta.main) {
   const [kind, target, slice, ...rest] = process.argv.slice(2);
   const pi = rest.indexOf("--product");
   const productPath = pi >= 0 ? rest[pi + 1] : "docs/PRODUCT.md";
+  if (kind === "status") {
+    // check.ts status [project root]: a table of every chain document and its status; fails on an approval above a draft.
+    const root = target ?? ".";
+    const { docs, fails } = chainStatus(root);
+    const rel = (p: string) => p.slice(root.length).replace(/^[\\/]/, "").replaceAll("\\", "/");
+    console.log("| Document | Kind | Status |\n|---|---|---|");
+    for (const d of docs) console.log(`| ${rel(d.path)} | ${d.kind} | ${d.status} |`);
+    const done = docs.filter((d) => d.approved).length;
+    console.log(`\n${done} of ${docs.length} approved or accepted.`);
+    if (fails.length) { for (const f of fails) console.log("FAIL", f.replaceAll("\\", "/")); process.exit(1); }
+    process.exit(0);
+  }
   if (kind === "tp") {
     // check.ts tp <TP.md> <adr dir> [--root src]
     const ri = process.argv.indexOf("--root");
