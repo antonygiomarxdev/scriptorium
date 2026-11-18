@@ -41,3 +41,14 @@ Deputy's TP, ADRs and specs are not written yet. They are the next steps there, 
 - Re-running the check, not reading the report, caught every collision.
 - A check must state what it cannot see. Structural checks passed while reviewers still found contradictions between slices: keep the cross-slice review.
 - Ask the owner in batches, with a recommendation for each question.
+
+## Input from the Gauntlet retro (2026-11-17, another project of the owner)
+
+The owner's Gauntlet project measured rework after agents started writing code: PRs passing review in round 1 fell from 43.6 % to 24.8 %, and 43 % of builder defects came from something the brief did not say. Its actionables are inputs for the specs step here:
+
+- **ATDD is a layer, not the method.** The FRDs' Given/When/Then tests are acceptance-test-driven development. Scriptorium is the chain above it; SDD sits below.
+- **Rules arrive by themselves.** When a spec or brief is built, a script inserts the exact rules for the files it touches. A brief without that section is refused.
+- **The builder lists what it assumed.** The reviewer checks each assumption; a report without the section is refused.
+- **One row per changed branch,** with the mutant and the test that kills it.
+- **Agent guides have a line cap** (for example 150), enforced by a check. Logs are history, never instructions.
+- **Facts in a PR are generated,** never typed by hand.
