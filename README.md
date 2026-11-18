@@ -5,7 +5,8 @@ Write the product before the code.
 Spec-driven development starts at the spec. Scriptorium is the layer above it: what the product is, what each part must do, how it will be built and why, and only then the specs. Each document rests on the one before, and a check stops you from moving on until it holds.
 
 ```
-PRODUCT → PRD → FRDs → TP → ADRs → specs → code
+PRODUCT → PRDs → FRDs → cross-cutting TP → TPs per FRD → specs → code (ATDD)
+                         └── ADRs record each choice ──┘
 ```
 
 | Document | Says |
@@ -13,9 +14,11 @@ PRODUCT → PRD → FRDs → TP → ADRs → specs → code
 | **Product** | The problem, the users, numbered principles, use cases, scope, and the slices |
 | **PRD** (per slice) | What the slice must do, as testable requirements |
 | **FRDs** (per feature) | Behavior, edge cases and acceptance tests; together they cover every PRD requirement |
-| **TP** (Technical Proposal) | How: technology, conventions, threat model |
-| **ADRs** | One technical decision each, with the alternatives |
-| **Specs** | What a builder implements and tests |
+| **Cross-cutting TP** | How the whole product is built: technology, storage, conventions, threat model. Written after the FRDs |
+| **TPs per FRD** | One or more proposals for one feature, compared |
+| **ADRs** | One decision each: which proposal won and why |
+| **Spec** (per FRD) | The concrete technical changes a builder makes |
+| **Code** | Built with ATDD: the FRD's acceptance criteria become tests first |
 
 PRDs and FRDs name no technology. Owner decisions are kept in a decision log, and shared terms in a glossary.
 

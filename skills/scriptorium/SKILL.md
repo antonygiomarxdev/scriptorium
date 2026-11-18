@@ -1,6 +1,6 @@
 ---
 name: scriptorium
-description: Write and check a product's document chain before any code (PRODUCT → PRD → FRDs → TP → ADRs → specs). Use when starting a product or feature, splitting it into slices, writing a PRD or FRD, or before moving from one document to the next.
+description: Write and check a product's document chain before any code (PRODUCT → PRDs → FRDs → cross-cutting TP → TPs per FRD → specs → implementation with ATDD). Use when starting a product or feature, splitting it into slices, writing a PRD or FRD, or before moving from one document to the next.
 ---
 
 # Scriptorium
@@ -14,11 +14,13 @@ Nothing moves to the next document until the current one passes its check and th
 | Product | `docs/PRODUCT.md` | Problem, users, numbered principles, use cases UC-n, scope, slice map | Owner reads and approves |
 | PRD | `src/<slice>/docs/PRD.md` | What the slice must do: R-SLICE-n, cites UC-n and principles | `check.ts prd` |
 | FRDs | `src/<slice>/docs/frd/FRD-NN-name.md` | One feature each: FR-SLICE-NN-n, edge cases, Given/When/Then tests; together cover every R-SLICE-n | `check.ts frd` |
-| TP | `src/<slice>/docs/tp/TP.md` | How: technology, conventions, threat model | not yet |
-| ADRs | `docs/adr/` (cross-slice), `src/<slice>/docs/adr/` | One technical decision each | not yet |
-| Specs | `src/<slice>/docs/specs/` | What a builder implements and tests | not yet |
+| Cross-cutting TP | `docs/tp/TP.md` | Written after the FRDs, so technology never shapes requirements: stack, storage, conventions, threat model | not yet |
+| TPs per FRD | `src/<slice>/docs/tp/TP-NN-name.md` | 1..N proposals for one FRD, compared; one is chosen | not yet |
+| ADRs | `docs/adr/` (cross-cutting), `src/<slice>/docs/adr/` | One decision each: which proposal won and why | not yet |
+| Spec | `src/<slice>/docs/specs/SPEC-NN-name.md` | One per FRD: the concrete technical changes (files, interfaces, tasks) | not yet |
+| Implementation | code | ATDD: the FRD's acceptance criteria become executable tests first, then the code | not yet |
 
-PRD and FRDs name no technology: the TP chooses it. Owner decisions go in `docs/DECISIONS.md`; shared terms in `docs/GLOSSARY.md`. Templates are in this plugin's `templates/`.
+PRD and FRDs name no technology, and their Given/When/Then tests are acceptance criteria. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md`; shared terms in `docs/GLOSSARY.md`. Templates are in this plugin's `templates/`.
 
 ## Checks
 

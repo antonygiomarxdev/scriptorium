@@ -46,7 +46,7 @@ Deputy's TP, ADRs and specs are not written yet. They are the next steps there, 
 
 The owner's Gauntlet project measured rework after agents started writing code: PRs passing review in round 1 fell from 43.6 % to 24.8 %, and 43 % of builder defects came from something the brief did not say. Its actionables are inputs for the specs step here:
 
-- **ATDD is a layer, not the method.** The FRDs' Given/When/Then tests are acceptance-test-driven development. Scriptorium is the chain above it; SDD sits below.
+- **ATDD belongs to implementation.** The FRDs' Given/When/Then tests are acceptance criteria; ATDD turns them into executable tests before the code. Owner decision, 2026-11-17: the chain is PRODUCT → PRDs → FRDs → cross-cutting TP (after the FRDs) → 1..N TPs per FRD (an ADR records the chosen one) → one spec per FRD → implementation with ATDD.
 - **Rules arrive by themselves.** When a spec or brief is built, a script inserts the exact rules for the files it touches. A brief without that section is refused.
 - **The builder lists what it assumed.** The reviewer checks each assumption; a report without the section is refused.
 - **One row per changed branch,** with the mutant and the test that kills it.
