@@ -60,6 +60,53 @@ export function checkFrds(dir: string, slice: string): { fails: string[]; files:
   return { fails, files: files.length, reqs: prdReqs.size };
 }
 
+// A TP lists its decisions as "### TD-n: title", each with at least two options and a chosen one backed by an ADR.
+// knownFrs: every FR id defined in the project, so the TP can only cite real requirements.
+export function checkTp(text: string, adrDir: string, knownFrs: Set<string>): string[] {
+  const fails: string[] = [];
+  for (const h of ["Context", "Requirements served", "Decisions", "Architecture", "Information", "Interfaces", "Threat model", "Testing", "Risks", "Open questions"])
+    if (!new RegExp(`^## .*${h}`, "mi").test(text)) fails.push(`missing section: ## ${h}`);
+  const cited = new Set([...text.matchAll(/\bFR-[A-Z]+-\d{2}-\d+\b/g)].map((m) => m[0]));
+  if (!cited.size) fails.push("cites no FR id");
+  for (const fr of cited) if (!knownFrs.has(fr)) fails.push(`cites ${fr}, defined in no FRD`);
+  const adrs = existsSync(adrDir) ? readdirSync(adrDir).filter((f) => /^ADR-\d{3}-[a-z0-9-]+\.md$/.test(f)) : [];
+  const blocks = text.split(/^### (?=TD-\d+)/m).slice(1);
+  if (!blocks.length) fails.push("no decisions written as ### TD-n: title");
+  for (const b of blocks) {
+    const id = b.match(/^TD-\d+/)![0];
+    const options = (b.match(/^\s*[-*]\s+\*\*Option\b/gim) ?? []).length;
+    if (options < 2) fails.push(`${id}: fewer than 2 options (- **Option A** …)`);
+    if (!/^\**Chosen\b/im.test(b)) fails.push(`${id}: no "Chosen:" line`);
+    const adr = b.match(/ADR-(\d{3})/)?.[0];
+    if (!adr) fails.push(`${id}: links no ADR-NNN`);
+    else if (!adrs.some((f) => f.startsWith(adr))) fails.push(`${id}: ${adr} has no file in ${adrDir}`);
+  }
+  if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
+  return fails;
+}
+
+export function checkAdr(text: string, name: string): string[] {
+  const fails: string[] = [];
+  for (const h of ["Status", "Context", "Decision", "Alternatives", "Consequences"])
+    if (!new RegExp(`^## .*${h}`, "mi").test(text)) fails.push(`${name}: missing section ## ${h}`);
+  if (!/^## Status\s*\n+\s*(Proposed|Accepted|Superseded|Rejected)\b/im.test(text)) fails.push(`${name}: Status must be Proposed, Accepted, Superseded or Rejected`);
+  return fails;
+}
+
+function frIds(root: string): Set<string> {
+  const ids = new Set<string>();
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (/^FRD-\d{2}-.*\.md$/.test(e.name)) for (const m of readFileSync(p, "utf8").matchAll(/\bFR-[A-Z]+-\d{2}-\d+\b/g)) ids.add(m[0]);
+    }
+  };
+  walk(root);
+  return ids;
+}
+
 // Principles are the numbered list under the "Principles" heading of PRODUCT.md.
 function countPrinciples(product: string): number {
   const sec = product.split(/^## /m).find((p) => /^[\d. ]*Principles/i.test(p)) ?? "";
@@ -71,8 +118,20 @@ if (import.meta.main) {
   const [kind, target, slice, ...rest] = process.argv.slice(2);
   const pi = rest.indexOf("--product");
   const productPath = pi >= 0 ? rest[pi + 1] : "docs/PRODUCT.md";
+  if (kind === "tp") {
+    // check.ts tp <TP.md> <adr dir> [--root src]
+    const ri = process.argv.indexOf("--root");
+    const root = ri >= 0 ? process.argv[ri + 1] : "src";
+    if (!target || !slice) { console.error("usage: check.ts tp <TP.md> <adr dir> [--root src]"); process.exit(2); }
+    const text = readFileSync(target, "utf8");
+    const adrFiles = existsSync(slice) ? readdirSync(slice).filter((f) => /^ADR-\d{3}-[a-z0-9-]+\.md$/.test(f)) : [];
+    const fails = [...checkTp(text, slice, frIds(root)), ...adrFiles.flatMap((f) => checkAdr(readFileSync(join(slice, f), "utf8"), f))];
+    if (fails.length) { for (const f of fails) console.log("FAIL", f); process.exit(1); }
+    console.log(`PASS ${target}: ${text.split(/^### (?=TD-\d+)/m).length - 1} decisions, ${adrFiles.length} ADRs`);
+    process.exit(0);
+  }
   if (!kind || !target || !slice || !["prd", "frd"].includes(kind)) {
-    console.error("usage: check.ts prd <PRD.md> <SLICE_ID> [--product docs/PRODUCT.md] | check.ts frd <slice dir> <SLICE_ID>");
+    console.error("usage: check.ts prd <PRD.md> <SLICE_ID> [--product docs/PRODUCT.md] | check.ts frd <slice dir> <SLICE_ID> | check.ts tp <TP.md> <adr dir> [--root src]");
     process.exit(2);
   }
   let fails: string[], ok: string;

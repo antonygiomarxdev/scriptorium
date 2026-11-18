@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkPrd, checkFrds } from "../scripts/check.ts";
+import { checkPrd, checkFrds, checkTp, checkAdr } from "../scripts/check.ts";
 
 const PRODUCT = `# P
 ## 4. Principles
@@ -69,4 +69,46 @@ test("an uncovered requirement, a requirement not in the PRD and a technology fa
   expect(fails).toContain("PRD requirement R-INBOX-3 is covered by no FRD");
   expect(fails).toContain("FRD-01-a.md: cites R-INBOX-9, not in the PRD");
   expect(fails.some((f) => f.includes("JSON"))).toBe(true);
+});
+
+const TP = `# TP
+## Context
+## Requirements served
+FR-INBOX-01-1
+## Decisions
+### TD-1: storage
+- **Option A** files.
+- **Option B** a database.
+Chosen: B. See ADR-001.
+## Architecture
+## Information
+## Interfaces
+## Threat model
+## Testing
+## Risks
+## Open questions
+`;
+
+function adrDir(withFile: boolean) {
+  const dir = mkdtempSync(join(tmpdir(), "scriptorium-adr-"));
+  if (withFile) writeFileSync(join(dir, "ADR-001-storage.md"), "x");
+  return dir;
+}
+
+test("a TP whose decisions have two options, a choice and an ADR file passes", () =>
+  expect(checkTp(TP, adrDir(true), new Set(["FR-INBOX-01-1"]))).toEqual([]));
+
+test("a TP with one option, a missing ADR file, an unknown FR or a TBD fails", () => {
+  const bad = TP.replace("- **Option B** a database.\n", "").replace("FR-INBOX-01-1", "FR-INBOX-01-9 TBD");
+  const fails = checkTp(bad, adrDir(false), new Set(["FR-INBOX-01-1"]));
+  expect(fails).toContain("TD-1: fewer than 2 options (- **Option A** …)");
+  expect(fails.some((f) => f.includes("ADR-001 has no file"))).toBe(true);
+  expect(fails).toContain("cites FR-INBOX-01-9, defined in no FRD");
+  expect(fails).toContain("contains TBD or TODO");
+});
+
+test("an ADR needs its sections and a valid status", () => {
+  const good = "## Status\nAccepted\n## Context\n## Decision\n## Alternatives\n## Consequences\n";
+  expect(checkAdr(good, "a")).toEqual([]);
+  expect(checkAdr(good.replace("Accepted", "Maybe"), "a")).toContain("a: Status must be Proposed, Accepted, Superseded or Rejected");
 });
