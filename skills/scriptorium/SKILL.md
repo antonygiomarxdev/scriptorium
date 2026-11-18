@@ -42,3 +42,13 @@ Run each step as an agent team, following [puppeteering](https://github.com/anto
 - One file has one writer.
 - After the per-slice reviews, run one cross-slice review over the whole step.
 - Record every owner answer in `docs/DECISIONS.md` the same day.
+
+## Reviewing a TP or ADR
+
+The check only sees structure. A reviewer also looks for these, because the check passed on all of them in Deputy:
+
+- **Hand-rolled where a maintained library exists** (phone numbers, dates and time zones, CSV, JWT, crypto, migrations). Name the library, and verify that it is maintained and runs on the project's runtime.
+- **Alternatives rejected without a concrete reason.** "Adds a dependency", "large" or "complex" with no number or failure case is not a reason.
+- **Hidden single-user assumptions:** one country, language, time zone, currency or number format, or an example from the FRD treated as the rule.
+- **Numbers with no stated reason:** limits, timeouts, intervals, caps.
+- **Facts about tools that may be out of date.** Check the current docs before rejecting an option for lacking a feature.
