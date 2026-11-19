@@ -1,8 +1,9 @@
 {
   "name": "scriptorium",
-  "version": "0.1.0",
   "description": "Write the product before the code: a checked document chain (product, PRD, FRDs, TP, ADRs, specs) for agent teams",
-  "author": { "name": "Antony Giomar" },
+  "author": {
+    "name": "Antony Giomar"
+  },
   "license": "MIT",
   "repository": "https://github.com/antonygiomarxdev/scriptorium"
 }

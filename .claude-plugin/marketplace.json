@@ -1,0 +1,14 @@
+{
+  "name": "scriptorium",
+  "owner": {
+    "name": "Antony Giomar"
+  },
+  "description": "Scriptorium: a checked document chain before the code",
+  "plugins": [
+    {
+      "name": "scriptorium",
+      "source": "./",
+      "description": "Write the product before the code: PRODUCT, PRDs, FRDs, TPs, ADRs and specs, each checked before the next"
+    }
+  ]
+}
