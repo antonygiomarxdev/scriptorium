@@ -26,11 +26,31 @@ It is built to run with agent teams, following [puppeteering](https://github.com
 
 ## Status
 
-Early. Working today: the PRD and FRD checks, the templates, and a Claude Code plugin with one skill. The TP, ADR and spec checks are next. First used on [Deputy](https://github.com/antonygiomarxdev/deputy).
+Early. Working today: the PRD, FRD, TP, ADR, spec and status checks, the templates, and a Claude Code plugin with one skill per step. First used on [Deputy](https://github.com/antonygiomarxdev/deputy).
 
 ## Use
 
-As a Claude Code plugin, from this repository. Or run the checks directly with [Bun](https://bun.sh):
+As a Claude Code plugin. The checks need [Bun](https://bun.sh) on the machine.
+
+```
+/plugin install scriptorium --marketplace antonygiomarxdev/scriptorium
+```
+
+On older Claude Code: `/plugin marketplace add antonygiomarxdev/scriptorium`, then `/plugin install scriptorium@scriptorium`.
+
+Then, in your project:
+
+| Skill | Does |
+|---|---|
+| `/scriptorium:init` | Creates `docs/PRODUCT.md`, `DECISIONS.md`, `GLOSSARY.md` |
+| `/scriptorium:prd <slice> <ID>` | Writes and checks a slice PRD |
+| `/scriptorium:frd <slice> <ID>` | Writes and checks the slice FRDs |
+| `/scriptorium:tp [cross \| <slice> <NN>]` | Writes and checks a TP and its ADRs |
+| `/scriptorium:spec <slice> <NN>` | Writes and checks the spec for one FRD |
+| `/scriptorium:adopt [path]` | Maps a project's existing documents to the chain, proposes a plan, migrates after you approve it |
+| `/scriptorium:status` | Shows every document and what is next |
+
+Or run the checks directly:
 
 ```bash
 bun scripts/check.ts prd src/inbox/docs/PRD.md INBOX

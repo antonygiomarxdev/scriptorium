@@ -20,16 +20,16 @@ Nothing moves to the next document until the current one passes its check and th
 | Spec | `src/<slice>/docs/specs/SPEC-NN-name.md` | One per FRD: the concrete technical changes (files, interfaces, ordered ATDD tasks); decides nothing new | `templates/SPEC.md`, `check.ts spec <SPEC> <FRD>` |
 | Implementation | code | ATDD: the FRD's acceptance criteria become executable tests first, then the code | not yet |
 
-PRD and FRDs name no technology, and their Given/When/Then tests are acceptance criteria. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md`; shared terms in `docs/GLOSSARY.md`. Templates are in this plugin's `templates/`.
+PRD and FRDs name no technology, and their Given/When/Then tests are acceptance criteria. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md`; shared terms in `docs/GLOSSARY.md`. Templates are in `${CLAUDE_PLUGIN_ROOT}/templates/`. Each step has its own skill: `/scriptorium:init` (or `/scriptorium:adopt` when the project already has documents), `/scriptorium:prd`, `/scriptorium:frd`, `/scriptorium:tp`, `/scriptorium:spec`, `/scriptorium:status`.
 
 ## Checks
 
 Run from the project root, with the checks script from this plugin:
 
 ```bash
-bun <plugin>/scripts/check.ts prd src/<slice>/docs/PRD.md <SLICE_ID>
-bun <plugin>/scripts/check.ts frd src/<slice> <SLICE_ID>
-bun <plugin>/scripts/check.ts tp docs/tp/TP.md docs/adr
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" prd src/<slice>/docs/PRD.md <SLICE_ID>
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" frd src/<slice> <SLICE_ID>
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" tp docs/tp/TP.md docs/adr
 ```
 
 Exit 0 passes. Exit 1 prints every failure.
@@ -62,5 +62,5 @@ Only the owner approves. Approval is the owner's approval of the document's pull
 A document may be approved only when the document it rests on is approved: a PRD rests on PRODUCT, an FRD on its PRD, a TP per FRD on its FRD, a spec on its TP, and an ADR on the TP that cites it. Check it, and see what is still waiting:
 
 ```bash
-bun <plugin>/scripts/check.ts status .
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" status .
 ```
