@@ -1,6 +1,7 @@
 # Metrics PRD
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content riaA1KBFJvV8; rests on ../PRODUCT.md OHZ_OJ4Vuiy1
 
 ## Summary
 

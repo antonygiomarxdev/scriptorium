@@ -14,6 +14,10 @@ The owner, 2026-11-20, after the FRD-03 and FRD-04 runs.
 ## What they said
 > The idea is that with this we bring rework down. If we are writing better specs, we should not have rework problems. The code review should be based on the specs and not invent things. If something is well defined, fine; if not, find which part of the process is failing. There should be an easy way to find the rework, not analyzing a pile of documents to find out how much there is. (Translated from Spanish.)
 
+> And how will you measure it? I would like a document where you run a command and it picks up every finding with its date, so you can see rework by task over time and clearly whether it goes down or up; and with AI make an improvement plan, a command like scriptorium rework improve, that finds the gaps causing rework and helps fix them, all based on documentation, patterns and well-researched practice from large teams that suffer this kind of problem. (Translated from Spanish, 2026-11-20.)
+
+> I don't mind how it is done; what matters is that what I want improves. It is very annoying that we build a tool to improve something, and that tool has those problems, and on top of that the tool everyone is supposed to use does not even use itself. (Translated from Spanish, 2026-11-20.)
+
 ## The problem behind it
 Findings lived in review messages and in the conversation. Nothing counted them by step, so nobody could say whether better specs lowered rework, or which step to fix next.
 

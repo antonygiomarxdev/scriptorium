@@ -8,7 +8,7 @@ Open findings only, each with one cause from the list below (D-32). A finding le
 
 Last change: 2026-11-20, reshaped from a growing log into a queue of open findings (D-32)
 
-- Blocking today: C-1 (13 open), C-2 (2) and C-8 (2). None has a prevention.
+- Blocking today: C-1 (13 open), C-2 (2), C-8 (2) and C-9 (2). None has a prevention.
 - Build and review are the step for no finding: review found no change built against its spec.
 
 ## Causes
@@ -25,7 +25,7 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | C-6 | Lead | The lead wrote text or code with no review against its source. | 1 | none | n/a |
 | C-7 | Lead | One instruction says two opposite things. | 1 | none | n/a |
 | C-8 | Team practice | A rule lives only in prose or in a message, so nothing enforces it. | 2 | none | n/a |
-| C-9 | Check | Two checks apply the same rule differently. | 1 | none | n/a |
+| C-9 | Check | Two checks apply the same rule differently. | 2 | none | n/a |
 | C-10 | Check | A document error no check catches. | 1 | none | n/a |
 | C-11 | CI | A workflow step runs in a case it should not. | 1 | none | n/a |
 | C-12 | Test | A test fixture reads as a real tag or document to the repository's own checks. | 1 | none | n/a |
@@ -60,3 +60,4 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-24 | 2026-11-20 | Release | C-11 | The version workflow published v0.4.0 from the version branch before its merge. |
 | R-25 | 2026-11-20 | SPEC-04-4 | C-1 | The edit hook counts a covers tag with no slice for any slice's FRD of that number; only the later coverage scan reports it as ambiguous. |
 | R-26 | 2026-11-20 | SPEC-04-4 | C-12 | A test fixture held the text of a covers tag for another slice; the repository's coverage scan read it as a dead tag and blocked the commit. |
+| R-27 | 2026-11-20 | Metrics FRD-01 | C-9 | approve accepted the FRD, then the coverage scan blocked every commit because its examples had no tests yet; the FRD went back to Draft until its tests exist. |
