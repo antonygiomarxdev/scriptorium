@@ -4,14 +4,14 @@ Status: Draft
 
 ## Summary
 
-The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 (caps exist; their values wait on Q-1), R-CHAIN-9 (drift), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). Five questions wait for the owner.
+The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). No question is open.
 
-Last change: 2026-11-20, review fixes: Why trimmed, 3 requirements added, R-CHAIN-5 corrected, unmet list; caps exist, values open
+Last change: 2026-11-20, owner answered Q-1 to Q-5 (D-29); drift, traceability and history built
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
 ## Why
-No request is recorded for this slice yet. It answers the problem in section 1 of the product overview and the decisions it absorbs from [the decision inbox](../DECISIONS.md): D-1, D-3 to D-6, D-16, D-23 to D-27, L-5, L-7, L-9 and L-11 to L-13.
+No request is recorded for this slice yet. It answers the problem in section 1 of the product overview and the decisions it absorbs from [the decision inbox](../DECISIONS.md): D-1, D-3 to D-6, D-16, D-23 to D-28, L-5, L-7, L-9 and L-11 to L-14.
 
 ## Use cases
 UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) and UC-7 (see status and drift), all from the product overview.
@@ -25,7 +25,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-6.** Every document type has a line cap, and a document over its cap fails its check (D-5, principle 6).
 - **R-CHAIN-7.** Every chain document opens with a summary in its first 20 lines that ends with a "Last change" line carrying a date and what changed (D-24).
 - **R-CHAIN-8.** A change that alters the body of a document without altering its summary fails review, unless the change states a reason for that document (L-11).
-- **R-CHAIN-9.** A check fails an approved document whose upstream document changed after the approval, and status lists it as drift (D-4, UC-7).
+- **R-CHAIN-9.** An approval records a fingerprint of the document's own body and of each document it rests on, ignoring line endings and the status, approval and last-change lines. A check fails an approved document whose body or whose parent no longer matches its record, until the owner approves it again or clears the parent change in a committed edit. Status lists each such document as drift (D-4, L-14, UC-7).
 - **R-CHAIN-10.** Each document type has a check that passes good input and fails bad input, and a check states what it cannot see (principle 4).
 - **R-CHAIN-11.** A lint fails documents on banned phrases, filler sections, text copied from an upstream document, references to documents that do not exist, and words the glossary bans (D-25, L-13, L-9).
 - **R-CHAIN-12.** Glossary terms are used in code names and test names as the glossary spells them, and a banned synonym there fails a check (L-9).
@@ -39,9 +39,12 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-20.** The hooks never act in a project without a product overview, and they check only the documents that changed (L-12).
 - **R-CHAIN-21.** The lint fails links and anchors that lead nowhere, and replay paths in the checks register that do not exist (L-13, L-12).
 - **R-CHAIN-22.** The status line of each kind of document takes only its own values: requests Open, Accepted, Rejected or Merged into REQ-m; ADRs Proposed, Accepted, Superseded or Rejected; every other document Draft or Approved with a date (L-7).
+- **R-CHAIN-23.** Tests name the example, state or invariant they cover with a tag. A check fails a tag that names an id no FRD defines, and an approved example, state or invariant that no test covers, unless a tag waives it with a stated reason (D-28, L-14).
+- **R-CHAIN-24.** The history of a document is generated from git on request and never kept by hand in the document (D-28, L-14).
+- **R-CHAIN-25.** No document carries a version number; git and release tags are the history (D-28).
 
 ## Principles honored
-Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9: drift is detected, not assumed.
+Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9, R-CHAIN-23 and R-CHAIN-24: drift is detected, coverage is scanned and history is read from git, none of it assumed.
 
 ## Non-goals
 This slice does not adopt existing documents or map code (the adopt slice), does not manage open questions beyond the gate that blocks approval (the questions slice), does not record requests (the intake slice), does not define the UX document's own check beyond its template (the ux slice), does not log run metrics (D-7), rework or the retro (L-6, L-10), which the metrics slice takes, and leaves the test model (L-8) to the spec step, and does not package or release the plugin (the package slice). It does not judge whether a document is good, only whether it is well formed and consistent.
@@ -54,10 +57,7 @@ The product overview must be approved first. The questions, intake and ux slices
 - Every rule listed in the requirements above fails a prepared bad input in the check's own tests, and the same check passes a good input.
 - Deputy's chain passes the same checks with no change to the checks.
 - A change that edits a body and leaves its summary alone is stopped on the pull request in every case of a prepared set of ten such changes.
+- Every approved example in Scriptorium's own FRDs has a test that names it, or a stated reason why not.
 
 ## Open questions
-- **Q-1.** What line cap does each document type get? Recommendation: PRD 120, FRD 200, TP 200, ADR 100, spec 150, request 40, retro 150, decision inbox 150.
-- **Q-2.** How old may an inbox decision be before it fails? Recommendation: 30 days.
-- **Q-3.** May a project set stricter caps than the defaults, or are the caps fixed? Recommendation: stricter allowed, looser never.
-- **Q-4.** Does the gate before code edits (R-CHAIN-15) apply to every file outside `docs/`, or only to a list of source folders the project names? Recommendation: every file outside `docs/`, tests and configuration excepted.
-- **Q-5.** When a pull request states a reason to leave a summary unchanged (R-CHAIN-8), who approves the reason? Recommendation: the owner, in the pull request review.
+None. Q-1 to Q-5 were answered by the owner on 2026-11-20 (D-29).
