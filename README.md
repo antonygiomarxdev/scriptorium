@@ -2,7 +2,7 @@
 
 **Write the product before the code.** A checked document chain that AI coding agents write, build from, and are reviewed against.
 
-[![version](https://img.shields.io/github/v/tag/antonygiomarxdev/scriptorium?label=version)](CHANGELOG.md) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![version](https://img.shields.io/github/v/tag/antonygiomarxdev/scriptorium?label=version)](https://github.com/antonygiomarxdev/scriptorium/releases) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Coding agents write code faster than anyone can say what the code should do. Spec-driven tools start at the spec; Scriptorium is the layer above it: why a change exists, what the product must do, which technical choices were made and why, and only then the spec. Each document rests on the one before, a script checks it, and only its owner approves it.
 
@@ -58,7 +58,7 @@ docs/
     specs/SPEC-NN-name.md
 ```
 
-The layout above is decided; the checks still read the old layout (`src/<slice>/docs/`) and move next.
+The checks read this layout: `docs/<slice>/` for each slice, never `src/`.
 
 ## Install
 
@@ -72,13 +72,16 @@ Turn on auto-update for the `scriptorium` marketplace under `/plugin` → Market
 
 | Skill | Does |
 |---|---|
+| `/scriptorium:scriptorium` | The overview: chain, layout, checks, short path, approval rules |
 | `/scriptorium:init` | Starts the chain: PRODUCT, DECISIONS, GLOSSARY |
-| `/scriptorium:adopt [path]` | Maps a project's existing documents to the chain, proposes a plan, migrates after you approve it |
+| `/scriptorium:adopt [path]` | Maps a project's existing documents into `docs/<slice>/`, offers to map undocumented code, reports the gaps, migrates after you approve the plan |
 | `/scriptorium:prd <slice> <ID>` | Writes and checks a slice PRD |
 | `/scriptorium:frd <slice> <ID>` | Writes and checks the slice FRDs |
 | `/scriptorium:tp [cross \| <slice> <NN>]` | Writes and checks a TP and its ADRs |
 | `/scriptorium:spec <slice> <NN>` | Writes and checks the spec for one FRD |
-| `/scriptorium:status` | Shows every document, its status and what is next |
+| `/scriptorium:status` | Shows every document, its status and what is next; fails on an approval above a draft or with an open question |
+
+Skills for requests, decisions, glossary, UX, invariants, concerns, ADRs, review and retro are not written yet.
 
 Or run a check directly: `bun scripts/check.ts prd docs/inbox/PRD.md INBOX`. Exit 0 passes; exit 1 prints every failure.
 
