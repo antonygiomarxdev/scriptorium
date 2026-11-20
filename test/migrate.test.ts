@@ -72,3 +72,29 @@ test("the CLI runs migrate with and without --apply", () => {
   expect(cli("--apply").exitCode).toBe(0);
   expect(read(root, ".scriptorium/config.json")).toContain('"format": 2');
 });
+
+// covers: chain/FRD-03/EX-21
+test("EX-21: the dry run lists a Version line, which only format 2 fails", () => {
+  const root = project({ "docs/inbox/PRD.md": "Status: Draft\n\n## A\nVersion: 1.2\n" });
+  const r = migrate(root);
+  expect(r.lines.join("\n")).toContain("version number in a document");
+  expect(migrate(project()).lines.join("\n")).not.toContain("version number in a document"); // mutant: no Version line
+});
+
+// covers: chain/FRD-03/EX-22
+test("EX-22: a CRLF spec gets its Rests on line ending in CRLF", () => {
+  const crlf = SPEC.replace(/\n/g, "\r\n");
+  const root = project({ [S1]: crlf });
+  migrate(root, true);
+  expect(read(root, S1)).toBe(crlf.replace("Status: Draft\r\n", "Status: Draft\r\nRests on: ../tp/TP-01-a.md\r\n"));
+});
+
+// covers: chain/FRD-03/EX-21
+test("EX-21: the dry run lists an example no test tags, and not one that has a tag", () => {
+  const frd = "# FRD-01: x\n\nStatus: Approved (2026-11-20)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n";
+  const files = { "docs/inbox/frd/FRD-01-a.md": frd };
+  const bare = migrate(project({ ...files, "test/a.test.ts": "// nothing\n" }));
+  expect(bare.lines.join("\n")).toContain("FRD-01/EX-1");
+  const tagged = migrate(project({ ...files, "test/a.test.ts": "// " + "cov" + "ers: inbox/FRD-01/EX-1\n" })); // mutant: the tag is there
+  expect(tagged.lines.join("\n")).not.toContain("FRD-01/EX-1");
+});

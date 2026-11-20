@@ -5,6 +5,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { basename, dirname, join } from "node:path";
 import { chainStatus, RESERVED, restsOn, specFails } from "./check.ts";
 import { CONFIG, gate, NEWEST, readFormat } from "./format.ts";
+import { lintDocs, loadPhrases } from "./lint-docs.ts";
+import { traceFails } from "./trace.ts";
 import { toPosix } from "./paths.ts";
 
 const specsOf = (root: string): string[] => {
@@ -38,7 +40,7 @@ function rewrites(root: string): Rewrite[] {
   return out;
 }
 
-// What fails under format n: the chain status and every spec.
+// What fails under format n: the chain status, every spec, the docs lint and the coverage scan.
 function failsAt(root: string, n: number): { fails: string[]; bySpec: string[] } {
   const fails = gate(chainStatus(root).fails, n).fails;
   const bySpec: string[] = [];
@@ -47,6 +49,15 @@ function failsAt(root: string, n: number): { fails: string[]; bySpec: string[] }
     if (f.length) bySpec.push(spec);
     fails.push(...f.map((x) => toPosix(spec) + ": " + x));
   }
+  // lintDocs reads the pin itself: a rule newer than the pin comes back as a warning, which is a failure under n.
+  const warned: string[] = [];
+  fails.push(...lintDocs(root, loadPhrases(), warned).map((x) => "docs/" + x.file + ":" + x.line + ": " + x.reason));
+  for (const w of warned) {
+    const m = /^WARN \(format (\d+)\): (.*)$/.exec(w);
+    if (m && Number(m[1]) <= n) fails.push(m[2]!);
+  }
+  const tests = join(root, "test");
+  if (existsSync(tests)) fails.push(...traceFails(join(root, "docs"), [tests], n).fails);
   return { fails: [...new Set(fails)], bySpec };
 }
 

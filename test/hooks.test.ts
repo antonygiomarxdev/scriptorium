@@ -273,3 +273,46 @@ test("a project without docs/PRODUCT.md: the edit hook does nothing", () => {
   expect(r.code).toBe(0);
   expect(r.err + r.out).toBe("");
 });
+
+// covers: chain/FRD-03/EX-26
+test("EX-26: pre-commit blocks a staged pin lower than HEAD's", () => {
+  const pinAt = (head: string | undefined, staged: string) => {
+    const root = committed({ "docs/PRODUCT.md": PRODUCT, ...(head ? { ".scriptorium/config.json": head } : {}), "keep.txt": "x" });
+    mkdirSync(join(root, ".scriptorium"), { recursive: true });
+    writeFileSync(join(root, ".scriptorium/config.json"), staged);
+    git(root, "add", ".scriptorium/config.json");
+    return hook("pre-commit.ts", { cwd: root });
+  };
+  const down = pinAt(PIN2, '{"format":1}');
+  expect(down.code).toBe(1);
+  expect(down.err + down.out).toContain("one-way");
+  expect(pinAt(undefined, '{"format":1}').code).toBe(0); // mutant: no HEAD pin means format 1, so no downgrade
+  expect(pinAt('{"format":1}', PIN2).code).toBe(0); // going up is fine
+}, 60000);
+
+// covers: chain/FRD-04/EX-16
+test("EX-16: input the edit hook cannot parse exits 2 and says why", () => {
+  const root = project({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2 });
+  const r = Bun.spawnSync([process.execPath, join(S, "hook-gate.ts")], { cwd: root, stdin: Buffer.from("not json {"), env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+  expect(r.exitCode).toBe(2);
+  expect(r.stderr.toString().length).toBeGreaterThan(0);
+  expect(gateCall(root, "test/a.test.ts").code).toBe(0); // mutant: valid input for an exempt file goes ahead
+});
+
+// covers: chain/FRD-04/EX-17
+test("EX-17: NotebookEdit is gated through notebook_path", () => {
+  const root = project({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2 });
+  const note = (rel: string) => hook("hook-gate.ts", { cwd: root, input: { cwd: root, tool_name: "NotebookEdit", tool_input: { notebook_path: join(root, rel) } } });
+  const r = note("notes/a.ipynb");
+  expect(r.code).toBe(2);
+  expect(r.err).toContain("notes/a.ipynb");
+  expect(note("test/a.ipynb").code).toBe(0); // mutant: a notebook in a test folder is exempt
+});
+
+// covers: chain/FRD-04/EX-18
+test("EX-18: the plugin's hook configuration runs the edit hook for every editing tool", () => {
+  const cfg = JSON.parse(readFileSync(join(S, "..", "hooks", "hooks.json"), "utf8"));
+  const entry = cfg.hooks.PreToolUse.find((e: { hooks: { args?: string[]; command?: string }[] }) => e.hooks.some((h) => JSON.stringify(h).includes("hook-gate.ts")));
+  expect(entry).toBeDefined();
+  expect(entry.matcher.split("|").sort()).toEqual(expect.arrayContaining(["Edit", "MultiEdit", "NotebookEdit", "Write"]));
+});

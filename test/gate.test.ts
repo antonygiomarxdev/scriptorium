@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { approve } from "../scripts/drift.ts";
@@ -111,4 +111,29 @@ test("a quoted FRD row without a covers tag: refused, write the tests first", ()
 test("rows quoted from a request need no covers tag", () => {
   const root = project({ "docs/requests/REQ-1-a.md": req("Accepted", "scripts/z.ts"), [SPEC]: specRows(["EX-4"], "../../requests/REQ-1-a.md") }, true);
   expect(gateFile(root, "scripts/a.ts")).toBeUndefined();
+});
+
+// covers: chain/FRD-04/EX-14
+test("a spec changed after its approval does not unlock its files", () => {
+  const files = { "docs/chain/frd/FRD-01-a.md": frdRows(["EX-4"]), [SPEC]: specRows(["EX-4"]), "test/a.test.ts": tag("EX-4") };
+  const root = project(files, true);
+  expect(gateFile(root, "scripts/a.ts")).toBeUndefined(); // mutant: untouched, it unlocks
+  writeFileSync(join(root, SPEC), readFileSync(join(root, SPEC), "utf8").replace("\nb\n", "\nb, changed after approval\n"));
+  expect(gateFile(root, "scripts/a.ts")).toBeDefined();
+});
+
+// covers: chain/FRD-04/EX-15
+test("a covers tag for another FRD does not count", () => {
+  const other = '// covers: chain/FRD-02/EX-4\ntest("t", () => {});\n';
+  const root = project({ "docs/chain/frd/FRD-01-a.md": frdRows(["EX-4"]), [SPEC]: specRows(["EX-4"]), "test/a.test.ts": other }, true);
+  expect(gateFile(root, "scripts/a.ts")).toContain("write the tests first: FRD-01/EX-4");
+});
+
+// covers: chain/FRD-04/EX-15
+test("a covers tag for the same FRD number in another slice does not count", () => {
+  const twoSlices = { "docs/chain/frd/FRD-01-a.md": frdRows(["EX-4"]), "docs/other/PRD.md": PRD, "docs/other/frd/FRD-01-b.md": frdRows(["EX-4"]), [SPEC]: specRows(["EX-4"]) };
+  const wrong = project({ ...twoSlices, "test/a.test.ts": '// covers: other/FRD-01/EX-4\ntest("t", () => {});\n' }, true);
+  expect(gateFile(wrong, "scripts/a.ts")).toContain("write the tests first");
+  const right = project({ ...twoSlices, "test/a.test.ts": '// covers: chain/FRD-01/EX-4\ntest("t", () => {});\n' }, true); // mutant: the tag of its own slice counts
+  expect(gateFile(right, "scripts/a.ts")).toBeUndefined();
 });

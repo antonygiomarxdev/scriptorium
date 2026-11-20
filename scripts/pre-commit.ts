@@ -9,7 +9,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { isChainProject, runDocChecks, runStatus, runTrace, splitDocPath } from "./hook-doc-check.ts";
-import { gate, readFormat } from "./format.ts";
+import { CONFIG, gate, readFormat } from "./format.ts";
 import { gateFile } from "./gate.ts";
 import { toPosix } from "./paths.ts";
 
@@ -50,6 +50,20 @@ if (import.meta.main) {
   const warnings: string[] = [];
   if (!all) {
     const top = sh(["git", "rev-parse", "--show-toplevel"]);
+    // Migration is one-way: a staged pin lower than HEAD's fails the commit (no HEAD pin means format 1).
+    const pinOf = (blob: string) => {
+      try {
+        const v = JSON.parse(sh(["git", "show", blob], top)).format;
+        return typeof v === "number" ? v : 1;
+      } catch {
+        return 1;
+      }
+    };
+    if (sh(["git", "diff", "--cached", "--name-only"], top).split("\n").includes(CONFIG)) {
+      const was = pinOf("HEAD:" + CONFIG);
+      const now = pinOf(":" + CONFIG);
+      if (now < was) fails.push(CONFIG + ": format " + was + " to " + now + ": migration is one-way, the pin only goes up");
+    }
     if (isChainProject(top)) {
       const staged = sh(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], top).split("\n").filter(Boolean);
       const g = gate(

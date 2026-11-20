@@ -1,6 +1,6 @@
 // Who may edit a file (FRD-04): exempt, named by an approved spec or an accepted short path, or refused.
 import { existsSync, readFileSync } from "node:fs";
-import { basename, isAbsolute, join, relative } from "node:path";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { chainStatus, restsOn } from "./check.ts";
 import { driftReport } from "./drift.ts";
 import { fromDoc, toPosix, typed } from "./paths.ts";
@@ -25,11 +25,12 @@ function untested(root: string, specPath: string, text: string): string[] {
   const frd = on ? fromDoc(specPath, on) : "";
   const num = /^FRD-\d+/.exec(basename(frd))?.[0];
   if (!num || !existsSync(frd)) return [];
+  const slice = basename(dirname(dirname(frd))); // docs/<slice>/frd/FRD-NN-*.md
   const defined = new Set(frdIds(readFileSync(frd, "utf8")));
   const dirs = ["test", "tests"].map((d) => join(root, d)).filter(existsSync);
   const tags = scanTags(...dirs);
   return frdIds(text)
-    .filter((id) => defined.has(id) && !tags.some((t) => t.frd === num && t.id === id))
+    .filter((id) => defined.has(id) && !tags.some((t) => t.frd === num && t.id === id && (!t.slice || t.slice === slice)))
     .map((id) => num + "/" + id);
 }
 const names = (row: string, file: string) => row === file || (row.endsWith("/") && file.startsWith(row));

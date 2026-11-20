@@ -154,3 +154,12 @@ test("EX-8: an uncovered example only warns under format 1 and fails under forma
   expect(r.warnings.map((x) => x.replace(/ \(chain.*/, ""))).toEqual(["WARN (format 2): uncovered: FRD-01/EX-2"]);
   expect(run(fixture(APPROVED, ROWS, tests)).fails.length).toBe(1);
 });
+
+// covers: chain/FRD-03/EX-20
+test("EX-20: a dead tag only warns under format 1 and fails under format 2", () => {
+  const tests = { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2", "FRD-01/EX-9") };
+  const r = run(fixture(APPROVED, ROWS, tests, "", {}, false));
+  expect(r.fails).toEqual([]);
+  expect(r.warnings.join("\n")).toContain("WARN (format 2): dead tag");
+  expect(run(fixture(APPROVED, ROWS, tests)).fails.length).toBe(1);
+});

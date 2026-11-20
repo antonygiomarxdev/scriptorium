@@ -502,3 +502,21 @@ test("format gate: a 0.3.0 spec passes with format 2 warnings under format 1 and
   expect(f2.out).not.toContain("[format");
   expect(cli("status", ".").code).toBe(1);
 });
+
+// covers: chain/FRD-03/EX-19
+test("EX-19: a small spec with no Tasks section passes under format 2; format 1 still asks for tasks", () => {
+  const p = specAt();
+  const root = join(p, "..", "..", "..", "..");
+  mkdirSync(join(p, ".."), { recursive: true });
+  writeFileSync(p, SPEC);
+  const cli = () => {
+    const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), "spec", p], { cwd: root });
+    return { code: r.exitCode, out: r.stdout.toString() };
+  };
+  expect(cli().code).toBe(1); // mutant: pin 1 runs the format 1 rules
+  mkdirSync(join(root, ".scriptorium"));
+  writeFileSync(join(root, ".scriptorium", "config.json"), '{"format": 2}');
+  const r = cli();
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("Tasks");
+});

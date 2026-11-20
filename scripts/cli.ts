@@ -16,8 +16,9 @@ if (!cmd) {
 // The pin is read from the project that holds the document named, not from the current folder.
 let cwd: string | undefined;
 if (!OWN[cmd]) {
-  args = args.map((a) => (a.endsWith(".md") && existsSync(a) ? resolve(a) : a));
-  cwd = args.map((a) => splitDocPath(a)?.root).find(Boolean);
+  // Any path that exists maps to its project root (a folder like docs/chain/frd too), not only .md files.
+  args = args.map((a) => (existsSync(a) && splitDocPath(resolve(a) + (a.endsWith(".md") ? "" : "/x.md")) ? resolve(a) : a));
+  cwd = args.map((a) => (existsSync(a) ? splitDocPath(resolve(a) + (a.endsWith(".md") ? "" : "/x.md"))?.root : undefined)).find(Boolean);
 }
 const script = join(dirname(import.meta.path), OWN[cmd] ?? "check.ts");
 const r = Bun.spawnSync([process.execPath, script, ...(OWN[cmd] ? [] : [cmd]), ...args], { cwd, stdio: ["inherit", "inherit", "inherit"] });
