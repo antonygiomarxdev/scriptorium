@@ -1,7 +1,7 @@
 name: Version
 
 # On every push to main: while changesets are pending, keep a "Version Packages" pull request open.
-# When that pull request is merged (package.json carries a version with no tag yet), tag it and publish the GitHub release.
+# When that pull request is merged (no changeset pending, package.json carries a version with no tag yet), tag it and publish the GitHub release.
 on:
   push:
     branches: [main]
@@ -22,6 +22,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: Open or update the Version Packages pull request
+        id: changesets
         uses: changesets/action@v1
         with:
           version: bun run version
@@ -29,7 +30,10 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Only once no changeset is pending, that is after the Version Packages pull request was merged.
+      # While one is pending the action leaves the checkout on changeset-release/main, whose package.json already holds the next version.
       - name: Tag and release a version that has no tag yet
+        if: steps.changesets.outputs.hasChangesets == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
