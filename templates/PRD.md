@@ -1,15 +1,35 @@
+<!-- Links are relative to where this document lives once copied (docs/<slice>/...), not to templates/. -->
 # <Slice> PRD
 
-Part of [the product overview](../../../docs/PRODUCT.md). States what, not how: name no technology.
+Status: Draft
 
-## Purpose
+## Summary
+
+<What this slice must do and why. Five lines at most. Kept current: a change that matters anywhere below shows here.>
+
+Last change: <YYYY-MM-DD, what changed>
+
+Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
+
+## Why
+<Requests it answers: REQ-n.>
+
 ## Use cases
-<Cite UC-n from PRODUCT.md.>
+<UC-n from PRODUCT.md.>
+
 ## Requirements
 - **R-<SLICE>-1.** <One testable requirement.>
+
 ## Principles honored
-<Cite "principle N" and say how; do not restate it.>
-## Out of scope
+<"principle N" and how; do not restate it.>
+
+## Non-goals
+<What this slice deliberately does not do.>
+
 ## Dependencies
-## Acceptance criteria
+
+## Success criteria
+<Measurable: how we will know after release.>
+
 ## Open questions
+<Q-n. Must be empty to approve.>

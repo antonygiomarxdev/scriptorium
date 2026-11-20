@@ -1,6 +1,6 @@
 # Glossary
 
-Terms every slice uses. Add a term here before a second slice needs it.
+One word per thing. A check fails when an `Avoid` word appears in a document under `docs/`.
 
-| Term | Meaning |
-|---|---|
+| Term | Meaning | Avoid |
+|---|---|---|
