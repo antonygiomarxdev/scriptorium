@@ -18,6 +18,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test
       - run: bun run typecheck
+      - run: bun run format:check
       - name: Plugin manifests parse and share the package version
         run: bun -e "const r=(f)=>require('./'+f);const v=r('package.json').version;r('.claude-plugin/marketplace.json');if(r('.claude-plugin/plugin.json').version!==v)throw new Error('plugin.json version differs from package.json')"
       - name: Scriptorium's own documents
