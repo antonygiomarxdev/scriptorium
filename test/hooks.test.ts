@@ -19,11 +19,14 @@ function project(files: Record<string, string>) {
 
 function hook(script: string, opts: { input?: object; cwd?: string; args?: string[] }) {
   const r = Bun.spawnSync([process.execPath, join(S, script), ...(opts.args ?? [])], {
-    cwd: opts.cwd, stdin: Buffer.from(JSON.stringify(opts.input ?? {})), env: { ...process.env, CLAUDE_PROJECT_DIR: opts.cwd ?? "" },
+    cwd: opts.cwd,
+    stdin: Buffer.from(JSON.stringify(opts.input ?? {})),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: opts.cwd ?? "" },
   });
   return { code: r.exitCode, err: r.stderr.toString(), out: r.stdout.toString() };
 }
 
+// covers: chain/FRD-02/EX-24
 test("a document path splits into its project root and its path under docs/", () => {
   expect(splitDocPath("C:\\p\\examples\\larder\\docs\\pickups\\PRD.md")).toEqual({ root: "C:/p/examples/larder", rel: "docs/pickups/PRD.md" });
   expect(splitDocPath("/p/src/index.ts")).toBeUndefined();
@@ -36,8 +39,14 @@ test("each document kind maps to its check", () => {
     "docs/pickups/frd/FRD-01-book.md": "x",
   });
   const args = (rel: string) => checksFor(root, rel).map((c) => c.args ?? c.fail);
-  expect(args("docs/pickups/PRD.md")).toEqual([["prd", "docs/pickups/PRD.md", "PICKUPS"], ["summary", "docs/pickups/PRD.md"]]);
-  expect(args("docs/pickups/frd/FRD-01-book.md")).toEqual([["frd", "docs/pickups", "PICKUPS"], ["summary", "docs/pickups/frd/FRD-01-book.md"]]);
+  expect(args("docs/pickups/PRD.md")).toEqual([
+    ["prd", "docs/pickups/PRD.md", "PICKUPS"],
+    ["summary", "docs/pickups/PRD.md"],
+  ]);
+  expect(args("docs/pickups/frd/FRD-01-book.md")).toEqual([
+    ["frd", "docs/pickups", "PICKUPS"],
+    ["summary", "docs/pickups/frd/FRD-01-book.md"],
+  ]);
   expect(args("docs/pickups/ux/UX-01-book.md")[0]).toEqual(["ux", "docs/pickups"]);
   expect(args("docs/tp/TP.md")[0]).toEqual(["tp", "docs/tp/TP.md", "docs/adr"]);
   expect(args("docs/pickups/tp/TP-01-book.md")[0]).toEqual(["tp", "docs/pickups/tp/TP-01-book.md", "docs/adr"]);
@@ -142,7 +151,8 @@ test("pre-commit checks staged documents and --all checks a whole project", () =
 // covers: chain/FRD-02/EX-18
 // covers: chain/FRD-02/EX-19
 test("changesetRule: code needs a new changeset, docs and tests do not", () => {
-  const A = (p: string) => "A\t" + p, M = (p: string) => "M\t" + p;
+  const A = (p: string) => "A\t" + p,
+    M = (p: string) => "M\t" + p;
   expect(changesetRule([M("scripts/check.ts")])).toHaveLength(1);
   expect(changesetRule([M("scripts/check.ts"), A(".changeset/x.md")])).toEqual([]);
   expect(changesetRule([M("scripts/check.ts"), M(".changeset/x.md")])).toHaveLength(1);

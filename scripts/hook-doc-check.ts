@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { lintDocs, loadPhrases } from "./lint-docs.ts";
-import { toPosix } from "./paths.ts";
+import { toPosix, typed } from "./paths.ts";
 
 const CHECK = join(import.meta.dir, "check.ts");
 
@@ -15,7 +15,7 @@ export type Check = { args?: string[]; only?: string; fail?: string };
 // root is the folder holding docs/, rel the document's path under it ("docs/pickups/PRD.md").
 // shortcut: the last "/docs/" in the path is the docs folder, wrong for a project nested inside a folder that is itself named docs.
 export function splitDocPath(file: string): { root: string; rel: string } | undefined {
-  const p = toPosix(file);
+  const p = typed(file); // the host gives the path as text: either slash, on any system
   const i = p.lastIndexOf("/docs/");
   return i < 0 || !p.endsWith(".md") ? undefined : { root: p.slice(0, i) || "/", rel: p.slice(i + 1) };
 }
@@ -60,7 +60,10 @@ function failures(label: string, r: { code: number; out: string }): string[] {
 export function runDocChecks(root: string, rel: string, strict = false): string[] {
   const out: string[] = [];
   for (const c of checksFor(root, rel)) {
-    if (c.fail) { out.push("FAIL " + c.fail); continue; }
+    if (c.fail) {
+      out.push("FAIL " + c.fail);
+      continue;
+    }
     const f = failures("check " + c.args![0] + " " + rel, run(root, CHECK, c.args!));
     out.push(...(c.only && !strict ? f.filter((l) => l.includes(c.only + ":")) : f));
   }
@@ -81,9 +84,16 @@ export const runTrace = (root: string): string[] => (existsSync(join(root, "test
 // Documents under docs/ that changed since HEAD, are staged, or are new. Legacy documents that did not change are left alone,
 // so a project in the middle of an adoption is not blocked by the documents it has not migrated yet.
 export function changedDocs(root: string): string[] {
-  const git = (...a: string[]) => Bun.spawnSync(["git", ...a], { cwd: root }).stdout.toString().split(/\r?\n/).filter(Boolean);
+  const git = (...a: string[]) =>
+    Bun.spawnSync(["git", ...a], { cwd: root })
+      .stdout.toString()
+      .split(/\r?\n/)
+      .filter(Boolean);
   const files = new Set([...git("diff", "--name-only", "--relative", "HEAD"), ...git("diff", "--cached", "--name-only", "--relative"), ...git("ls-files", "--others", "--exclude-standard")]);
-  return [...files].map((f) => toPosix(f)).filter((f) => f.startsWith("docs/") && f.endsWith(".md") && existsSync(join(root, f))).sort();
+  return [...files]
+    .map((f) => toPosix(f))
+    .filter((f) => f.startsWith("docs/") && f.endsWith(".md") && existsSync(join(root, f)))
+    .sort();
 }
 
 // What the Stop hook runs: the per-document checks on the changed documents, plus the chain status.
@@ -94,7 +104,11 @@ export function runChanged(root: string): string[] {
 
 if (import.meta.main) {
   let input: { tool_input?: { file_path?: string }; cwd?: string } = {};
-  try { input = JSON.parse(await Bun.stdin.text()); } catch { process.exit(0); }
+  try {
+    input = JSON.parse(await Bun.stdin.text());
+  } catch {
+    process.exit(0);
+  }
   const file = input.tool_input?.file_path;
   const doc = file ? splitDocPath(resolve(input.cwd ?? process.cwd(), file)) : undefined;
   if (!doc || !isChainProject(doc.root)) process.exit(0);
