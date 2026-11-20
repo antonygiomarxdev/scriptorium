@@ -33,18 +33,42 @@ function prose(text: string): { n: number; s: string }[] {
   let fence = false;
   const out: { n: number; s: string }[] = [];
   text.split(/\r?\n/).forEach((s, i) => {
-    if (/^\s*\x60\x60\x60/.test(s)) { fence = !fence; return; }
+    if (/^\s*\x60\x60\x60/.test(s)) {
+      fence = !fence;
+      return;
+    }
     if (!fence) out.push({ n: i + 1, s });
   });
   return out;
 }
 
-const cells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-const sentences = (s: string) => s.replace(/[*_\x60]/g, "").split(/(?<=[.!?])\s+/).map((x) => x.replace(/\s+/g, " ").trim()).filter((x) => x.split(" ").length >= COPY_WORDS);
+const cells = (l: string) =>
+  l
+    .trim()
+    .replace(/^\||\|$/g, "")
+    .split("|")
+    .map((c) => c.trim());
+const sentences = (s: string) =>
+  s
+    .replace(/[*_\x60]/g, "")
+    .split(/(?<=[.!?])\s+/)
+    .map((x) => x.replace(/\s+/g, " ").trim())
+    .filter((x) => x.split(" ").length >= COPY_WORDS);
 
 // GitHub's heading slug: lowercase, punctuation dropped, spaces to hyphens.
-export const slug = (h: string) => h.trim().toLowerCase().replace(/[\x60*_]/g, "").replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s/g, "-");
-const anchorsOf = (md: string) => new Set(prose(md).filter((l) => /^#{1,6}\s/.test(l.s)).map((l) => slug(l.s.replace(/^#+\s+/, ""))));
+export const slug = (h: string) =>
+  h
+    .trim()
+    .toLowerCase()
+    .replace(/[\x60*_]/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s/g, "-");
+const anchorsOf = (md: string) =>
+  new Set(
+    prose(md)
+      .filter((l) => /^#{1,6}\s/.test(l.s))
+      .map((l) => slug(l.s.replace(/^#+\s+/, ""))),
+  );
 
 const hasWord = (t: string, w: string) => new RegExp("(^|[^a-z0-9])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "($|[^a-z0-9])").test(t);
 
@@ -53,11 +77,24 @@ export function avoidWords(glossary: string): string[] {
   let at = -1;
   const out: string[] = [];
   for (const l of glossary.split(/\r?\n/)) {
-    if (!/^\s*\|/.test(l)) { at = -1; continue; }
+    if (!/^\s*\|/.test(l)) {
+      at = -1;
+      continue;
+    }
     const c = cells(l);
     if (/^[\s:|-]+$/.test(l)) continue;
-    if (at === -1) { at = c.indexOf("Avoid"); if (at < 0) at = -2; continue; }
-    if (at >= 0) out.push(...(c[at] ?? "").split(",").map((w) => w.trim().toLowerCase()).filter(Boolean));
+    if (at === -1) {
+      at = c.indexOf("Avoid");
+      if (at < 0) at = -2;
+      continue;
+    }
+    if (at >= 0)
+      out.push(
+        ...(c[at] ?? "")
+          .split(",")
+          .map((w) => w.trim().toLowerCase())
+          .filter(Boolean),
+      );
   }
   return [...new Set(out)];
 }
@@ -76,8 +113,7 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
     }
 
   // R-CHAIN-25: no document carries a version number; a release named in prose is fine.
-  if (!rel.startsWith("research/"))
-    for (const { n, s } of lines) if (/^\s*\**Version:?\**\s*v?\d+\.\d+/i.test(s)) f(n, "version number in a document");
+  if (!rel.startsWith("research/")) for (const { n, s } of lines) if (/^\s*\**Version:?\**\s*v?\d+\.\d+/i.test(s)) f(n, "version number in a document");
 
   // Glossary: a word the glossary says to avoid fails anywhere but in the glossary and research.
   if (rel !== "GLOSSARY.md" && !rel.startsWith("research/"))
@@ -92,16 +128,23 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
         const [target, anchor] = m[1].split("#");
         if (/^(https?:|mailto:)/i.test(m[1]) || (!target && !anchor)) continue;
         const path = target ? resolve(dirOnDisk, decodeURIComponent(target)) : undefined;
-        if (path && !existsSync(path)) { f(n, "link does not resolve: " + m[1]); continue; }
-        if (anchor && (!path || path.endsWith(".md")) && !anchorsOf(path ? readFileSync(path, "utf8") : text).has(decodeURIComponent(anchor).toLowerCase()))
-          f(n, "link anchor has no heading: " + m[1]);
+        if (path && !existsSync(path)) {
+          f(n, "link does not resolve: " + m[1]);
+          continue;
+        }
+        if (anchor && (!path || path.endsWith(".md")) && !anchorsOf(path ? readFileSync(path, "utf8") : text).has(decodeURIComponent(anchor).toLowerCase())) f(n, "link anchor has no heading: " + m[1]);
       }
 
   // Filler: a section holding nothing, TBD, TODO, or n/a without a reason.
   const heads = lines.filter((l) => /^## /.test(l.s));
   heads.forEach((h, i) => {
     const end = heads[i + 1]?.n ?? Infinity;
-    const body = text.split(/\r?\n/).slice(h.n, end === Infinity ? undefined : end - 1).join("\n").replace(/<!--[\s\S]*?-->/g, "").trim();
+    const body = text
+      .split(/\r?\n/)
+      .slice(h.n, end === Infinity ? undefined : end - 1)
+      .join("\n")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .trim();
     if (!body) f(h.n, "section is empty: " + h.s);
     else if (/^(TBD|TODO|n\/a)\.?$/i.test(body)) f(h.n, "section holds only " + body + ": " + h.s);
   });
@@ -113,10 +156,20 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
   if (col) {
     let at = -1;
     for (const { n, s } of lines) {
-      if (!/^\s*\|/.test(s)) { at = -1; continue; }
+      if (!/^\s*\|/.test(s)) {
+        at = -1;
+        continue;
+      }
       const c = cells(s);
       if (/^[\s:|-]+$/.test(s)) continue;
-      if (at === -1) { at = c.indexOf(col); if (at < 0) { f(n, 'table has no "' + col + '" column'); at = -2; } continue; }
+      if (at === -1) {
+        at = c.indexOf(col);
+        if (at < 0) {
+          f(n, 'table has no "' + col + '" column');
+          at = -2;
+        }
+        continue;
+      }
       if (at >= 0 && !(c[at] ?? "")) f(n, (c[0] || "row") + ': empty "' + col + '" cell');
     }
   }
@@ -125,10 +178,16 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
   if (kind === "CHECKS" && projectRoot) {
     let at = -1;
     for (const { n, s } of lines) {
-      if (!/^\s*\|/.test(s)) { at = -1; continue; }
+      if (!/^\s*\|/.test(s)) {
+        at = -1;
+        continue;
+      }
       if (/^[\s:|-]+$/.test(s)) continue;
       const c = cells(s);
-      if (at === -1) { at = c.indexOf("Replay"); continue; }
+      if (at === -1) {
+        at = c.indexOf("Replay");
+        continue;
+      }
       if (at >= 0) for (const m of (c[at] ?? "").matchAll(/\x60([^\x60\s]+[\/.][^\x60\s]*)\x60/g)) if (!existsSync(resolve(projectRoot, m[1]))) f(n, (c[0] || "row") + ": Replay path does not exist: " + m[1]);
     }
   }
@@ -157,12 +216,26 @@ export function lintDocs(root: string, phrases: string[]): Fail[] {
     const rel = toPosix(relative(docs, p));
     const slice = rel.split("/")[0];
     const prd = rel.includes("/") ? read(join(docs, slice, "PRD.md")) : undefined;
-    fails.push(...lintFile(rel, readFileSync(p, "utf8"), phrases, [product, prd].filter((x): x is string => !!x), dirname(p), avoid, root));
+    fails.push(
+      ...lintFile(
+        rel,
+        readFileSync(p, "utf8"),
+        phrases,
+        [product, prd].filter((x): x is string => !!x),
+        dirname(p),
+        avoid,
+        root,
+      ),
+    );
   }
   return fails;
 }
 
-export const loadPhrases = (file = join(import.meta.dir, "banned-phrases.txt")) => readFileSync(file, "utf8").split(/\r?\n/).map((l) => l.trim().toLowerCase().replace(/’/g, "'")).filter(Boolean);
+export const loadPhrases = (file = join(import.meta.dir, "banned-phrases.txt")) =>
+  readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .map((l) => l.trim().toLowerCase().replace(/’/g, "'"))
+    .filter(Boolean);
 
 if (import.meta.main) {
   const root = process.argv[2] ?? ".";

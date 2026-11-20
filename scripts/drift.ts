@@ -12,7 +12,12 @@ const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^Last chan
 
 // LF endings, no trailing spaces, Status, Approval and Last change lines left out.
 export function normalize(text: string): string {
-  return text.split(/\r?\n/).map((l) => l.replace(/\s+$/, "")).filter((l) => !IGNORED(l)).join("\n").trim();
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+$/, ""))
+    .filter((l) => !IGNORED(l))
+    .join("\n")
+    .trim();
 }
 
 export const fingerprint = (text: string): string => createHash("sha256").update(normalize(text)).digest("base64url").slice(0, 12);
@@ -34,7 +39,10 @@ function parseApproval(line: string | undefined): Record | undefined {
   const content = first.match(/^content (\S+)$/)?.[1];
   if (!content) return undefined;
   const ps = new Map<string, string>();
-  for (const r of rest) { const m = r.match(/^rests on (\S+) (\S+)$/); if (m) ps.set(m[1], m[2]); }
+  for (const r of rest) {
+    const m = r.match(/^rests on (\S+) (\S+)$/);
+    if (m) ps.set(m[1], m[2]);
+  }
   return { content, parents: ps };
 }
 
@@ -80,8 +88,14 @@ export function driftReport(root: string): Drift[] {
     const text = read(d.path);
     const { ls } = lines(text);
     const rec = parseApproval(ls[ls.findIndex((l) => STATUS.test(l)) + 1]);
-    if (!rec) { out.push({ path: d.path, cause: "missing" }); continue; }
-    if (rec.content !== fingerprint(text)) { out.push({ path: d.path, cause: "body" }); continue; }
+    if (!rec) {
+      out.push({ path: d.path, cause: "missing" });
+      continue;
+    }
+    if (rec.content !== fingerprint(text)) {
+      out.push({ path: d.path, cause: "body" });
+      continue;
+    }
     const bad = parentHashes(d.path, root).find(([p, h]) => rec.parents.get(p) !== h);
     if (bad) out.push({ path: d.path, cause: "parent", parent: bad[0] });
   }

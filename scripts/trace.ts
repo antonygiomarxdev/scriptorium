@@ -14,14 +14,20 @@ const TAG = /covers:\s*(?:([a-z][\w-]*)\/)?(FRD-\d+)\/((?:EX|DT|ST|INV)-\d+)\b/g
 // EX, DT, ST and INV ids defined as table rows.
 export function frdIds(text: string): string[] {
   const ids: string[] = [];
-  for (const line of text.split(/\r?\n/)) { const m = ROW.exec(line); if (m) ids.push(m[1]!); }
+  for (const line of text.split(/\r?\n/)) {
+    const m = ROW.exec(line);
+    if (m) ids.push(m[1]!);
+  }
   return ids;
 }
 
 // id -> reason ("" when the waiver gives none). The waiver is a line of the FRD: "uncovered: EX-3 <reason>".
 export function waivers(text: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const line of text.split(/\r?\n/)) { const m = WAIVER.exec(line); if (m) out[m[1]!] = m[2]!.trim(); }
+  for (const line of text.split(/\r?\n/)) {
+    const m = WAIVER.exec(line);
+    if (m) out[m[1]!] = m[2]!.trim();
+  }
   return out;
 }
 
@@ -38,7 +44,8 @@ export function scanTags(...dirs: string[]): Tag[] {
   const files: string[] = [];
   for (const d of dirs) walk(d, files);
   const tags: Tag[] = [];
-  for (const file of files.sort()) { // readdir order differs between Windows and Linux
+  for (const file of files.sort()) {
+    // readdir order differs between Windows and Linux
     const text = readFileSync(file, "utf8");
     for (const m of text.matchAll(TAG)) tags.push({ file, slice: m[1], frd: m[2]!, id: m[3]! });
   }
@@ -55,7 +62,8 @@ function loadFrds(docsRoot: string): Frd[] {
     for (const f of readdirSync(dir).sort()) {
       const m = /^(FRD-\d+)-.*\.md$/.exec(f);
       if (!m) continue;
-      const path = join(dir, f), text = readFileSync(path, "utf8");
+      const path = join(dir, f),
+        text = readFileSync(path, "utf8");
       out.push({ slice: s.name, frd: m[1]!, path, approved: /^Status:\s*Approved/m.test(text), superseded: /^Status:\s*Superseded by /m.test(text), ids: frdIds(text), waive: waivers(text) });
     }
   }
@@ -64,16 +72,27 @@ function loadFrds(docsRoot: string): Frd[] {
 
 // fails break the run; notes (DT ids nobody tags) are reported only.
 export function traceFails(docsRoot: string, testDirs: string[]): { fails: string[]; notes: string[] } {
-  const frds = loadFrds(docsRoot), fails: string[] = [], notes: string[] = [];
-  const covered = new Set<Frd>(), hit = new Set<string>();
+  const frds = loadFrds(docsRoot),
+    fails: string[] = [],
+    notes: string[] = [];
+  const covered = new Set<Frd>(),
+    hit = new Set<string>();
   for (const t of scanTags(...testDirs)) {
-    const name = (t.slice ? t.slice + "/" : "") + t.frd + "/" + t.id, at = " in " + t.file;
+    const name = (t.slice ? t.slice + "/" : "") + t.frd + "/" + t.id,
+      at = " in " + t.file;
     const cands = frds.filter((f) => f.frd === t.frd && (!t.slice || f.slice === t.slice));
-    if (cands.length > 1) { fails.push("ambiguous tag " + name + at + ": write " + cands.map((c) => c.slice + "/" + t.frd + "/" + t.id).join(" or ")); continue; }
+    if (cands.length > 1) {
+      fails.push("ambiguous tag " + name + at + ": write " + cands.map((c) => c.slice + "/" + t.frd + "/" + t.id).join(" or "));
+      continue;
+    }
     const f = cands[0];
     if (f?.superseded) continue; // L-15: a superseded FRD is out of the chain; its tags are neither dead nor coverage
-    if (!f || !f.ids.includes(t.id)) { fails.push("dead tag " + name + at); continue; }
-    covered.add(f); hit.add(f.path + "|" + t.id);
+    if (!f || !f.ids.includes(t.id)) {
+      fails.push("dead tag " + name + at);
+      continue;
+    }
+    covered.add(f);
+    hit.add(f.path + "|" + t.id);
   }
   for (const f of frds.filter((x) => !x.superseded)) {
     const name = (id: string) => f.frd + "/" + id;

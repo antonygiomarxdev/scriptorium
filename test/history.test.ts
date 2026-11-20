@@ -11,7 +11,10 @@ const body = (extra: string) => "# PRD\n\n## Requirements\n- **R-CHAIN-1.** The 
 function repo() {
   const dir = mkdtempSync(join(tmpdir(), "history-"));
   const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, encoding: "utf8" });
-  g("init", "-q"); g("config", "user.email", "t@example.com"); g("config", "user.name", "T"); g("config", "commit.gpgsign", "false");
+  g("init", "-q");
+  g("config", "user.email", "t@example.com");
+  g("config", "user.name", "T");
+  g("config", "commit.gpgsign", "false");
   const commit = (date: string, msg: string) => {
     g("add", "-A");
     execFileSync("git", ["commit", "-q", "-m", msg], { cwd: dir, env: { ...process.env, GIT_AUTHOR_DATE: date + "T12:00:00", GIT_COMMITTER_DATE: date + "T12:00:00" } });

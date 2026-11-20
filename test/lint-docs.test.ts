@@ -10,8 +10,19 @@ const reasons = (rel: string, text: string, up: string[] = [], dir?: string) => 
 const has = (xs: string[], s: string) => xs.some((x) => x.includes(s));
 
 test("document kind comes from the path", () => {
-  expect(["PRODUCT.md", "x/PRD.md", "x/frd/FRD-01-a.md", "x/ux/UX-01-a.md", "tp/TP.md", "x/tp/TP-01-a.md", "adr/ADR-001-a.md", "x/specs/SPEC-01-a.md", "requests/REQ-1-a.md", "DECISIONS.md", "research/a.md"].map(docKind))
-    .toEqual(["PRODUCT", "PRD", "FRD", "UX", "TP", "TP", "ADR", "SPEC", "REQUEST", "DECISIONS", undefined]);
+  expect(["PRODUCT.md", "x/PRD.md", "x/frd/FRD-01-a.md", "x/ux/UX-01-a.md", "tp/TP.md", "x/tp/TP-01-a.md", "adr/ADR-001-a.md", "x/specs/SPEC-01-a.md", "requests/REQ-1-a.md", "DECISIONS.md", "research/a.md"].map(docKind)).toEqual([
+    "PRODUCT",
+    "PRD",
+    "FRD",
+    "UX",
+    "TP",
+    "TP",
+    "ADR",
+    "SPEC",
+    "REQUEST",
+    "DECISIONS",
+    undefined,
+  ]);
 });
 
 test("banned phrases fail, case-insensitive, unless the line says lint-ok with a reason; research is exempt", () => {
@@ -32,7 +43,10 @@ test("the shipped phrase list holds the starting phrases", () => {
 
 function tree(files: Record<string, string>) {
   const root = mkdtempSync(join(tmpdir(), "scriptorium-lint-"));
-  for (const [p, t] of Object.entries(files)) { mkdirSync(join(root, "docs", p, ".."), { recursive: true }); writeFileSync(join(root, "docs", p), t); }
+  for (const [p, t] of Object.entries(files)) {
+    mkdirSync(join(root, "docs", p, ".."), { recursive: true });
+    writeFileSync(join(root, "docs", p), t);
+  }
   return root;
 }
 
@@ -57,8 +71,23 @@ test("a section that is empty, TBD, TODO or a bare n/a fails; n/a with a reason 
 
 test("each document type has a line cap", () => {
   const lines = (n: number) => "## A\n" + "x\n".repeat(n - 1);
-  for (const [rel, kind] of [["PRODUCT.md", "PRODUCT"], ["a/PRD.md", "PRD"], ["a/frd/FRD-01-a.md", "FRD"], ["a/ux/UX-01-a.md", "UX"], ["tp/TP.md", "TP"], ["adr/ADR-001-a.md", "ADR"], ["a/specs/SPEC-01-a.md", "SPEC"], ["requests/REQ-1-a.md", "REQUEST"], ["DECISIONS.md", "DECISIONS"]] as const) {
-    expect(has(reasons(rel, lines(CAPS[kind])).filter((x) => x.includes("cap")), "cap")).toBe(false);
+  for (const [rel, kind] of [
+    ["PRODUCT.md", "PRODUCT"],
+    ["a/PRD.md", "PRD"],
+    ["a/frd/FRD-01-a.md", "FRD"],
+    ["a/ux/UX-01-a.md", "UX"],
+    ["tp/TP.md", "TP"],
+    ["adr/ADR-001-a.md", "ADR"],
+    ["a/specs/SPEC-01-a.md", "SPEC"],
+    ["requests/REQ-1-a.md", "REQUEST"],
+    ["DECISIONS.md", "DECISIONS"],
+  ] as const) {
+    expect(
+      has(
+        reasons(rel, lines(CAPS[kind])).filter((x) => x.includes("cap")),
+        "cap",
+      ),
+    ).toBe(false);
     expect(has(reasons(rel, lines(CAPS[kind] + 1)), kind + " is " + (CAPS[kind] + 1) + " lines, over its cap of " + CAPS[kind])).toBe(true);
   }
   expect(CAPS).toEqual({ PRODUCT: 250, PRD: 150, FRD: 300, UX: 150, TP: 250, ADR: 80, SPEC: 80, REQUEST: 60, DECISIONS: 120 });
@@ -66,7 +95,12 @@ test("each document type has a line cap", () => {
 
 test("registry rows need their column filled: Goes into, Check, Command, Rule", () => {
   const t = (head: string, row: string) => "# R\n## Rows\n| ID | " + head + " |\n|---|---|\n| X-1 | " + row + " |\n";
-  for (const [rel, col] of [["DECISIONS.md", "Goes into"], ["INVARIANTS.md", "Check"], ["CHECKS.md", "Command"], ["CROSS-CUTTING.md", "Rule"]]) {
+  for (const [rel, col] of [
+    ["DECISIONS.md", "Goes into"],
+    ["INVARIANTS.md", "Check"],
+    ["CHECKS.md", "Command"],
+    ["CROSS-CUTTING.md", "Rule"],
+  ]) {
     expect(reasons(rel, t(col, "something"))).toEqual([]);
     expect(has(reasons(rel, t(col, "")), 'X-1: empty "' + col + '" cell')).toBe(true);
     expect(has(reasons(rel, t("Other", "something")), 'no "' + col + '" column')).toBe(true);
@@ -146,8 +180,7 @@ test("glossary: lintDocs reads docs/GLOSSARY.md", () => {
 
 // covers: chain/FRD-01/EX-20
 test("a Version line fails and names the line, plain or bold, with or without v", () => {
-  for (const v of ["Version: 1.2", "**Version:** 1.2", "Version 2.0.1", "  Version: v1.0"])
-    expect(reasons("a/PRD.md", "# P\n## A\n" + v + "\n")).toEqual(["3: version number in a document"]);
+  for (const v of ["Version: 1.2", "**Version:** 1.2", "Version 2.0.1", "  Version: v1.0"]) expect(reasons("a/PRD.md", "# P\n## A\n" + v + "\n")).toEqual(["3: version number in a document"]);
   expect(reasons("a/PRD.md", "# P\n## A\n```\nVersion: 1.2\n```\ntext\n")).toEqual([]);
 });
 

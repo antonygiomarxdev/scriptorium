@@ -8,17 +8,19 @@ import { frdIds, waivers, scanTags, traceFails } from "../scripts/trace.ts";
 const cov = (...s: string[]) => s.map((x) => "cov" + "ers: " + x).join("\n");
 const waive = (s: string) => "uncovered: " + s;
 
-const frdText = (status: string, rows: string, extra = "") =>
-  "# FRD-01: x\n\nStatus: " + status + "\n\n| Example | Rule |\n|---|---|\n" + rows + "\n\n" + extra + "\n";
+const frdText = (status: string, rows: string, extra = "") => "# FRD-01: x\n\nStatus: " + status + "\n\n| Example | Rule |\n|---|---|\n" + rows + "\n\n" + extra + "\n";
 
 // One slice "chain" with FRD-01 defining the given rows; tests dir holds the given files.
 function fixture(status: string, rows: string, tests: Record<string, string>, extra = "", more: Record<string, string> = {}) {
   const root = mkdtempSync(join(tmpdir(), "trace-"));
-  const docs = join(root, "docs"), t = join(root, "test");
+  const docs = join(root, "docs"),
+    t = join(root, "test");
   mkdirSync(join(docs, "chain", "frd"), { recursive: true });
   mkdirSync(t);
   writeFileSync(join(docs, "chain", "frd", "FRD-01-x.md"), frdText(status, rows, extra));
-  for (const [p, c] of Object.entries(more)) { mkdirSync(dirname(join(docs, p)), { recursive: true }), writeFileSync(join(docs, p), c); }
+  for (const [p, c] of Object.entries(more)) {
+    mkdirSync(dirname(join(docs, p)), { recursive: true }), writeFileSync(join(docs, p), c);
+  }
   for (const [n, c] of Object.entries(tests)) writeFileSync(join(t, n), c);
   return { docs, t };
 }
@@ -38,7 +40,11 @@ test("waivers: a line of the FRD gives id and reason; a table cell quoting one i
 
 test("scanTags reads tags in any file, with or without the slice, several per line", () => {
   const f = fixture(APPROVED, ROWS, { "a.ts": "// " + cov("FRD-01/EX-1") + " and " + "cov" + "ers: chain/FRD-01/EX-2", "b.py": "# " + cov("FRD-01/DT-1") });
-  expect(scanTags(f.t).map((x) => [x.slice, x.frd, x.id])).toEqual([[undefined, "FRD-01", "EX-1"], ["chain", "FRD-01", "EX-2"], [undefined, "FRD-01", "DT-1"]]);
+  expect(scanTags(f.t).map((x) => [x.slice, x.frd, x.id])).toEqual([
+    [undefined, "FRD-01", "EX-1"],
+    ["chain", "FRD-01", "EX-2"],
+    [undefined, "FRD-01", "DT-1"],
+  ]);
 });
 
 // covers: chain/FRD-01/EX-13
@@ -126,7 +132,7 @@ test("mutant: deleting a tag or renaming an id turns a pass into a fail", () => 
 
 test("CLI: exit 0 on pass, 1 on fail, 2 on usage", async () => {
   const f = fixture(APPROVED, ROWS, { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2") });
-  const code = async (...a: string[]) => (await Bun.spawn(["bun", "scripts/trace.ts", ...a], { stdout: "ignore", stderr: "ignore" }).exited);
+  const code = async (...a: string[]) => await Bun.spawn(["bun", "scripts/trace.ts", ...a], { stdout: "ignore", stderr: "ignore" }).exited;
   expect(await code(f.docs, f.t)).toBe(0);
   const bad = fixture(APPROVED, ROWS, {});
   expect(await code(bad.docs, bad.t)).toBe(1);

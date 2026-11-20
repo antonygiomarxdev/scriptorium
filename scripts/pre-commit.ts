@@ -15,7 +15,10 @@ const sh = (args: string[], cwd?: string) => Bun.spawnSync(args, { cwd }).stdout
 // L-15 Changesets: staged `git diff --name-status` lines; fails a change outside docs/, tests and .changeset/ that stages no new changeset.
 const isTest = (p: string) => /(^|\/)(tests?|__tests__)\//.test(p) || /\.(test|spec)\./.test(p);
 export function changesetRule(nameStatus: string[]): string[] {
-  const rows = nameStatus.map((l) => l.split("\t")).filter((c) => c.length >= 2).map((c) => ({ s: c[0]![0]!, ps: c.slice(1).map((p) => toPosix(p)) }));
+  const rows = nameStatus
+    .map((l) => l.split("\t"))
+    .filter((c) => c.length >= 2)
+    .map((c) => ({ s: c[0]![0]!, ps: c.slice(1).map((p) => toPosix(p)) }));
   const isChangeset = (r: { s: string; ps: string[] }) => r.s === "A" && /^\.changeset\/(?!README\.md$)[^/]+\.md$/.test(r.ps[0]!);
   // A rename or copy has two paths: code moved into docs/ is still a code change.
   const codePath = rows.flatMap((r) => r.ps).find((p) => !p.startsWith("docs/") && !p.startsWith(".changeset/") && !isTest(p));
@@ -30,11 +33,16 @@ if (import.meta.main) {
   let docs: { root: string; rel: string }[];
   if (all) {
     const root = process.argv[3] ?? ".";
-    docs = walk(join(root, "docs")).map((f) => ({ root, rel: toPosix(relative(root, f)) })).filter((d) => d.rel.endsWith(".md"));
+    docs = walk(join(root, "docs"))
+      .map((f) => ({ root, rel: toPosix(relative(root, f)) }))
+      .filter((d) => d.rel.endsWith(".md"));
   } else {
     const top = sh(["git", "rev-parse", "--show-toplevel"]);
-    docs = sh(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], top).split("\n").filter(Boolean)
-      .map((f) => splitDocPath(join(top, f))).filter((d): d is { root: string; rel: string } => !!d && isChainProject(d.root));
+    docs = sh(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], top)
+      .split("\n")
+      .filter(Boolean)
+      .map((f) => splitDocPath(join(top, f)))
+      .filter((d): d is { root: string; rel: string } => !!d && isChainProject(d.root));
   }
   const fails: string[] = [];
   if (!all) {

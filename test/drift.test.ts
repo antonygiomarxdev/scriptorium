@@ -17,7 +17,11 @@ function project() {
   return { root, product, prd };
 }
 const rd = (p: string) => readFileSync(p, "utf8");
-const edit = (p: string, a: string, b: string) => { const t = rd(p); expect(t).toContain(a); writeFileSync(p, t.replace(a, b)); };
+const edit = (p: string, a: string, b: string) => {
+  const t = rd(p);
+  expect(t).toContain(a);
+  writeFileSync(p, t.replace(a, b));
+};
 function approved() {
   const p = project();
   approve(p.product, p.root, "2026-11-21");
@@ -57,7 +61,13 @@ test("FRD-01/EX-4: approve writes the Approval line directly under Status, with 
 // covers: chain/FRD-01/DT-2
 test("FRD-01/EX-5, DT-2: no Approval line is a warning, not a failure", () => {
   const { root, prd } = approved();
-  writeFileSync(prd, rd(prd).split("\n").filter((l) => !l.startsWith("Approval:")).join("\n"));
+  writeFileSync(
+    prd,
+    rd(prd)
+      .split("\n")
+      .filter((l) => !l.startsWith("Approval:"))
+      .join("\n"),
+  );
   const r = driftFails(root);
   expect(r.fails).toEqual([]);
   expect(r.warnings).toEqual([prd + ": approved without an Approval line; approve it again to record one"]);

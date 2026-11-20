@@ -15,7 +15,13 @@ export function split(text: string): { summary: string; body: string } {
   if (at < 0) return { summary: "", body: lines.join("\n").trim() };
   let end = lines.findIndex((l, i) => i > at && /^## /.test(l));
   if (end < 0) end = lines.length;
-  return { summary: lines.slice(at + 1, end).join("\n").trim(), body: [...lines.slice(0, at), ...lines.slice(end)].join("\n").trim() };
+  return {
+    summary: lines
+      .slice(at + 1, end)
+      .join("\n")
+      .trim(),
+    body: [...lines.slice(0, at), ...lines.slice(end)].join("\n").trim(),
+  };
 }
 
 // true when the body changed and the summary did not. A file with no Summary or no base text passes.
@@ -29,20 +35,38 @@ export const staleSummary = (base: string | undefined, head: string) => {
 export const waived = (prBody: string, file: string) =>
   prBody.split(/\r?\n/).some((l) => {
     const m = /^\s*Summary unchanged:([^,]*)/i.exec(l);
-    return !!m && m[1].trim().split(/\s+/).some((t) => t.toLowerCase() === "all" || typed(t) === file);
+    return (
+      !!m &&
+      m[1]
+        .trim()
+        .split(/\s+/)
+        .some((t) => t.toLowerCase() === "all" || typed(t) === file)
+    );
   });
 
 if (import.meta.main) {
   const [base, bodyFile] = process.argv.slice(2);
-  if (!base) { console.error("usage: summary-diff.ts <base ref> [PR body file]"); process.exit(2); }
+  if (!base) {
+    console.error("usage: summary-diff.ts <base ref> [PR body file]");
+    process.exit(2);
+  }
   const prBody = (bodyFile && existsSync(bodyFile) ? readFileSync(bodyFile, "utf8") : "") + "\n" + (process.env.PR_BODY ?? "");
   const git = (...a: string[]) => Bun.spawnSync(["git", ...a]);
   const diff = git("diff", "--name-only", base + "...HEAD", "--", "docs");
-  if (diff.exitCode !== 0) { console.error(diff.stderr.toString()); process.exit(2); }
-  const stale = diff.stdout.toString().split(/\r?\n/).filter((f) => f.endsWith(".md") && !SKIP.test(f) && existsSync(f))
-    .filter((f) => { const b = git("show", base + ":" + f); return staleSummary(b.exitCode === 0 ? b.stdout.toString() : undefined, readFileSync(f, "utf8")); })
+  if (diff.exitCode !== 0) {
+    console.error(diff.stderr.toString());
+    process.exit(2);
+  }
+  const stale = diff.stdout
+    .toString()
+    .split(/\r?\n/)
+    .filter((f) => f.endsWith(".md") && !SKIP.test(f) && existsSync(f))
+    .filter((f) => {
+      const b = git("show", base + ":" + f);
+      return staleSummary(b.exitCode === 0 ? b.stdout.toString() : undefined, readFileSync(f, "utf8"));
+    })
     .filter((f) => !waived(prBody, f));
-  for (const f of stale) console.log("FAIL " + f + ": body changed, ## Summary did not (update it, or add a PR line \"Summary unchanged: " + f + ", <reason>\")");
+  for (const f of stale) console.log("FAIL " + f + ': body changed, ## Summary did not (update it, or add a PR line "Summary unchanged: ' + f + ', <reason>")');
   if (stale.length) process.exit(1);
   console.log("PASS summary-diff");
 }

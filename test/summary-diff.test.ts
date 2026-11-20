@@ -33,18 +33,26 @@ test("the waiver names the file or all, and needs a reason", () => {
 // A temp git repo: base commit holds docs/a/PRD.md, a branch edits it.
 function run(edit: (dir: string) => void, body = "") {
   const dir = mkdtempSync(join(tmpdir(), "scriptorium-sd-"));
-  const git = (...a: string[]) => { const r = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: dir }); if (r.exitCode) throw new Error(r.stderr.toString()); };
+  const git = (...a: string[]) => {
+    const r = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: dir });
+    if (r.exitCode) throw new Error(r.stderr.toString());
+  };
   git("init", "-q", "-b", "main");
   mkdirSync(join(dir, "docs", "a"), { recursive: true });
   writeFileSync(join(dir, "docs", "a", "PRD.md"), doc("old", "old"));
-  git("add", "."); git("commit", "-qm", "base");
+  git("add", ".");
+  git("commit", "-qm", "base");
   git("checkout", "-qb", "pr");
   edit(dir);
-  git("add", "."); git("commit", "-qm", "change");
+  git("add", ".");
+  git("commit", "-qm", "change");
   const r = Bun.spawnSync(["bun", SCRIPT, "main"], { cwd: dir, env: { ...process.env, PR_BODY: body } });
   return { code: r.exitCode, out: r.stdout.toString() };
 }
-const put = (rel: string, text: string) => (dir: string) => { mkdirSync(join(dir, rel, ".."), { recursive: true }); writeFileSync(join(dir, rel), text); };
+const put = (rel: string, text: string) => (dir: string) => {
+  mkdirSync(join(dir, rel, ".."), { recursive: true });
+  writeFileSync(join(dir, rel), text);
+};
 
 test("in a pull request: body+summary passes, body-only fails, waiver passes, new file passes", () => {
   expect(run(put("docs/a/PRD.md", doc("new", "new"))).code).toBe(0);

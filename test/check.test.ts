@@ -8,12 +8,13 @@ const SUM = "## Summary\n\ns\n\nLast change: 2026-11-20, written\n";
 
 const PRODUCT = "# P\n## 4. Principles\n1. One.\n2. Two.\n## 5. Use cases\n| UC-1 | a |\n| UC-2 | b |\n";
 
-const PRD = "# Inbox PRD\n\nStatus: Draft\n\n" + SUM + "\nSee [product](../PRODUCT.md).\n" +
-  "## Why\nREQ-1\n## Use cases\nUC-1\n## Requirements\nR-INBOX-1 a. R-INBOX-2 b. R-INBOX-3 c.\n" +
-  "## Principles honored\nprinciple 2 holds.\n## Non-goals\n## Dependencies\n## Success criteria\n## Open questions\n";
+const PRD = "# Inbox PRD\n\nStatus: Draft\n\n" + SUM + "\nSee [product](../PRODUCT.md).\n" + "## Why\nREQ-1\n## Use cases\nUC-1\n## Requirements\nR-INBOX-1 a. R-INBOX-2 b. R-INBOX-3 c.\n" + "## Principles honored\nprinciple 2 holds.\n## Non-goals\n## Dependencies\n## Success criteria\n## Open questions\n";
 
 const QC = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => "| QC-" + i + " | c | " + (i === 1 ? "p95 under 200 ms, measured by the e2e run" : "n/a: no such concern") + " |").join("\n");
-const FRD = "# FRD-01: a\n\nStatus: Draft\n\n" + SUM + "\n[PRD](../PRD.md)\n" +
+const FRD =
+  "# FRD-01: a\n\nStatus: Draft\n\n" +
+  SUM +
+  "\n[PRD](../PRD.md)\n" +
   "## Why\nREQ-1\n## Requirements covered\nR-INBOX-1, R-INBOX-2, R-INBOX-3\n" +
   "## Behavior\n| ID | Pattern | Requirement |\n|---|---|---|\n" +
   "| FR-INBOX-01-1 | WHEN | WHEN a, the system shall b. |\n| FR-INBOX-01-2 | always | The system shall always c. |\n" +
@@ -21,7 +22,9 @@ const FRD = "# FRD-01: a\n\nStatus: Draft\n\n" + SUM + "\n[PRD](../PRD.md)\n" +
   "| Example | Rule | Kind | Given | When | Then |\n|---|---|---|---|---|---|\n" +
   "| EX-1 | RULE-1 | positive | g | w | t |\n| EX-2 | RULE-1 | boundary | g | w | t |\n" +
   "## Decision table\nDT-1 a b c\n## States\nn/a: no lifecycle\n## Invariants\nINV-1 holds\n" +
-  "## Quality criteria\n| ID | Characteristic | Criterion |\n|---|---|---|\n" + QC + "\n" +
+  "## Quality criteria\n| ID | Characteristic | Criterion |\n|---|---|---|\n" +
+  QC +
+  "\n" +
   "## Cross-cutting\nCC-1 n/a: none\n## Information\nx\n## Open questions\n## Acceptance criteria\nAC-1\n";
 
 test("a good PRD passes", () => expect(checkPrd(PRD, "INBOX", PRODUCT)).toEqual([]));
@@ -90,7 +93,7 @@ test("quality criteria need QC-1..QC-9, none empty or only a vague word", () => 
 
 test("n/a needs a real reason: a placeholder fails, a reason passes, in DT/ST/INV and in QC", () => {
   expect(fr(FRD.replace("DT-1 a b c", "n/a: because x"))).toEqual([]);
-  expect(fr(FRD.replace("DT-1 a b c", 'n/a: <reason>'))).toContain('FRD-01-a.md: Decision table holds no DT-n row and no "n/a: <reason>"');
+  expect(fr(FRD.replace("DT-1 a b c", "n/a: <reason>"))).toContain('FRD-01-a.md: Decision table holds no DT-n row and no "n/a: <reason>"');
   expect(fr(FRD.replace("n/a: no lifecycle", "n/a: <reason>"))).toContain('FRD-01-a.md: States holds no ST-n row and no "n/a: <reason>"');
   expect(fr(FRD.replace("INV-1 holds", "n/a: because x"))).toEqual([]);
   expect(fr(FRD.replace("INV-1 holds", "later"))).toContain('FRD-01-a.md: Invariants holds no INV-n row and no "n/a: <reason>"');
@@ -125,8 +128,8 @@ test("a UX document missing a section or its FRD fails", () => {
   expect(checkUx(dir).fails.some((f) => f.startsWith("UX-02-b.md: FRD-02 does not exist"))).toBe(true);
 });
 
-const TP = "# TP\n\nStatus: Draft\n\n" + SUM + "\n## Context\nFR-INBOX-01-1\n## Decisions\n### TD-1: storage\n- **Option A** files.\n- **Option B** a database.\n\nChosen: B, because x. ADR: ADR-001\n" +
-  "## Architecture\n## Information\n## Interfaces and contracts\n## Threat model\n## Testing\n## Risks\n## Open questions\n";
+const TP =
+  "# TP\n\nStatus: Draft\n\n" + SUM + "\n## Context\nFR-INBOX-01-1\n## Decisions\n### TD-1: storage\n- **Option A** files.\n- **Option B** a database.\n\nChosen: B, because x. ADR: ADR-001\n" + "## Architecture\n## Information\n## Interfaces and contracts\n## Threat model\n## Testing\n## Risks\n## Open questions\n";
 const ADR = "# ADR-001: x\n\n## Status\nAccepted\n\n## Summary\ns\n## Context\n## Options considered\n## Decision\n## Consequences\n";
 
 function adrDir(withFile: boolean) {
@@ -162,15 +165,19 @@ test("an ADR needs its sections and a valid status", () => {
 });
 
 const FRD_ROWS = "| EX-1 | a | b |\n| EX-2 | c | d |\n";
-const SPEC = "# Spec\n\nStatus: Draft\nRests on: ../frd/FRD-01-a.md\n\n" + SUM + "\n## Rows\nQuoted from: ../frd/FRD-01-a.md\n" + FRD_ROWS +
-  "\n## Files\n| File | Change |\n|---|---|\n| a.ts | new |\n\n## Tests first\nEX-1, EX-2\n\n## Build\nb\n\n## Done when\n`bun test`\n\n## Out of scope\nn\n\n## Open questions\nNone\n";
+const SPEC =
+  "# Spec\n\nStatus: Draft\nRests on: ../frd/FRD-01-a.md\n\n" + SUM + "\n## Rows\nQuoted from: ../frd/FRD-01-a.md\n" + FRD_ROWS + "\n## Files\n| File | Change |\n|---|---|\n| a.ts | new |\n\n## Tests first\nEX-1, EX-2\n\n## Build\nb\n\n## Done when\n`bun test`\n\n## Out of scope\nn\n\n## Open questions\nNone\n";
 
 // A project with the FRD rows on disk; returns the spec path.
 function specAt(parent = FRD_ROWS + "other | row\n", files: Record<string, string> = {}) {
   const root = project("Status: Draft\n", parent, files);
   return join(root, "docs", "inbox", "specs", "SPEC-01-1-a.md");
 }
-const sp = (text: string, parent?: string) => { const p = specAt(parent); mkdirSync(join(p, ".."), { recursive: true }); return checkSpec(text, p); };
+const sp = (text: string, parent?: string) => {
+  const p = specAt(parent);
+  mkdirSync(join(p, ".."), { recursive: true });
+  return checkSpec(text, p);
+};
 
 // covers: chain/FRD-02/EX-1
 test("spec: a good small spec passes", () => expect(sp(SPEC)).toEqual([]));
@@ -246,7 +253,7 @@ test("status: a spec rests on its Rests on path; a registry counts as approved",
   const ok = "Status: Approved (2026-11-18)\n";
   const run = (spec: string, extra: Record<string, string> = {}) => chainStatus(project(ok, ok, { "docs/inbox/specs/SPEC-01-1-a.md": spec, ...extra })).fails;
   expect(run(ok + "Rests on: ../frd/FRD-01-a.md\n")).toEqual([]);
-  expect(run(ok)).toEqual([expect.stringContaining("no \"Rests on")]);
+  expect(run(ok)).toEqual([expect.stringContaining('no "Rests on')]);
   expect(run(ok + "Rests on: ../tp/TP-01-a.md\n", { "docs/inbox/tp/TP-01-a.md": "Status: Draft\n" }).some((f) => f.includes("SPEC-01-1-a.md: approved, but") && f.includes("Draft"))).toBe(true);
   expect(run(ok + "Rests on: ../../CHECKS.md\n", { "docs/CHECKS.md": "x\n" })).toEqual([]);
   expect(run(ok + "Rests on: ../../CHECKS.md\n").some((f) => f.includes("does not exist"))).toBe(true);
@@ -267,8 +274,15 @@ test("status: a spec in a folder with no PRD, frd or tp rests on a registry", ()
 
 test("done runs the command of an approved spec and exits with its code; a draft is refused", () => {
   const dir = mkdtempSync(join(tmpdir(), "scriptorium-done-"));
-  const spec = (status: string, cmd: string) => { const p = join(dir, "s.md"); writeFileSync(p, "Status: " + status + "\n## Done when\n`" + cmd + "`\n"); return p; };
-  const cli = (...a: string[]) => { const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: dir }); return { code: r.exitCode, out: r.stdout.toString() }; };
+  const spec = (status: string, cmd: string) => {
+    const p = join(dir, "s.md");
+    writeFileSync(p, "Status: " + status + "\n## Done when\n`" + cmd + "`\n");
+    return p;
+  };
+  const cli = (...a: string[]) => {
+    const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: dir });
+    return { code: r.exitCode, out: r.stdout.toString() };
+  };
   expect(cli("done", spec("Approved (2026-11-18)", "bun -e 0")).code).toBe(0);
   // covers: chain/FRD-02/EX-22
   writeFileSync(join(dir, "a.txt"), "");
@@ -354,11 +368,14 @@ test("status follows UX, TP, SPEC and ADR to the document each rests on", () => 
 
 test("status: a TP-NN rests on the cross-cutting TP, and a TP cites only Accepted ADRs", () => {
   const ok = "Status: Approved (2026-11-18)\n";
-  const run = (cross: string, adr: string) => chainStatus(project(ok, ok, {
-    "docs/tp/TP.md": cross,
-    "docs/inbox/tp/TP-01-a.md": ok + "### TD-1: x\nADR: ADR-001\n",
-    "docs/adr/ADR-001-x.md": "## Status\n" + adr + "\n",
-  })).fails;
+  const run = (cross: string, adr: string) =>
+    chainStatus(
+      project(ok, ok, {
+        "docs/tp/TP.md": cross,
+        "docs/inbox/tp/TP-01-a.md": ok + "### TD-1: x\nADR: ADR-001\n",
+        "docs/adr/ADR-001-x.md": "## Status\n" + adr + "\n",
+      }),
+    ).fails;
   expect(run(ok, "Accepted")).toEqual([]);
   expect(run("Status: Draft\n", "Accepted").some((f) => f.includes("TP-01-a.md: approved, but") && /[\\/]tp[\\/]TP\.md is still Draft/.test(f))).toBe(true);
   expect(run(ok, "Proposed").some((f) => f.includes("TP-01-a.md: approved, but ADR-001 is still Proposed"))).toBe(true);
@@ -427,8 +444,12 @@ test("a request status must be Open, Accepted, Rejected or Merged into REQ-n", (
 
 test("approve, drift, status and clear work end to end from the command line", () => {
   const root = project("Status: Draft\n\n" + SUM, "Status: Draft\n\n" + SUM);
-  const cli = (...a: string[]) => { const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: root }); return { code: r.exitCode, out: r.stdout.toString() }; };
-  const prd = "docs/inbox/PRD.md", product = "docs/PRODUCT.md";
+  const cli = (...a: string[]) => {
+    const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: root });
+    return { code: r.exitCode, out: r.stdout.toString() };
+  };
+  const prd = "docs/inbox/PRD.md",
+    product = "docs/PRODUCT.md";
   expect(cli("approve", product, ".", "--date", "2026-11-17").code).toBe(0);
   expect(cli("approve", prd, ".", "--date", "2026-11-17").code).toBe(0);
   expect(cli("approve", prd, ".", "--date", "17-11-2026").code).toBe(2);

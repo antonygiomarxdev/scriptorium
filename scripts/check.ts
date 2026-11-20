@@ -32,8 +32,7 @@ const STATUS = /^\**Status:?\**\s*(Draft\b|Approved \(\d{4}-\d{2}-\d{2}\)|Supers
 const SUPERSEDED = /^\**Status:?\**\s*Superseded by (\S.*?) \(\d{4}-\d{2}-\d{2}\)\s*$/im;
 const NO_STATUS = "no Status line (Status: Draft, Status: Approved (YYYY-MM-DD) or Status: Superseded by <path> (YYYY-MM-DD))";
 
-const missing = (text: string, heads: string[]) =>
-  heads.filter((h) => !new RegExp("^## .*" + h, "mi").test(text)).map((h) => "missing section: ## " + h);
+const missing = (text: string, heads: string[]) => heads.filter((h) => !new RegExp("^## .*" + h, "mi").test(text)).map((h) => "missing section: ## " + h);
 
 // Body of the "## <head>" section, up to the next "## " heading.
 function section(text: string, head: string): string | undefined {
@@ -45,7 +44,16 @@ function section(text: string, head: string): string | undefined {
 
 // Table rows of a section as arrays of trimmed cells.
 const rows = (body: string) =>
-  body.split("\n").filter((l) => /^\s*\|/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+  body
+    .split("\n")
+    .filter((l) => /^\s*\|/.test(l))
+    .map((l) =>
+      l
+        .trim()
+        .replace(/^\||\|$/g, "")
+        .split("|")
+        .map((c) => c.trim()),
+    );
 
 const idsIn = (text: string, re: RegExp) => new Set([...text.matchAll(re)].map((m) => m[0]));
 const FR_ANY = /\bFR-[A-Z0-9]+-\d{2}-\d+\b/g;
@@ -97,7 +105,9 @@ export function checkFrd(s: string, f: string, slice: string, nn: string, prdReq
 
   // Rules and examples: every rule has a positive and a negative or boundary example.
   const re = section(s, "Rules and examples") ?? "";
-  const rules = rows(re).filter((c) => /^RULE-\d+$/.test(c[0])).map((c) => c[0]);
+  const rules = rows(re)
+    .filter((c) => /^RULE-\d+$/.test(c[0]))
+    .map((c) => c[0]);
   const exs = rows(re).filter((c) => /^EX-\d+$/.test(c[0]));
   if (!rules.length) fail("no RULE-n in Rules and examples");
   for (const e of exs) if (!rules.includes(e[1])) fail(e[0] + " cites " + e[1] + ", not a rule of this FRD");
@@ -108,14 +118,22 @@ export function checkFrd(s: string, f: string, slice: string, nn: string, prdReq
   }
 
   // Decision table, States, Invariants: ids, or an explained n/a.
-  for (const [head, tag] of [["Decision table", "DT"], ["States", "ST"], ["Invariants", "INV"]] as const) {
+  for (const [head, tag] of [
+    ["Decision table", "DT"],
+    ["States", "ST"],
+    ["Invariants", "INV"],
+  ] as const) {
     const id = new RegExp("\\b" + tag + "-\\d+\\b");
     const b = section(s, head);
     if (b !== undefined && !id.test(b) && !/n\/a:\s*[^<\s]/i.test(b)) fail(head + " holds no " + tag + '-n row and no "n/a: <reason>"');
   }
 
   // Quality criteria: QC-1..QC-9, each measurable or an explained n/a.
-  const qc = new Map(rows(section(s, "Quality criteria") ?? "").filter((c) => /^QC-\d$/.test(c[0])).map((c) => [c[0], c.slice(2).join("|").trim()]));
+  const qc = new Map(
+    rows(section(s, "Quality criteria") ?? "")
+      .filter((c) => /^QC-\d$/.test(c[0]))
+      .map((c) => [c[0], c.slice(2).join("|").trim()]),
+  );
   for (let i = 1; i <= 9; i++) {
     const v = qc.get("QC-" + i);
     if (v === undefined) fail("QC-" + i + " missing from Quality criteria");
@@ -133,7 +151,11 @@ export function checkFrds(dir: string, slice: string): { fails: string[]; files:
   const prdReqs = new Set([...prd.matchAll(new RegExp("\\bR-" + slice + "-(\\d+)\\b", "g"))].map((m) => "R-" + slice + "-" + m[1]));
   const frdDir = join(dir, "frd");
   const fails: string[] = [];
-  const files = existsSync(frdDir) ? readdirSync(frdDir).filter((f) => /^FRD-\d{2}-[a-z0-9-]+\.md$/.test(f)).sort() : [];
+  const files = existsSync(frdDir)
+    ? readdirSync(frdDir)
+        .filter((f) => /^FRD-\d{2}-[a-z0-9-]+\.md$/.test(f))
+        .sort()
+    : [];
   if (!files.length) fails.push("no FRD files named FRD-NN-name.md in " + frdDir);
   const covered = new Set<string>();
   for (const f of files) {
@@ -145,12 +167,15 @@ export function checkFrds(dir: string, slice: string): { fails: string[]; files:
   return { fails, files: files.length, reqs: prdReqs.size };
 }
 
-const nnFile = (d: string, prefix: string, nn: string) =>
-  existsSync(d) ? readdirSync(d).find((f) => f.startsWith(prefix + "-" + nn + "-") && f.endsWith(".md")) : undefined;
+const nnFile = (d: string, prefix: string, nn: string) => (existsSync(d) ? readdirSync(d).find((f) => f.startsWith(prefix + "-" + nn + "-") && f.endsWith(".md")) : undefined);
 
 export function checkUx(dir: string): { fails: string[]; files: number } {
   const uxDir = join(dir, "ux");
-  const files = existsSync(uxDir) ? readdirSync(uxDir).filter((f) => /^UX-\d{2}-[a-z0-9-]+\.md$/.test(f)).sort() : [];
+  const files = existsSync(uxDir)
+    ? readdirSync(uxDir)
+        .filter((f) => /^UX-\d{2}-[a-z0-9-]+\.md$/.test(f))
+        .sort()
+    : [];
   const fails: string[] = [];
   for (const f of files) {
     const s = readFileSync(join(uxDir, f), "utf8");
@@ -163,7 +188,12 @@ export function checkUx(dir: string): { fails: string[]; files: number } {
 }
 
 // FR ids a FRD defines: the first cell of a Behavior row.
-export const frDefs = (frd: string) => new Set(rows(section(frd, "Behavior") ?? "").map((c) => c[0]).filter((c) => /^FR-/.test(c)));
+export const frDefs = (frd: string) =>
+  new Set(
+    rows(section(frd, "Behavior") ?? "")
+      .map((c) => c[0])
+      .filter((c) => /^FR-/.test(c)),
+  );
 
 // A TP lists its decisions as "### TD-n: title", each with at least two options and a chosen one backed by an ADR or an explained "none".
 // knownFrs: every FR id defined in the project, so the TP can only cite real requirements.
@@ -201,7 +231,11 @@ const isSep = (l: string) => /^[\s|:-]+$/.test(l);
 export const restsOn = (text: string): string | undefined => /^Rests on:\s*`?([^\s`]+)/m.exec(text.split(/\r?\n/).slice(0, 20).join("\n"))?.[1];
 
 // The row lines of a Rows section: table rows and bullets, minus the "Quoted from:" line and table separators.
-const rowLines = (body: string) => body.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l) && !/Quoted from:/.test(l));
+const rowLines = (body: string) =>
+  body
+    .split(/\r?\n/)
+    .map((l) => l.trimEnd())
+    .filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l) && !/Quoted from:/.test(l));
 
 export function checkSpec(text: string, specPath: string): string[] {
   const fails: string[] = [];
@@ -220,7 +254,11 @@ export function checkSpec(text: string, specPath: string): string[] {
   const rows = rowLines(rowsBody);
   if (!rows.length) fails.push("Rows holds no quoted row lines");
   if (quoted && existsSync(quoted)) {
-    const have = new Set(readFileSync(quoted, "utf8").split(/\r?\n/).map((l) => l.trimEnd()));
+    const have = new Set(
+      readFileSync(quoted, "utf8")
+        .split(/\r?\n/)
+        .map((l) => l.trimEnd()),
+    );
     for (const r of rows) if (!have.has(r)) fails.push("quoted row not found verbatim in " + (from ?? on) + ": " + r.trim().slice(0, 60));
   } else if (from || on) fails.push("Quoted from " + (from ?? on) + ", which does not exist");
   // Document ids (SPEC-, FRD-, R-<SLICE>-n ...) name other documents; they are never row ids.
@@ -238,11 +276,13 @@ export function checkSpec(text: string, specPath: string): string[] {
 
 // Rows of file whose first cell (or bullet id) is one of ids; ids with no row come back in missingIds.
 export function excerpt(text: string, ids: string[]): { lines: string[]; missingIds: string[] } {
-  const lines: string[] = [], missingIds: string[] = [];
+  const lines: string[] = [],
+    missingIds: string[] = [];
   const all = text.split(/\r?\n/).map((l) => l.trimEnd());
   for (const id of ids) {
     const hit = all.filter((l) => new RegExp("^\\s*(\\||[-*]\\s+)\\s*\\**\\s*" + id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(l));
-    if (hit.length) lines.push(...hit); else missingIds.push(id);
+    if (hit.length) lines.push(...hit);
+    else missingIds.push(id);
   }
   return { lines, missingIds };
 }
@@ -260,7 +300,10 @@ export function checkSummary(text: string, isAdr = false): string[] {
   const at = lines.findIndex((l) => /^## Summary\s*$/.test(l));
   if (at < 0 || at >= 20) return ["no ## Summary within the first 20 lines"];
   const body = [];
-  for (const l of lines.slice(at + 1)) { if (/^## /.test(l)) break; body.push(l); }
+  for (const l of lines.slice(at + 1)) {
+    if (/^## /.test(l)) break;
+    body.push(l);
+  }
   if (isAdr) return [];
   return body.some((l) => /^Last change: \d{4}-\d{2}-\d{2}, \S/.test(l)) ? [] : ['the Summary has no "Last change: YYYY-MM-DD, <what>" line'];
 }
@@ -312,27 +355,42 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     docs.push(d);
     if (d.status === "missing" && kind !== "ADR") fails.push(path + ": " + NO_STATUS);
     if (d.by && !existsSync(fromDoc(path, d.by))) fails.push(path + ": superseded by " + d.by + ", which does not exist");
-    if (d.approved && kind !== "ADR" && kind !== "REQUEST" && /\bQ-\d+\b/.test(section(text, "Open questions") ?? ""))
-      fails.push(path + ": approved, but its Open questions section still holds a Q-n");
+    if (d.approved && kind !== "ADR" && kind !== "REQUEST" && /\bQ-\d+\b/.test(section(text, "Open questions") ?? "")) fails.push(path + ": approved, but its Open questions section still holds a Q-n");
   };
-  const ls = (d: string, re: RegExp) => (existsSync(d) ? readdirSync(d).filter((f) => re.test(f)).sort() : []);
+  const ls = (d: string, re: RegExp) =>
+    existsSync(d)
+      ? readdirSync(d)
+          .filter((f) => re.test(f))
+          .sort()
+      : [];
   const dd = join(root, "docs");
   const product = join(dd, "PRODUCT.md");
   const crossTp = join(dd, "tp", "TP.md");
   add(product, "PRODUCT");
   for (const f of ls(join(dd, "requests"), /^REQ-\d+-.*\.md$/)) add(join(dd, "requests", f), "REQUEST");
   add(crossTp, "TP", product);
-  const slices = existsSync(dd) ? readdirSync(dd, { withFileTypes: true }).filter((e) => e.isDirectory() && !RESERVED.includes(e.name) && !e.name.startsWith(".")).map((e) => e.name).sort() : [];
+  const slices = existsSync(dd)
+    ? readdirSync(dd, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && !RESERVED.includes(e.name) && !e.name.startsWith("."))
+        .map((e) => e.name)
+        .sort()
+    : [];
   for (const slice of slices) {
     const d = join(dd, slice);
     const prd = join(d, "PRD.md");
-    const sib = (sub: string, prefix: string, nn: string) => { const f = nnFile(join(d, sub), prefix, nn); return f ? join(d, sub, f) : join(d, sub, prefix + "-" + nn + "-?.md"); };
+    const sib = (sub: string, prefix: string, nn: string) => {
+      const f = nnFile(join(d, sub), prefix, nn);
+      return f ? join(d, sub, f) : join(d, sub, prefix + "-" + nn + "-?.md");
+    };
     add(prd, "PRD", product);
     for (const f of ls(join(d, "frd"), /^FRD-\d{2}-.*\.md$/)) add(join(d, "frd", f), "FRD", prd);
     for (const f of ls(join(d, "ux"), /^UX-\d{2}-.*\.md$/)) add(join(d, "ux", f), "UX", sib("frd", "FRD", f.slice(3, 5)));
-    for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) { add(join(d, "tp", f), "TP", sib("frd", "FRD", f.slice(3, 5)), [crossTp]); }
+    for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) {
+      add(join(d, "tp", f), "TP", sib("frd", "FRD", f.slice(3, 5)), [crossTp]);
+    }
     for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) {
-      const sp = join(d, "specs", f), on = restsOn(readFileSync(sp, "utf8"));
+      const sp = join(d, "specs", f),
+        on = restsOn(readFileSync(sp, "utf8"));
       add(sp, "SPEC", on ? fromDoc(sp, on) : undefined);
       if (!on) fails.push(sp + ': no "Rests on: <path>" line in the first 20 lines');
     }
@@ -387,14 +445,29 @@ const USAGE = [
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const [kind, a, b] = args;
-  const opt = (name: string, dflt: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
-  const usage = (): never => { console.error("usage:\n  " + USAGE.join("\n  ")); process.exit(2); };
+  const opt = (name: string, dflt: string) => {
+    const i = args.indexOf(name);
+    return i >= 0 ? args[i + 1] : dflt;
+  };
+  const usage = (): never => {
+    console.error("usage:\n  " + USAGE.join("\n  "));
+    process.exit(2);
+  };
   const finish = (fails: string[], ok: string): never => {
-    if (fails.length) { for (const f of fails) console.log("FAIL", toPosix(f)); process.exit(1); }
+    if (fails.length) {
+      for (const f of fails) console.log("FAIL", toPosix(f));
+      process.exit(1);
+    }
     console.log("PASS " + ok);
     process.exit(0);
   };
-  const read = (p: string) => { if (!existsSync(p)) { console.error("no such file: " + p); process.exit(2); } return readFileSync(p, "utf8"); };
+  const read = (p: string) => {
+    if (!existsSync(p)) {
+      console.error("no such file: " + p);
+      process.exit(2);
+    }
+    return readFileSync(p, "utf8");
+  };
 
   if (kind === "status") {
     const root = a && !a.startsWith("--") ? a : ".";
@@ -405,8 +478,7 @@ if (import.meta.main) {
     console.log("| Document | Kind | Status |\n|---|---|---|");
     for (const d of docs) console.log("| " + rel(d.path) + " | " + d.kind + " | " + d.status + " |");
     console.log("\n" + docs.filter((d) => d.approved).length + " of " + docs.length + " approved or accepted.");
-    for (const d of driftReport(root).filter((x) => x.cause !== "missing"))
-      console.log("drifted: " + rel(d.path) + ": " + (d.cause === "body" ? "edited after approval" : "suspect, " + d.parent + " changed"));
+    for (const d of driftReport(root).filter((x) => x.cause !== "missing")) console.log("drifted: " + rel(d.path) + ": " + (d.cause === "body" ? "edited after approval" : "suspect, " + d.parent + " changed"));
     for (const w of drift.warnings) console.log("WARN", toPosix(w));
     finish(fails, "status");
   }
@@ -417,9 +489,11 @@ if (import.meta.main) {
         const date = opt("--date", new Date().toISOString().slice(0, 10));
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) usage();
         approve(a, b && !b.startsWith("--") ? b : ".", date);
-      }
-      else clear(a, b ?? ".");
-    } catch (e) { console.log("FAIL", toPosix(a) + ": " + (e as Error).message); process.exit(1); }
+      } else clear(a, b ?? ".");
+    } catch (e) {
+      console.log("FAIL", toPosix(a) + ": " + (e as Error).message);
+      process.exit(1);
+    }
     console.log("PASS " + kind + " " + a);
     process.exit(0);
   }
@@ -431,20 +505,30 @@ if (import.meta.main) {
   if (kind === "trace") {
     const root = a ?? ".";
     const dirs = args.slice(2).length ? args.slice(2) : [join(root, "test")].filter(existsSync);
-    if (!dirs.length || !dirs.every(existsSync)) { console.error("no test directory to scan"); process.exit(2); }
+    if (!dirs.length || !dirs.every(existsSync)) {
+      console.error("no test directory to scan");
+      process.exit(2);
+    }
     const r = traceFails(join(root, "docs"), dirs);
     for (const n of r.notes) console.log("NOTE", n);
     finish(r.fails, "trace");
   }
   if (kind === "history") {
     if (!a || !existsSync(a)) usage();
-    try { console.log(history(a).join("\n")); }
-    catch (e) { console.error("history failed: " + ((e as { stderr?: string }).stderr || (e as Error).message).trim()); process.exit(1); }
+    try {
+      console.log(history(a).join("\n"));
+    } catch (e) {
+      console.error("history failed: " + ((e as { stderr?: string }).stderr || (e as Error).message).trim());
+      process.exit(1);
+    }
     process.exit(0);
   }
   if (kind === "summary") {
     if (!a) usage();
-    finish(checkSummary(read(a), /^ADR-\d{3}-/.test(a.split(/[\\/]/).pop()!)).map((f) => a + ": " + f), a + ": summary");
+    finish(
+      checkSummary(read(a), /^ADR-\d{3}-/.test(a.split(/[\\/]/).pop()!)).map((f) => a + ": " + f),
+      a + ": summary",
+    );
   }
   if (kind === "ux") {
     if (!a) usage();
@@ -465,7 +549,11 @@ if (import.meta.main) {
   if (kind === "excerpt") {
     if (!a || args.length < 3) usage();
     const r = excerpt(read(a), args.slice(2));
-    if (r.missingIds.length) finish(r.missingIds.map((i) => a + ": no row with id " + i), "");
+    if (r.missingIds.length)
+      finish(
+        r.missingIds.map((i) => a + ": no row with id " + i),
+        "",
+      );
     console.log(r.lines.join("\n"));
     process.exit(0);
   }
@@ -488,7 +576,10 @@ if (import.meta.main) {
   }
   if (kind === "frd") {
     if (!a || !b) usage();
-    if (!existsSync(join(a, "PRD.md"))) { console.error("no PRD.md in " + a); process.exit(2); }
+    if (!existsSync(join(a, "PRD.md"))) {
+      console.error("no PRD.md in " + a);
+      process.exit(2);
+    }
     const r = checkFrds(a, b);
     finish(r.fails, a + ": " + r.files + " FRDs cover " + r.reqs + " PRD requirements");
   }

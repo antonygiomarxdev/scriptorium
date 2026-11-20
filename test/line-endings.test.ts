@@ -7,10 +7,13 @@ const read = (f: string) => readFileSync(join(root, f), "utf8");
 
 // One line of `git ls-files --eol`: "i/lf    w/crlf  attr/text=auto eol=lf\tpath".
 export function crlfFiles(eol: string): string[] {
-  return eol.split(/\r?\n/).filter(Boolean).flatMap((l) => {
-    const [info, path] = l.split("\t");
-    return /\bi\/(crlf|mixed)\b/.test(info!) || /\beol=crlf\b/.test(info!) ? [path!] : [];
-  });
+  return eol
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .flatMap((l) => {
+      const [info, path] = l.split("\t");
+      return /\bi\/(crlf|mixed)\b/.test(info!) || /\beol=crlf\b/.test(info!) ? [path!] : [];
+    });
 }
 
 // LF-1 of docs/ops/specs/SPEC-01-1-lf-line-endings.md

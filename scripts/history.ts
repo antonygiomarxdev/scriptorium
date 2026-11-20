@@ -14,20 +14,30 @@ const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd,
 export function commits(doc: string): Commit[] {
   const cwd = dirname(resolve(doc));
   let out: string;
-  try { out = git(cwd, "log", "--follow", "--name-only", "--format=%x01%as|%h|%s", "--", basename(doc)); }
-  catch (e) { if (/does not have any commits/.test(String((e as { stderr?: string }).stderr))) return []; throw e; }
-  return out.split("\x01").filter(Boolean).map((b) => {
-    const [head, ...rest] = b.split("\n");
-    const [date, sha, ...s] = head.split("|");
-    return { date, sha, subject: s.join("|"), path: rest.find((l) => l.trim())?.trim() ?? "" };
-  });
+  try {
+    out = git(cwd, "log", "--follow", "--name-only", "--format=%x01%as|%h|%s", "--", basename(doc));
+  } catch (e) {
+    if (/does not have any commits/.test(String((e as { stderr?: string }).stderr))) return [];
+    throw e;
+  }
+  return out
+    .split("\x01")
+    .filter(Boolean)
+    .map((b) => {
+      const [head, ...rest] = b.split("\n");
+      const [date, sha, ...s] = head.split("|");
+      return { date, sha, subject: s.join("|"), path: rest.find((l) => l.trim())?.trim() ?? "" };
+    });
 }
 
 // Oldest commit whose body fingerprint equals the recorded content hash; among those, the first that holds the Approval line itself
 // (a draft with the same body comes earlier, but it was not the approval).
 export function approvalCommit(doc: string, cs: Commit[], hash: string): Commit | undefined {
   const cwd = dirname(resolve(doc));
-  const hits = [...cs].reverse().map((c) => ({ c, t: git(cwd, "show", c.sha + ":" + c.path) })).filter((x) => fingerprint(x.t) === hash);
+  const hits = [...cs]
+    .reverse()
+    .map((c) => ({ c, t: git(cwd, "show", c.sha + ":" + c.path) }))
+    .filter((x) => fingerprint(x.t) === hash);
   return (hits.find((x) => x.t.includes("Approval: content " + hash)) ?? hits[0])?.c;
 }
 
@@ -36,12 +46,16 @@ const ID = /^\s*(?:\|\s*|- \*\*)((?:FR-[A-Z0-9]+-\d+-\d+|R-[A-Z0-9]+-\d+|EX-\d+|
 // id -> its line, for lines that start with an id (table first cell or bold list item).
 const byId = (text: string) => {
   const m = new Map<string, string>();
-  for (const l of text.split(/\r?\n/)) { const id = ID.exec(l)?.[1]; if (id && !m.has(id)) m.set(id, l.trim().replace(/\s+/g, " ")); }
+  for (const l of text.split(/\r?\n/)) {
+    const id = ID.exec(l)?.[1];
+    if (id && !m.has(id)) m.set(id, l.trim().replace(/\s+/g, " "));
+  }
   return m;
 };
 
 export function changedIds(before: string, after: string): string[] {
-  const a = byId(before), b = byId(after);
+  const a = byId(before),
+    b = byId(after);
   const out: string[] = [];
   for (const [id, l] of b) out.push(...(!a.has(id) ? [id + ": added"] : a.get(id) !== l ? [id + ": changed"] : []));
   for (const id of a.keys()) if (!b.has(id)) out.push(id + ": removed");
@@ -67,7 +81,14 @@ export function history(doc: string): string[] {
 
 if (import.meta.main) {
   const doc = process.argv[2];
-  if (!doc || !existsSync(doc)) { console.error("usage: bun scripts/history.ts <doc>"); process.exit(2); }
-  try { console.log(history(doc).join("\n")); }
-  catch (e) { console.error("history failed: " + ((e as { stderr?: string }).stderr || (e as Error).message).trim()); process.exit(1); }
+  if (!doc || !existsSync(doc)) {
+    console.error("usage: bun scripts/history.ts <doc>");
+    process.exit(2);
+  }
+  try {
+    console.log(history(doc).join("\n"));
+  } catch (e) {
+    console.error("history failed: " + ((e as { stderr?: string }).stderr || (e as Error).message).trim());
+    process.exit(1);
+  }
 }

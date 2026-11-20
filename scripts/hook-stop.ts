@@ -6,7 +6,11 @@
 import { runChanged } from "./hook-doc-check.ts";
 
 let active = false;
-try { active = !!JSON.parse(await Bun.stdin.text()).stop_hook_active; } catch { /* no input: treat as a first stop */ }
+try {
+  active = !!JSON.parse(await Bun.stdin.text()).stop_hook_active;
+} catch {
+  /* no input: treat as a first stop */
+}
 
 const fails = runChanged(process.env.CLAUDE_PROJECT_DIR ?? process.cwd());
 if (fails.length) {
