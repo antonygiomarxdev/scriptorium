@@ -242,7 +242,7 @@ function frIds(root: string): Set<string> {
 // is present; anything else counts as a draft. ADRs use "## Status" followed by Proposed|Accepted|Superseded|Rejected,
 // requests "Status: Open|Accepted|Rejected|Merged into REQ-m".
 // A document may be approved only if the document it rests on is approved and no Q-n is left in its Open questions.
-export type Doc = { path: string; kind: string; approved: boolean; status: string; parent?: string };
+export type Doc = { path: string; kind: string; approved: boolean; status: string; parent?: string; also?: string[] };
 
 export function docStatus(text: string, kind: string): { approved: boolean; status: string } {
   if (kind === "ADR") {
@@ -262,10 +262,10 @@ export function docStatus(text: string, kind: string): { approved: boolean; stat
 export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
   const docs: Doc[] = [];
   const fails: string[] = [];
-  const add = (path: string, kind: string, parent?: string) => {
+  const add = (path: string, kind: string, parent?: string, also: string[] = []) => {
     if (!existsSync(path)) return;
     const text = readFileSync(path, "utf8");
-    const d = { path, kind, parent, ...docStatus(text, kind) };
+    const d = { path, kind, parent, also, ...docStatus(text, kind) };
     docs.push(d);
     if (d.status === "missing" && kind !== "ADR") fails.push(path + ": " + NO_STATUS);
     if (d.approved && kind !== "ADR" && kind !== "REQUEST" && /\bQ-\d+\b/.test(section(text, "Open questions") ?? ""))
@@ -278,7 +278,6 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
   add(product, "PRODUCT");
   for (const f of ls(join(dd, "requests"), /^REQ-\d+-.*\.md$/)) add(join(dd, "requests", f), "REQUEST");
   add(crossTp, "TP", product);
-  const tpFiles = [crossTp];
   const slices = existsSync(dd) ? readdirSync(dd, { withFileTypes: true }).filter((e) => e.isDirectory() && !RESERVED.includes(e.name) && !e.name.startsWith(".")).map((e) => e.name).sort() : [];
   for (const slice of slices) {
     const d = join(dd, slice);
@@ -287,21 +286,27 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     add(prd, "PRD", product);
     for (const f of ls(join(d, "frd"), /^FRD-\d{2}-.*\.md$/)) add(join(d, "frd", f), "FRD", prd);
     for (const f of ls(join(d, "ux"), /^UX-\d{2}-.*\.md$/)) add(join(d, "ux", f), "UX", sib("frd", "FRD", f.slice(3, 5)));
-    for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) { tpFiles.push(join(d, "tp", f)); add(join(d, "tp", f), "TP", sib("frd", "FRD", f.slice(3, 5))); }
+    for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) { add(join(d, "tp", f), "TP", sib("frd", "FRD", f.slice(3, 5)), [crossTp]); }
     for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) add(join(d, "specs", f), "SPEC", sib("tp", "TP", f.slice(5, 7)));
   }
-  // An ADR rests on the first TP that cites it.
-  for (const f of ls(join(dd, "adr"), /^ADR-\d{3}-.*\.md$/)) {
-    const tp = tpFiles.find((t) => existsSync(t) && readFileSync(t, "utf8").includes(f.slice(0, 7)));
-    add(join(dd, "adr", f), "ADR", tp);
-  }
+  // An ADR has no parent: it may be Accepted while its TP is a draft. The TP is what waits for its ADRs (below).
+  for (const f of ls(join(dd, "adr"), /^ADR-\d{3}-.*\.md$/)) add(join(dd, "adr", f), "ADR");
   const byPath = new Map(docs.map((x) => [x.path, x]));
   for (const x of docs) {
     if (x.kind === "ADR" && !["Proposed", "Accepted", "Superseded", "Rejected"].includes(x.status)) fails.push(x.path + ': ADR status "' + x.status + '" is not Proposed, Accepted, Superseded or Rejected');
-    if (!x.approved || !x.parent || x.kind === "REQUEST") continue;
-    const p = byPath.get(x.parent);
-    if (!p) fails.push(x.path + ": approved, but the document it rests on (" + x.parent + ") does not exist");
-    else if (!p.approved) fails.push(x.path + ": approved, but " + p.path + " is still " + p.status);
+    if (!x.approved || x.kind === "REQUEST") continue;
+    for (const par of [x.parent, ...(x.also ?? [])]) {
+      if (!par) continue;
+      const p = byPath.get(par);
+      if (!p) fails.push(x.path + ": approved, but the document it rests on (" + par + ") does not exist");
+      else if (!p.approved) fails.push(x.path + ": approved, but " + p.path + " is still " + p.status);
+    }
+    // A TP is approved only when every ADR it cites ("ADR: ADR-NNN") is Accepted.
+    if (x.kind === "TP")
+      for (const id of new Set([...readFileSync(x.path, "utf8").matchAll(/\bADR:\s*(ADR-\d{3})/g)].map((m) => m[1]))) {
+        const a = docs.find((y) => y.kind === "ADR" && y.path.split(/[\\/]/).pop()!.startsWith(id));
+        if (a && !a.approved) fails.push(x.path + ": approved, but " + id + " is still " + a.status);
+      }
   }
   return { docs, fails };
 }

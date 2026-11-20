@@ -249,8 +249,20 @@ test("status follows UX, TP, SPEC and ADR to the document each rests on", () => 
   const { docs, fails } = chainStatus(project("Status: Approved (2026-11-17)\n", ok, files));
   expect(docs.map((d) => d.kind).sort()).toEqual(["ADR", "FRD", "PRD", "PRODUCT", "REQUEST", "SPEC", "TP", "UX"]);
   expect(fails.some((f) => f.includes("SPEC-01-a.md: approved, but") && f.includes("TP-01-a.md"))).toBe(true);
-  expect(fails.some((f) => f.includes("ADR-001-x.md: approved, but"))).toBe(true);
+  expect(fails.some((f) => f.includes("ADR-001-x.md"))).toBe(false); // an ADR may be Accepted while its TP is a draft
   expect(fails.some((f) => f.includes("UX-01-a.md"))).toBe(false);
+});
+
+test("status: a TP-NN rests on the cross-cutting TP, and a TP cites only Accepted ADRs", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const run = (cross: string, adr: string) => chainStatus(project(ok, ok, {
+    "docs/tp/TP.md": cross,
+    "docs/inbox/tp/TP-01-a.md": ok + "### TD-1: x\nADR: ADR-001\n",
+    "docs/adr/ADR-001-x.md": "## Status\n" + adr + "\n",
+  })).fails;
+  expect(run(ok, "Accepted")).toEqual([]);
+  expect(run("Status: Draft\n", "Accepted").some((f) => f.includes("TP-01-a.md: approved, but") && /[\\/]tp[\\/]TP\.md is still Draft/.test(f))).toBe(true);
+  expect(run(ok, "Proposed").some((f) => f.includes("TP-01-a.md: approved, but ADR-001 is still Proposed"))).toBe(true);
 });
 
 test("a request status must be Open, Accepted, Rejected or Merged into REQ-n", () => {
@@ -258,5 +270,7 @@ test("a request status must be Open, Accepted, Rejected or Merged into REQ-n", (
   expect(docStatus("Status: Merged into REQ-3", "REQUEST").status).toBe("Merged into REQ-3");
   expect(docStatus("Status: Accepted", "REQUEST").approved).toBe(true);
   expect(docStatus("Status: Opne", "REQUEST").status).toBe("missing");
+  expect(docStatus("Status: Open.", "REQUEST").status).toBe("missing");
+  expect(docStatus("Status: Open until Friday", "REQUEST").status).toBe("missing");
   expect(docStatus("no status line", "REQUEST").status).toBe("missing");
 });
