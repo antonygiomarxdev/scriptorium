@@ -2,6 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { runDocChecks } from "../scripts/hook-doc-check.ts";
 import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus, excerpt } from "../scripts/check.ts";
 
 const SUM = "## Summary\n\ns\n\nLast change: 2026-11-20, written\n";
@@ -464,4 +465,40 @@ test("approve, drift, status and clear work end to end from the command line", (
   expect(cli("history", prd).code).toBe(1); // not a git repository
   expect(cli("history", "docs/nope.md").code).toBe(2);
   expect(cli("trace", ".").code).toBe(2); // no test directory
+});
+
+// covers: chain/FRD-03/EX-1
+// covers: chain/FRD-03/EX-2
+// covers: chain/FRD-03/DT-2
+// covers: chain/FRD-03/DT-3
+test("format gate: a 0.3.0 spec passes with format 2 warnings under format 1 and fails under format 2", () => {
+  const V1 = "# Spec\n\nStatus: Draft\n\n" + SUM + "\n## Context\nc\n## Files\nf\n## Interfaces\ni\n## Data\nd\n## Tasks\n### Task 1: a\n- **Tests first:** EX-1\n- **Done when:** ok\n## Out of scope\nn\n";
+  const spec = "docs/inbox/specs/SPEC-01-1-a.md";
+  const root = project("Status: Draft\n", "Status: Draft\n## Rules and examples\nEX-1\n", { [spec]: V1 });
+  const cli = (...a: string[]) => {
+    const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: root });
+    return { code: r.exitCode, out: r.stdout.toString() };
+  };
+  const st = cli("status", ".");
+  const sc = cli("spec", spec);
+  expect([st.code, sc.code]).toEqual([0, 0]);
+  expect(st.out).toContain("WARN (format 2): ");
+  expect(sc.out).toContain("WARN (format 2): ");
+  expect(sc.out).not.toContain("FAIL");
+  // the hook's document check passes and hands the warnings back
+  const warns: string[] = [];
+  expect(runDocChecks(root, spec, false, warns)).toEqual([]);
+  expect(warns.join("\n")).toContain("WARN (format 2): ");
+  // a format 1 failure still fails: the spec has lost its tasks
+  writeFileSync(join(root, spec), V1.replace(/### Task 1[\s\S]*## Out/, "## Out"));
+  expect(cli("spec", spec).code).toBe(1);
+  // format 2: the small-spec rules count
+  mkdirSync(join(root, ".scriptorium"));
+  writeFileSync(join(root, ".scriptorium", "config.json"), '{"format": 2}');
+  writeFileSync(join(root, spec), V1);
+  const f2 = cli("spec", spec);
+  expect(f2.code).toBe(1);
+  expect(f2.out).toContain('no "Rests on: <path>" line');
+  expect(f2.out).not.toContain("[format");
+  expect(cli("status", ".").code).toBe(1);
 });

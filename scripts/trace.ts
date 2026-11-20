@@ -2,8 +2,9 @@
 // Traceability scan (L-14): "covers: [slice/]FRD-NN/ID" tags in test files against the ids FRDs define.
 //   bun scripts/trace.ts <docs root> <test dir>...     exit 0 pass, 1 fail ("FAIL <reason>"), 2 usage or unreadable path
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { toPosix } from "./paths.ts";
+import { gate, readFormat } from "./format.ts";
 
 export type Tag = { file: string; slice?: string; frd: string; id: string };
 
@@ -70,8 +71,9 @@ function loadFrds(docsRoot: string): Frd[] {
   return out;
 }
 
-// fails break the run; notes (DT ids nobody tags) are reported only.
-export function traceFails(docsRoot: string, testDirs: string[]): { fails: string[]; notes: string[] } {
+// fails break the run; notes (DT ids nobody tags) are reported only; warnings are format 2 rules under a format 1 pin.
+// The pin sits beside docs/.
+export function traceFails(docsRoot: string, testDirs: string[], pin = readFormat(dirname(resolve(docsRoot)))): { fails: string[]; notes: string[]; warnings: string[] } {
   const frds = loadFrds(docsRoot),
     fails: string[] = [],
     notes: string[] = [];
@@ -88,7 +90,7 @@ export function traceFails(docsRoot: string, testDirs: string[]): { fails: strin
     const f = cands[0];
     if (f?.superseded) continue; // L-15: a superseded FRD is out of the chain; its tags are neither dead nor coverage
     if (!f || !f.ids.includes(t.id)) {
-      fails.push("dead tag " + name + at);
+      fails.push("[format 2] dead tag " + name + at);
       continue;
     }
     covered.add(f);
@@ -103,10 +105,11 @@ export function traceFails(docsRoot: string, testDirs: string[]): { fails: strin
     for (const id of f.ids) {
       if (hit.has(f.path + "|" + id) || f.waive[id] !== undefined) continue;
       if (id.startsWith("DT-")) notes.push("untagged: " + name(id) + " (" + relative(docsRoot, f.path) + ")");
-      else if (f.approved) fails.push("uncovered: " + name(id) + " (" + relative(docsRoot, f.path) + ")");
+      else if (f.approved) fails.push("[format 2] uncovered: " + name(id) + " (" + relative(docsRoot, f.path) + ")");
     }
   }
-  return { fails: fails.map(toPosix), notes: notes.map(toPosix) };
+  const g = gate(fails.map(toPosix), pin);
+  return { fails: g.fails, notes: notes.map(toPosix), warnings: g.warnings };
 }
 
 if (import.meta.main) {
@@ -115,8 +118,9 @@ if (import.meta.main) {
     console.error("usage: bun scripts/trace.ts <docs root> <test dir>... (every path must exist)");
     process.exit(2);
   }
-  const { fails, notes } = traceFails(root, dirs);
+  const { fails, notes, warnings } = traceFails(root, dirs);
   for (const n of notes) console.log("NOTE " + n);
+  for (const w of warnings) console.log(w);
   for (const f of fails) console.log("FAIL " + f);
   process.exit(fails.length ? 1 : 0);
 }

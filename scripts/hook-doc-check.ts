@@ -5,6 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { lintDocs, loadPhrases } from "./lint-docs.ts";
+import { pinProblem } from "./format.ts";
 import { toPosix, typed } from "./paths.ts";
 
 const CHECK = join(import.meta.dir, "check.ts");
@@ -50,21 +51,23 @@ function run(root: string, script: string, args: string[]): { code: number; out:
 }
 
 // Failure lines of one command: its FAIL lines on exit 1, its whole message on exit 2 (usage, missing file).
-function failures(label: string, r: { code: number; out: string }): string[] {
-  if (r.code === 0) return [];
+// WARN lines (rules of a newer format than the pin) are pushed to warns, if given, and never fail.
+function failures(label: string, r: { code: number; out: string }, warns?: string[]): string[] {
   const lines = r.out.split(/\r?\n/).filter(Boolean);
+  warns?.push(...lines.filter((l) => l.startsWith("WARN")));
+  if (r.code === 0) return [];
   return r.code === 1 ? lines.filter((l) => l.startsWith("FAIL")) : [label + ": " + lines.join(" ")];
 }
 
 // Every failure for one document. strict: do not narrow a folder check to this file (CI wants the PRD coverage too).
-export function runDocChecks(root: string, rel: string, strict = false): string[] {
+export function runDocChecks(root: string, rel: string, strict = false, warns?: string[]): string[] {
   const out: string[] = [];
   for (const c of checksFor(root, rel)) {
     if (c.fail) {
       out.push("FAIL " + c.fail);
       continue;
     }
-    const f = failures("check " + c.args![0] + " " + rel, run(root, CHECK, c.args!));
+    const f = failures("check " + c.args![0] + " " + rel, run(root, CHECK, c.args!), warns);
     out.push(...(c.only && !strict ? f.filter((l) => l.includes(c.only + ":")) : f));
   }
   const under = rel.slice("docs/".length);
@@ -112,7 +115,14 @@ if (import.meta.main) {
   const file = input.tool_input?.file_path;
   const doc = file ? splitDocPath(resolve(input.cwd ?? process.cwd(), file)) : undefined;
   if (!doc || !isChainProject(doc.root)) process.exit(0);
-  const fails = runDocChecks(doc.root, doc.rel);
+  const pin = pinProblem(doc.root);
+  if (pin) {
+    console.error("Scriptorium warning: " + pin);
+    process.exit(0);
+  }
+  const warns: string[] = [];
+  const fails = runDocChecks(doc.root, doc.rel, false, warns);
+  if (warns.length) console.error("Scriptorium: " + doc.rel + "\n" + [...new Set(warns)].join("\n"));
   if (fails.length) {
     console.error("Scriptorium: " + doc.rel + " fails its checks. Fix them before going on.\n" + fails.join("\n"));
     process.exit(2);

@@ -11,12 +11,13 @@ const waive = (s: string) => "uncovered: " + s;
 const frdText = (status: string, rows: string, extra = "") => "# FRD-01: x\n\nStatus: " + status + "\n\n| Example | Rule |\n|---|---|\n" + rows + "\n\n" + extra + "\n";
 
 // One slice "chain" with FRD-01 defining the given rows; tests dir holds the given files.
-function fixture(status: string, rows: string, tests: Record<string, string>, extra = "", more: Record<string, string> = {}) {
+function fixture(status: string, rows: string, tests: Record<string, string>, extra = "", more: Record<string, string> = {}, pin = true) {
   const root = mkdtempSync(join(tmpdir(), "trace-"));
   const docs = join(root, "docs"),
     t = join(root, "test");
   mkdirSync(join(docs, "chain", "frd"), { recursive: true });
   mkdirSync(t);
+  if (pin) mkdirSync(join(root, ".scriptorium")), writeFileSync(join(root, ".scriptorium", "config.json"), '{"format":2}');
   writeFileSync(join(docs, "chain", "frd", "FRD-01-x.md"), frdText(status, rows, extra));
   for (const [p, c] of Object.entries(more)) {
     mkdirSync(dirname(join(docs, p)), { recursive: true }), writeFileSync(join(docs, p), c);
@@ -101,7 +102,7 @@ test("a superseded FRD is skipped: no coverage demanded, its tags are not dead, 
   const live = fixture(APPROVED, rows, { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2") });
   expect(run(live).fails).toEqual([]);
   const sup = fixture("Superseded by ../PRD.md (2026-11-21)", rows, { "a.ts": cov("FRD-01/EX-9") });
-  expect(run(sup)).toEqual({ fails: [], notes: [] });
+  expect(run(sup)).toEqual({ fails: [], notes: [], warnings: [] });
   const mutant = fixture("Draft", rows, { "a.ts": cov("FRD-01/EX-9") });
   expect(run(mutant).fails.some((f) => f.includes("dead tag"))).toBe(true);
 });
@@ -143,4 +144,13 @@ test("CLI: exit 0 on pass, 1 on fail, 2 on usage", async () => {
 test("a waiver naming an id the FRD does not define fails", () => {
   const f = fixture(APPROVED, ROWS, { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2") }, "- " + waive("EX-9 no such example"));
   expect(run(f).fails).toEqual(["waiver for an id the FRD does not define: FRD-01/EX-9"]);
+});
+
+// covers: chain/FRD-03/EX-8
+test("EX-8: an uncovered example only warns under format 1 and fails under format 2", () => {
+  const tests = { "a.ts": cov("FRD-01/EX-1") };
+  const r = run(fixture(APPROVED, ROWS, tests, "", {}, false));
+  expect(r.fails).toEqual([]);
+  expect(r.warnings.map((x) => x.replace(/ \(chain.*/, ""))).toEqual(["WARN (format 2): uncovered: FRD-01/EX-2"]);
+  expect(run(fixture(APPROVED, ROWS, tests)).fails.length).toBe(1);
 });

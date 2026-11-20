@@ -180,11 +180,22 @@ test("glossary: lintDocs reads docs/GLOSSARY.md", () => {
 
 // covers: chain/FRD-01/EX-20
 test("a Version line fails and names the line, plain or bold, with or without v", () => {
-  for (const v of ["Version: 1.2", "**Version:** 1.2", "Version 2.0.1", "  Version: v1.0"]) expect(reasons("a/PRD.md", "# P\n## A\n" + v + "\n")).toEqual(["3: version number in a document"]);
+  for (const v of ["Version: 1.2", "**Version:** 1.2", "Version 2.0.1", "  Version: v1.0"]) expect(reasons("a/PRD.md", "# P\n## A\n" + v + "\n")).toEqual(["3: [format 2] version number in a document"]);
   expect(reasons("a/PRD.md", "# P\n## A\n```\nVersion: 1.2\n```\ntext\n")).toEqual([]);
 });
 
 // covers: chain/FRD-01/EX-21
 test("a release named in prose is not a document version", () => {
   expect(reasons("a/PRD.md", "# P\n## A\nThis requirement is met by the 0.3.0 release.\nVersion control stays in git.\n")).toEqual([]);
+});
+
+// covers: chain/FRD-03/EX-9
+test("EX-9: a Version line only warns under format 1 and fails under format 2", () => {
+  const root = tree({ "a/PRD.md": "# P\n## A\nVersion: 1.2\n" });
+  const warnings: string[] = [];
+  expect(lintDocs(root, [], warnings)).toEqual([]);
+  expect(warnings).toEqual(["WARN (format 2): docs/a/PRD.md:3: version number in a document"]);
+  mkdirSync(join(root, ".scriptorium"));
+  writeFileSync(join(root, ".scriptorium", "config.json"), '{"format":2}');
+  expect(lintDocs(root, []).map((f) => f.reason)).toEqual(["version number in a document"]);
 });

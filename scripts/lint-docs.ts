@@ -3,6 +3,7 @@
 //   bun scripts/lint-docs.ts [root]     exit 0 pass, 1 fail ("FAIL <file>:<line>: <reason>")
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
+import { gate, readFormat } from "./format.ts";
 import { toPosix } from "./paths.ts";
 
 // Line cap per document type.
@@ -113,7 +114,7 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
     }
 
   // R-CHAIN-25: no document carries a version number; a release named in prose is fine.
-  if (!rel.startsWith("research/")) for (const { n, s } of lines) if (/^\s*\**Version:?\**\s*v?\d+\.\d+/i.test(s)) f(n, "version number in a document");
+  if (!rel.startsWith("research/")) for (const { n, s } of lines) if (/^\s*\**Version:?\**\s*v?\d+\.\d+/i.test(s)) f(n, "[format 2] version number in a document");
 
   // Glossary: a word the glossary says to avoid fails anywhere but in the glossary and research.
   if (rel !== "GLOSSARY.md" && !rel.startsWith("research/"))
@@ -204,7 +205,9 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
   return fails;
 }
 
-export function lintDocs(root: string, phrases: string[]): Fail[] {
+// warnings, when given, collects the format 2 rules a format 1 pin only warns about.
+export function lintDocs(root: string, phrases: string[], warnings: string[] = []): Fail[] {
+  const pin = readFormat(root);
   const docs = join(root, "docs");
   const fails: Fail[] = [];
   const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith(".md") ? [join(d, e.name)] : []));
@@ -228,7 +231,12 @@ export function lintDocs(root: string, phrases: string[]): Fail[] {
       ),
     );
   }
-  return fails;
+  return fails.filter((x) => {
+    const g = gate([x.reason], pin);
+    if (g.fails.length) x.reason = g.fails[0]!;
+    else warnings.push(g.warnings[0]!.replace(/^(WARN \(format \d+\): )/, "$1docs/" + x.file + ":" + x.line + ": "));
+    return g.fails.length > 0;
+  });
 }
 
 export const loadPhrases = (file = join(import.meta.dir, "banned-phrases.txt")) =>
@@ -239,7 +247,9 @@ export const loadPhrases = (file = join(import.meta.dir, "banned-phrases.txt")) 
 
 if (import.meta.main) {
   const root = process.argv[2] ?? ".";
-  const fails = lintDocs(root, loadPhrases());
+  const warnings: string[] = [];
+  const fails = lintDocs(root, loadPhrases(), warnings);
+  for (const w of warnings) console.log(w);
   for (const x of fails) console.log("FAIL docs/" + x.file + ":" + x.line + ": " + x.reason);
   if (fails.length) process.exit(1);
   console.log("PASS docs lint");

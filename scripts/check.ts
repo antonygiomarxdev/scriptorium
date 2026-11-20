@@ -20,6 +20,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
 import { history } from "./history.ts";
+import { gate, pinProblem, readFormat } from "./format.ts";
 
 // A PRD or FRD says what, not how: these names belong in the Technical Proposal.
 // shortcut: fixed list, make it configurable per project when a project needs other words.
@@ -274,6 +275,39 @@ export function checkSpec(text: string, specPath: string): string[] {
   return fails;
 }
 
+// The format 1 spec check (0.3.0): one spec per FRD, its tasks covering every FRD id.
+export function checkSpecV1(text: string, frd: string): string[] {
+  const fails: string[] = [];
+  if (!STATUS.test(text)) fails.push(NO_STATUS);
+  fails.push(...checkSummary(text), ...missing(text, ["Context", "Files", "Interfaces", "Data", "Tasks", "Out of scope"]));
+  if (/^### TD-\d+/m.test(text) || /^\s*[-*]\s+\*\*Option\b/im.test(text)) fails.push("makes a decision (TD or Option): decisions belong in the TP and an ADR");
+  const tasks = text.split(/^### (?=Task \d+)/m).slice(1);
+  if (!tasks.length) fails.push("no tasks written as ### Task n: title");
+  const tested = new Set<string>();
+  for (const t of tasks) {
+    const id = t.match(/^Task \d+/)![0];
+    const first = t.match(/^\s*[-*]\s+\*\*Tests first:?\*\*:?([\s\S]*?)(?=^\s*[-*]\s+\*\*|$(?![\s\S]))/im);
+    if (!first) fails.push(id + ': no "Tests first:" line');
+    else for (const m of first[1]!.matchAll(/\b(EX|DT|ST|INV)-\d+\b/g)) tested.add(m[0]);
+    if (!/^\s*[-*]\s+\*\*Done when:?\*\*/im.test(t)) fails.push(id + ': no "Done when:" line');
+  }
+  const defs = [...defsIn(frd, "Rules and examples", /\bEX-\d+\b/g), ...defsIn(frd, "Decision table", /\bDT-\d+\b/g), ...defsIn(frd, "States", /\bST-\d+\b/g), ...defsIn(frd, "Invariants", /\bINV-\d+\b/g)];
+  for (const d of defs) if (!tested.has(d)) fails.push(d + " has no task whose Tests first line cites it");
+  if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
+  return fails;
+}
+
+// A spec's failures under a project's pin: the format 1 check counts under format 1, the small-spec check is tagged format 2.
+// shortcut: the FRD is the sibling FRD-NN-*.md of SPEC-NN-*.md (empty when absent), read only under format 1.
+export function specFails(text: string, specPath: string, pin: number): string[] {
+  const v2 = checkSpec(text, specPath).map((f) => "[format 2] " + f);
+  if (pin >= 2) return v2;
+  const nn = basename(specPath).match(/^SPEC-(\d{2})-/)?.[1];
+  const dir = join(dirname(specPath), "..", "frd");
+  const f = nn && existsSync(dir) ? readdirSync(dir).find((x) => x.startsWith("FRD-" + nn + "-")) : undefined;
+  return [...checkSpecV1(text, f ? readFileSync(join(dir, f), "utf8") : ""), ...v2];
+}
+
 // Rows of file whose first cell (or bullet id) is one of ids; ids with no row come back in missingIds.
 export function excerpt(text: string, ids: string[]): { lines: string[]; missingIds: string[] } {
   const lines: string[] = [],
@@ -392,7 +426,7 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
       const sp = join(d, "specs", f),
         on = restsOn(readFileSync(sp, "utf8"));
       add(sp, "SPEC", on ? fromDoc(sp, on) : undefined);
-      if (!on) fails.push(sp + ': no "Rests on: <path>" line in the first 20 lines');
+      if (!on) fails.push("[format 2] " + sp + ': no "Rests on: <path>" line in the first 20 lines');
     }
   }
   // An ADR has no parent: it may be Accepted while its TP is a draft. The TP is what waits for its ADRs (below).
@@ -439,6 +473,7 @@ const USAGE = [
   "check.ts approve|clear <doc> [root]",
   "check.ts drift [root]",
   "check.ts trace [root] [test dir]...",
+  "check.ts migrate [root] [--apply]",
   "check.ts history <doc>",
 ];
 
@@ -453,7 +488,8 @@ if (import.meta.main) {
     console.error("usage:\n  " + USAGE.join("\n  "));
     process.exit(2);
   };
-  const finish = (fails: string[], ok: string): never => {
+  const finish = (fails: string[], ok: string, warnings: string[] = []): never => {
+    for (const w of warnings) console.log(toPosix(w));
     if (fails.length) {
       for (const f of fails) console.log("FAIL", toPosix(f));
       process.exit(1);
@@ -461,6 +497,11 @@ if (import.meta.main) {
     console.log("PASS " + ok);
     process.exit(0);
   };
+  // The pin lives beside docs/: status, drift and trace take the root; the others read from the project root they run in.
+  if (kind) {
+    const pin = pinProblem(["status", "drift", "trace", "migrate"].includes(kind) ? (a && !a.startsWith("--") ? a : ".") : ".");
+    if (pin) finish([pin], "");
+  }
   const read = (p: string) => {
     if (!existsSync(p)) {
       console.error("no such file: " + p);
@@ -474,13 +515,14 @@ if (import.meta.main) {
     const { docs, fails: chainFails } = chainStatus(root);
     const rel = (p: string) => toPosix(relative(root, p));
     const drift = driftFails(root);
-    const fails = [...chainFails, ...drift.fails];
+    const g = gate([...chainFails, ...drift.fails], readFormat(root));
+    const fails = g.fails;
     console.log("| Document | Kind | Status |\n|---|---|---|");
     for (const d of docs) console.log("| " + rel(d.path) + " | " + d.kind + " | " + d.status + " |");
     console.log("\n" + docs.filter((d) => d.approved).length + " of " + docs.length + " approved or accepted.");
     for (const d of driftReport(root).filter((x) => x.cause !== "missing")) console.log("drifted: " + rel(d.path) + ": " + (d.cause === "body" ? "edited after approval" : "suspect, " + d.parent + " changed"));
     for (const w of drift.warnings) console.log("WARN", toPosix(w));
-    finish(fails, "status");
+    finish(fails, "status", g.warnings);
   }
   if (kind === "approve" || kind === "clear") {
     if (!a) usage();
@@ -511,7 +553,13 @@ if (import.meta.main) {
     }
     const r = traceFails(join(root, "docs"), dirs);
     for (const n of r.notes) console.log("NOTE", n);
-    finish(r.fails, "trace");
+    finish(r.fails, "trace", r.warnings);
+  }
+  if (kind === "migrate") {
+    const { migrate } = await import("./migrate.ts");
+    const r = migrate(a && !a.startsWith("--") ? a : ".", args.includes("--apply"));
+    console.log(r.lines.join("\n"));
+    process.exit(r.code);
   }
   if (kind === "history") {
     if (!a || !existsSync(a)) usage();
@@ -544,7 +592,8 @@ if (import.meta.main) {
   }
   if (kind === "spec") {
     if (!a) usage();
-    finish(checkSpec(read(a), a), a + ": spec");
+    const g = gate(specFails(read(a), a, readFormat(".")), readFormat("."));
+    finish(g.fails, a + ": spec", g.warnings);
   }
   if (kind === "excerpt") {
     if (!a || args.length < 3) usage();
