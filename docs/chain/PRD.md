@@ -4,9 +4,9 @@ Status: Draft
 
 ## Summary
 
-The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). No question is open.
+The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-26 to R-CHAIN-29 are being built. No question is open.
 
-Last change: 2026-11-20, owner answered Q-1 to Q-5 (D-29); drift, traceability and history built
+Last change: 2026-11-20, small specs, Superseded and changesets (R-CHAIN-26 to 29, L-15)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -31,7 +31,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-12.** Glossary terms are used in code names and test names as the glossary spells them, and a banned synonym there fails a check (L-9).
 - **R-CHAIN-13.** Status shows every document, its state, its parent, what drifted and what comes next, for the whole product or one slice (UC-7).
 - **R-CHAIN-14.** A small change takes the short path: a spec resting on an existing FRD, with no new PRD or FRD (D-1, UC-5, principle 5).
-- **R-CHAIN-15.** Code cannot be edited without an approved spec or a declared short path, and the gate does not depend on the agent choosing to run it (L-12, D-26).
+- **R-CHAIN-15.** Code and configuration cannot be edited without an approved spec or a declared short path (test files excepted, D-30), and the gate does not depend on the agent choosing to run it (L-12, D-26).
 - **R-CHAIN-16.** The checks run on three layers that do not depend on the agent: hooks inside the agent host, a hook at commit time, and a run on every pull request that nobody can skip (L-12).
 - **R-CHAIN-17.** A project records its own rules in a checks register, each with an id, what it prevents, a command and a replay of the failure it catches, and a row with no command fails (L-12, D-26).
 - **R-CHAIN-18.** The decision inbox stays short: an entry with no target document, or older than a set age, fails a check, and absorbed entries move to a monthly archive (D-23, L-5).
@@ -42,6 +42,10 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-23.** Tests name the example, state or invariant they cover with a tag. A check fails a tag that names an id no FRD defines, and an approved example, state or invariant that no test covers, unless a tag waives it with a stated reason (D-28, L-14).
 - **R-CHAIN-24.** The history of a document is generated from git on request and never kept by hand in the document (D-28, L-14).
 - **R-CHAIN-25.** No document carries a version number; git and release tags are the history (D-28).
+- **R-CHAIN-26.** A spec is small enough for one agent run: it caps its lines and files, quotes the rows it builds verbatim from its parent, and has one done command, so a small model needs no other document (REQ-1, L-15).
+- **R-CHAIN-27.** Work that is not product, such as CI, configuration, dependencies or a fix, uses the same spec, resting on a TP, an ADR, a registry row or an accepted request (REQ-1, L-15).
+- **R-CHAIN-28.** A replaced document says what replaced it, and the checks stop demanding coverage and freshness from it; whether a spec is done is computed by running its done command, never written by hand (REQ-2, L-15).
+- **R-CHAIN-29.** In a project that uses Changesets, a commit that changes code without a changeset fails (D-22, L-15).
 
 ## Principles honored
 Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9, R-CHAIN-23 and R-CHAIN-24: drift is detected, coverage is scanned and history is read from git, none of it assumed.
