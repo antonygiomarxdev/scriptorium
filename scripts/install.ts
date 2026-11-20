@@ -6,9 +6,17 @@ import { CONFIG, NEWEST } from "./format.ts";
 
 const root = resolve(process.argv[2] ?? ".");
 const git = (...a: string[]) => Bun.spawnSync(["git", "-C", root, ...a]);
-const LINE = "bunx scriptorium pre-commit";
-// Not a shell string run by us: this is the text of the hook file. SCRIPTORIUM_CLI overrides the command (a local checkout, a pinned path).
-const HOOK = '#!/bin/sh\ncd "$(dirname "$0")/.." || exit 1\nexec ${SCRIPTORIUM_CLI:-bunx scriptorium} pre-commit\n';
+const LOCAL = join(import.meta.dir, "cli.ts");
+const LINE = `exec \${SCRIPTORIUM_CLI:-bun "${LOCAL}"} pre-commit`;
+// Not a shell string run by us: this is the text of the hook file. It runs $SCRIPTORIUM_CLI, else the path install wrote
+// to .scriptorium/local, from the repository root; never a package fetched by name (that name belongs to someone else).
+const HOOK = `#!/bin/sh
+cd "$(dirname "$0")/.." || exit 1
+if [ -n "$SCRIPTORIUM_CLI" ]; then exec $SCRIPTORIUM_CLI pre-commit; fi
+if [ -f .scriptorium/local ]; then exec bun "$(cat .scriptorium/local)" pre-commit; fi
+echo "scriptorium: no tool to run; run scriptorium install" >&2
+exit 1
+`;
 
 const inRepo = git("rev-parse", "--git-dir").exitCode === 0;
 const set = inRepo ? git("config", "--get", "core.hooksPath").stdout.toString().trim() : "";
@@ -28,5 +36,7 @@ if (!inRepo) {
 mkdirSync(join(root, ".scriptorium"), { recursive: true });
 writeFileSync(join(root, ".scriptorium", "pre-commit"), HOOK);
 chmodSync(join(root, ".scriptorium", "pre-commit"), 0o755);
+writeFileSync(join(root, ".scriptorium", "local"), LOCAL + "\n");
+writeFileSync(join(root, ".scriptorium", ".gitignore"), "local\n");
 git("config", "core.hooksPath", ".scriptorium");
 console.log("installed .scriptorium/pre-commit and set core.hooksPath to .scriptorium");

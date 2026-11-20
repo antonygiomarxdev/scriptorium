@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -47,7 +47,56 @@ test("EX-15: a hooks path set elsewhere is refused, nothing changes, the line to
   const r = install(root);
   expect(r.code).toBe(1);
   expect(r.out).toContain(".husky");
-  expect(r.out).toContain("bunx scriptorium pre-commit");
+  expect(r.out).toMatch(/SCRIPTORIUM_CLI|\.scriptorium\/local/);
+  expect(r.out).not.toContain("bunx");
   expect(existsSync(join(root, ".scriptorium"))).toBe(false);
   expect(git(root, "config", "core.hooksPath").stdout.toString().trim()).toBe(".husky");
+});
+
+const FAIL_REQ = "# REQ-1: x\n\nStatus: Open\n";
+function repo() {
+  const root = tmp();
+  git(root, "init");
+  mkdirSync(join(root, "docs", "requests"), { recursive: true });
+  mkdirSync(join(root, "sub"));
+  writeFileSync(join(root, "docs", "PRODUCT.md"), "# P\n");
+  writeFileSync(join(root, "docs", "requests", "REQ-1-a.md"), FAIL_REQ);
+  expect(install(root).code).toBe(0);
+  git(root, "add", "docs/requests/REQ-1-a.md");
+  return root;
+}
+// git without SCRIPTORIUM_CLI, so the hook falls back to what install wrote
+const bare = (cwd: string, ...a: string[]) => {
+  const { SCRIPTORIUM_CLI: _drop, ...env } = process.env;
+  const r = Bun.spawnSync(["git", ...a], { cwd, env });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+};
+const commit = (cwd: string, run = bare) => run(cwd, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m", "x");
+
+// covers: chain/FRD-03/EX-23
+test("EX-23: a commit of a failing document made from a subfolder is blocked", () => {
+  const root = repo();
+  const viaEnv = Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m", "x"], { cwd: join(root, "sub"), env: { ...process.env, SCRIPTORIUM_CLI: "bun " + join(S, "cli.ts") } });
+  expect(viaEnv.exitCode).not.toBe(0);
+  expect(viaEnv.stderr.toString() + viaEnv.stdout.toString()).toContain("commit blocked");
+  const viaLocal = commit(join(root, "sub")); // no env: the path install wrote
+  expect(viaLocal.code).not.toBe(0);
+  expect(viaLocal.out).toContain("commit blocked");
+});
+
+// covers: chain/FRD-03/EX-25
+test("EX-25: the hook runs the tool install wrote or SCRIPTORIUM_CLI, never a package by name, else says run scriptorium install", () => {
+  const root = repo();
+  const local = readFileSync(join(root, ".scriptorium", "local"), "utf8");
+  expect(local).toContain(join(S, "cli.ts"));
+  expect(readFileSync(join(root, ".scriptorium", ".gitignore"), "utf8")).toContain("local");
+  const hook = readFileSync(join(root, ".scriptorium", "pre-commit"), "utf8");
+  expect(hook).toContain("SCRIPTORIUM_CLI");
+  expect(hook).toContain("run scriptorium install");
+  expect(hook).not.toMatch(/bunx|npx|bun x /);
+  rmSync(join(root, ".scriptorium", "local"));
+  const none = commit(root);
+  expect(none.code).not.toBe(0);
+  expect(none.out).toContain("run scriptorium install");
+  expect(none.out).not.toContain("commit blocked"); // it failed for the missing tool, not a document
 });
