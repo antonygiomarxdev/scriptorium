@@ -1,7 +1,7 @@
 # SPEC-04-3: The edit hook and pre-commit
 
 Status: Approved (2026-11-20)
-Approval: content shlTqeHU2ynu; rests on ../frd/FRD-04-gate-before-code.md xBypaABgZJB7
+Approval: content shlTqeHU2ynu; rests on ../frd/FRD-04-gate-before-code.md 5qbSw4IYjIsG
 Rests on: ../frd/FRD-04-gate-before-code.md
 
 ## Summary

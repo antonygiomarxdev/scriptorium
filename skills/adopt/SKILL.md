@@ -7,6 +7,8 @@ argument-hint: [path to the existing docs, default: whole repo]
 # Adopt Scriptorium in an existing project
 
 Never overwrite or delete an existing file. Content that does not fit a template goes to that document's Open questions, never away. Do not move or restructure code.
+
+The migrated documents follow the newest format: before writing any, run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/cli.ts" install`, which pins it in `.scriptorium/config.json` and installs the git hook. A project already on the chain at an older format is not adopted again: use `/scriptorium:migrate`.
 The target layout, from `${CLAUDE_PLUGIN_ROOT}/templates/`:
 
 ```text

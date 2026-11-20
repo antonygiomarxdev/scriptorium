@@ -26,6 +26,8 @@ Read the diff against the spec. A changed file not in its Files table (test file
 | Step | the chain step that should have caught it: request, PRD, FRD, UX, TP, spec, code, test or gate |
 | Cause | why it got through, in one phrase (ambiguous FRD row, missing example, test written after code, no gate) |
 
+Map every clause of the Files table's "Holds" column to a row. A clause with no row is a finding against the spec, Step: spec, not a defect in the code. Add every finding to the open findings of `docs/metrics/rework.md`, one row each, naming one cause from its list; a cause not on the list goes to the owner, never a new row of its own.
+
 Also fail anything beyond the spec (L-13): code, files or behavior no quoted row asks for. Warn when additions far exceed deletions with no stated reason.
 
 List all findings in round 1. Do not hold any back for later.

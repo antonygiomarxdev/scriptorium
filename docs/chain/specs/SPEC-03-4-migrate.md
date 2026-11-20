@@ -1,7 +1,7 @@
 # SPEC-03-4: Migrate one format
 
 Status: Approved (2026-11-20)
-Approval: content U-Yrhu3PjPm-; rests on ../frd/FRD-03-formats-migrate-cli.md aIObYriuLtbi
+Approval: content U-Yrhu3PjPm-; rests on ../frd/FRD-03-formats-migrate-cli.md qE3unsi9mr_h
 Rests on: ../frd/FRD-03-formats-migrate-cli.md
 
 ## Summary

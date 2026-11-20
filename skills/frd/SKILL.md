@@ -23,7 +23,7 @@ The patterns, tables and examples are in `${CLAUDE_PLUGIN_ROOT}/skills/frd/writi
 - **Why**: the REQ-n it answers.
 - **Requirements covered**: R-$1-n from the PRD, by id. Do not copy their text (the lint fails on copied sentences).
 - **Behavior**: one sentence per row, in EARS form, with an id `FR-$1-NN-n`. Bad: "The system handles bookings well." Good: "WHEN a family books a slot, the system shall confirm it and reduce the slot's free places by one."
-- **Rules and examples**: each rule is a fact the owner can check. Every rule has at least one positive and one negative or boundary example, with exact values. The examples are the oracle: the owner approves them, and tests come from them.
+- **Rules and examples**: each rule is a fact the owner can check. Every rule has at least one positive and one negative or boundary example, with exact values. The examples are the oracle: the owner approves them, and tests come from them. Give each rule a negative example for every input that could pass for a valid one (another id, another folder, an error, a value going the wrong way): a missing example of this kind is the most frequent cause in `docs/metrics/rework.md`.
 - **Decision table**, **States**, **Invariants**: ids, or "n/a: <reason>". A bare "n/a" fails.
 - **Quality criteria**: QC-1 to QC-9, each measurable (metric, threshold, how measured) or "n/a: <reason>". "Fast", "secure", "easy" fail.
 - **Cross-cutting**: answer every row of `docs/CROSS-CUTTING.md`: CC-n applies (how) or "n/a: <reason>".

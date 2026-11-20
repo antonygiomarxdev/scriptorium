@@ -1,7 +1,7 @@
 # SPEC-03-2: Gate the small spec rules
 
 Status: Approved (2026-11-20)
-Approval: content 3-PgKmLtR_iZ; rests on ../frd/FRD-03-formats-migrate-cli.md aIObYriuLtbi
+Approval: content 3-PgKmLtR_iZ; rests on ../frd/FRD-03-formats-migrate-cli.md qE3unsi9mr_h
 Rests on: ../frd/FRD-03-formats-migrate-cli.md
 
 ## Summary

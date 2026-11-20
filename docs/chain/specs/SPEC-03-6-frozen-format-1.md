@@ -1,7 +1,7 @@
 # SPEC-03-6: Freeze format 1
 
 Status: Approved (2026-11-20)
-Approval: content qi7s1cOEbPnT; rests on ../frd/FRD-03-formats-migrate-cli.md aIObYriuLtbi
+Approval: content qi7s1cOEbPnT; rests on ../frd/FRD-03-formats-migrate-cli.md qE3unsi9mr_h
 Rests on: ../frd/FRD-03-formats-migrate-cli.md
 
 ## Summary

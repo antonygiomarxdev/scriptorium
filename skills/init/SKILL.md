@@ -8,7 +8,7 @@ description: Start the Scriptorium document chain in a project that has no produ
 Never overwrite an existing file. If it exists, read it and edit it in place; copy a template only to a path that does not exist yet.
 
 1. Stop if `docs/PRODUCT.md` exists: the chain has started. Run `/scriptorium:status` instead. If the project already has product or design documents, use `/scriptorium:adopt` and stop here.
-2. Check that `bun --version` answers. The checks need [Bun](https://bun.sh). If not, tell the owner and stop.
+2. Check that `bun --version` answers. The checks need [Bun](https://bun.sh). If not, tell the owner and stop. Then run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/cli.ts" install`: it pins the newest format in `.scriptorium/config.json` and installs the git hook from `.scriptorium/`. Commit that folder with the documents.
 3. Copy each template to a path that does not exist yet:
 
 | Template | Becomes |

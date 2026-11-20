@@ -1,7 +1,7 @@
 # SPEC-03-5: Command-line tool and install
 
 Status: Approved (2026-11-20)
-Approval: content sh_FiEw8VOkT; rests on ../frd/FRD-03-formats-migrate-cli.md aIObYriuLtbi
+Approval: content sh_FiEw8VOkT; rests on ../frd/FRD-03-formats-migrate-cli.md qE3unsi9mr_h
 Rests on: ../frd/FRD-03-formats-migrate-cli.md
 
 ## Summary

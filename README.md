@@ -74,6 +74,7 @@ Turn on auto-update for the `scriptorium` marketplace under `/plugin` → Market
 |---|---|
 | `/scriptorium:scriptorium` | The overview: chain, layout, checks, short path, approval rules |
 | `/scriptorium:init` | Starts the chain: PRODUCT, DECISIONS, GLOSSARY |
+| `/scriptorium:migrate` | Moves the project to the next format: dry run, mechanical rewrites, then the parts that need judgment |
 | `/scriptorium:adopt [path]` | Maps a project's existing documents into `docs/<slice>/`, offers to map undocumented code, reports the gaps, migrates after you approve the plan |
 | `/scriptorium:prd <slice> <ID>` | Writes and checks a slice PRD |
 | `/scriptorium:frd <slice> <ID>` | Writes and checks the slice FRDs |
@@ -86,7 +87,20 @@ Turn on auto-update for the `scriptorium` marketplace under `/plugin` → Market
 
 Requests, decisions, glossary, UX, invariants, concerns, ADRs, checks and retro have their own skills too.
 
-Or run a check directly: `bun scripts/check.ts prd docs/inbox/PRD.md INBOX`. Exit 0 passes; exit 1 prints every failure.
+### Outside Claude Code: CI and other agents
+
+The same checks are a command, run with Bun from a checkout of Scriptorium or the installed plugin (`<scriptorium>` below). Never run it as `bunx scriptorium`: that name on the public registry belongs to another project. Pin the checkout to a release tag so CI keeps the same rules until someone updates it. The git hook runs `$SCRIPTORIUM_CLI`, or the path `install` wrote to the untracked `.scriptorium/local`:
+
+```bash
+bun <scriptorium>/scripts/cli.ts install      # pins the format in .scriptorium/config.json, installs the git hook from .scriptorium/
+bun <scriptorium>/scripts/cli.ts status .     # every check also runs as: check, lint, trace, migrate, pre-commit
+```
+
+Exit 0 passes; exit 1 prints every failure.
+
+### Updates never break a project
+
+A project pins the format of its rules in `.scriptorium/config.json` (no file means format 1). A rule from a newer format prints `WARN (format N): ...` and never blocks until the project migrates: `bun <scriptorium>/scripts/cli.ts migrate .` shows what would change, `--apply` makes the mechanical rewrites and moves the pin, and `/scriptorium:migrate` does the rest. The checks keep the current and the previous format.
 
 ## Status
 

@@ -1,13 +1,13 @@
 # FRD-04: The gate before code edits
 
 Status: Approved (2026-11-20)
-Approval: content xBypaABgZJB7; rests on ../PRD.md weJ_tC_U7K43
+Approval: content 5qbSw4IYjIsG; rests on ../PRD.md weJ_tC_U7K43
 
 ## Summary
 
 An agent cannot edit code or configuration unless an approved spec names the file in its Files table, or an accepted request declares it as a short path, and every row that spec quotes from an FRD already has a test. The same rule runs on staged files in pre-commit, for edits made without the agent's tools. Tests and documents are outside the gate. It is a format 2 rule: a format 1 project only sees a warning.
 
-Last change: 2026-11-20, first draft
+Last change: 2026-11-20, EX-14 to EX-18 from the review: drift, wrong FRD tag, hook error, notebooks, hook entry
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -51,6 +51,11 @@ R-CHAIN-15.
 | EX-11 | RULE-2 | boundary | An approved spec quotes rows from a request, not an FRD | the agent edits a file it lists | the edit goes ahead: only FRD rows have covers tags |
 | EX-12 | RULE-3 | positive | A format 1 project and no spec lists scripts/b.ts | the agent edits scripts/b.ts | the edit goes ahead and prints "WARN (format 2):" with the refusal text |
 | EX-13 | RULE-3 | boundary | A project has no docs/PRODUCT.md | the agent edits any file | the hook does nothing |
+| EX-14 | RULE-1 | negative | An approved spec lists scripts/a.ts but changed after its approval | the agent edits scripts/a.ts | it is refused: a drifted spec does not count as approved |
+| EX-15 | RULE-2 | negative | An approved spec quotes FRD-01 EX-4 and the only test tag is for FRD-02 EX-4 | the agent edits a file it lists | it is refused with "write the tests first: FRD-01/EX-4" |
+| EX-16 | RULE-1 | negative | The host sends the edit hook input it cannot parse | the edit hook runs | it exits 2 and says why: an error never allows an edit |
+| EX-17 | RULE-1 | negative | No spec lists notes/a.ipynb | the agent edits notes/a.ipynb with NotebookEdit | it is refused |
+| EX-18 | RULE-1 | positive | The plugin is installed | its hook configuration is read | a PreToolUse entry runs the edit hook for Edit, Write, MultiEdit and NotebookEdit |
 
 ### Coverage waivers
 None.
@@ -110,7 +115,12 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-11** (EX-11): Given An approved spec quotes rows from a request, not an FRD, when the agent edits a file it lists, then the edit goes ahead: only FRD rows have covers tags.
 - **AC-12** (EX-12): Given A format 1 project and no spec lists scripts/b.ts, when the agent edits scripts/b.ts, then the edit goes ahead and prints "WARN (format 2):" with the refusal text.
 - **AC-13** (EX-13): Given A project has no docs/PRODUCT.md, when the agent edits any file, then the hook does nothing.
-- **AC-14** (DT-1): Given a file inside documents or tests: yes, named by an approved spec or short path: any, its quoted FRD rows all tested: any, when the edit hook runs, then the result is: allowed.
-- **AC-15** (DT-2): Given a file inside documents or tests: no, named by an approved spec or short path: no, its quoted FRD rows all tested: any, when the edit hook runs, then the result is: refused: no approved spec.
-- **AC-16** (DT-3): Given a file inside documents or tests: no, named by an approved spec or short path: yes, its quoted FRD rows all tested: no, when the edit hook runs, then the result is: refused: tests first.
-- **AC-17** (DT-4): Given a file inside documents or tests: no, named by an approved spec or short path: yes, its quoted FRD rows all tested: yes, when the edit hook runs, then the result is: allowed.
+- **AC-14** (EX-14): Given An approved spec lists scripts/a.ts but changed after its approval, when the agent edits scripts/a.ts, then it is refused: a drifted spec does not count as approved.
+- **AC-15** (EX-15): Given An approved spec quotes FRD-01 EX-4 and the only test tag is for FRD-02 EX-4, when the agent edits a file it lists, then it is refused with "write the tests first: FRD-01/EX-4".
+- **AC-16** (EX-16): Given The host sends the edit hook input it cannot parse, when the edit hook runs, then it exits 2 and says why: an error never allows an edit.
+- **AC-17** (EX-17): Given No spec lists notes/a.ipynb, when the agent edits notes/a.ipynb with NotebookEdit, then it is refused.
+- **AC-18** (EX-18): Given The plugin is installed, when its hook configuration is read, then a PreToolUse entry runs the edit hook for Edit, Write, MultiEdit and NotebookEdit.
+- **AC-19** (DT-1): Given a file inside documents or tests: yes, named by an approved spec or short path: any, its quoted FRD rows all tested: any, when the edit hook runs, then the result is: allowed.
+- **AC-20** (DT-2): Given a file inside documents or tests: no, named by an approved spec or short path: no, its quoted FRD rows all tested: any, when the edit hook runs, then the result is: refused: no approved spec.
+- **AC-21** (DT-3): Given a file inside documents or tests: no, named by an approved spec or short path: yes, its quoted FRD rows all tested: no, when the edit hook runs, then the result is: refused: tests first.
+- **AC-22** (DT-4): Given a file inside documents or tests: no, named by an approved spec or short path: yes, its quoted FRD rows all tested: yes, when the edit hook runs, then the result is: allowed.

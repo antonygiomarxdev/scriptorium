@@ -1,13 +1,13 @@
 # FRD-03: Pinned formats, migrate and the command-line tool
 
 Status: Approved (2026-11-20)
-Approval: content aIObYriuLtbi; rests on ../PRD.md weJ_tC_U7K43
+Approval: content qE3unsi9mr_h; rests on ../PRD.md weJ_tC_U7K43
 
 ## Summary
 
 Each project pins the format of its rules in its own `.scriptorium/` folder; with no pin it keeps the rules of 0.3.0. A rule from a newer format only warns until the project migrates, and one command migrates: a dry run first, mechanical rewrites only, the pin moved only when the next format passes. The checks also run as a `scriptorium` command any agent or CI can pin, and the git hook installs from the committed folder.
 
-Last change: 2026-11-20, first draft
+Last change: 2026-11-20, EX-19 to EX-26 from the review: no format 1 leak, dead tag, migrate lists all, CRLF, subfolder commit, CLI root, no fetched package, no pin downgrade
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -65,6 +65,14 @@ R-CHAIN-30, R-CHAIN-31, R-CHAIN-32, R-CHAIN-33, R-CHAIN-34.
 | EX-16 | RULE-5 | positive | A project root without the plugin | the status command of the command-line tool runs | its output and exit code equal those of the status script |
 | EX-17 | RULE-5 | positive | The Larder example as released in 0.3.0, frozen with no pin | today's checks run on it | they pass, with warnings only |
 | EX-18 | RULE-5 | negative | A format 2 rule is changed to fail under format 1 | the tests run | the frozen example's test fails |
+| EX-19 | RULE-2 | positive | A format 2 project has a small spec with no ## Tasks section | the spec check runs | it passes: format 1 spec rules do not run under format 2 |
+| EX-20 | RULE-2 | positive | A format 1 project has a test tag for an id its FRD does not hold | the coverage scan runs | it passes and prints "WARN (format 2): dead tag" |
+| EX-21 | RULE-3 | positive | A format 1 project whose only format 2 failure is the line "Version: 1.2" in a document | migrate runs without apply | it lists that line among what fails under format 2 |
+| EX-22 | RULE-3 | boundary | SPEC-01-x.md has CRLF line endings, no Rests on line, and TP-01-x.md beside it | migrate runs with apply | the Rests on line is written ending in CRLF |
+| EX-23 | RULE-4 | positive | install has run in a repository | a commit of a failing document is made from a subfolder | the hook runs from the repository root and blocks it |
+| EX-24 | RULE-5 | negative | A project pinned to format 9, and the tool started from another folder | the spec command runs on a document of that project | it exits 1 with the update message |
+| EX-25 | RULE-4 | negative | install has written the hook | the hook file is read | it runs $SCRIPTORIUM_CLI or the tool path in .scriptorium/local, never a package fetched by name, and with neither it fails with "run scriptorium install" |
+| EX-26 | RULE-3 | negative | HEAD pins format 2 and a commit stages .scriptorium/config.json pinning format 1 | pre-commit runs | it is blocked: migration is one-way |
 
 ### Coverage waivers
 None.
@@ -140,9 +148,17 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-16** (EX-16): Given A project root without the plugin, when the status command of the command-line tool runs, then its output and exit code equal those of the status script.
 - **AC-17** (EX-17): Given The Larder example as released in 0.3.0, frozen with no pin, when today's checks run on it, then they pass, with warnings only.
 - **AC-18** (EX-18): Given A format 2 rule is changed to fail under format 1, when the tests run, then the frozen example's test fails.
-- **AC-19** (DT-1): Given the pin above the newest known format: yes, and the rule's format above the pin: any, when a check runs, then the result is: command-line tool exits 1, hooks warn: update Scriptorium.
-- **AC-20** (DT-2): Given the pin above the newest known format: no, and the rule's format above the pin: no, when a check runs, then the result is: failure.
-- **AC-21** (DT-3): Given the pin above the newest known format: no, and the rule's format above the pin: yes, when a check runs, then the result is: warning naming the rule's format.
-- **AC-22** (ST-1): Given the transition "Format 1 to format 2 by migrate when format 2 passes", then it is allowed, and only the pin and the mechanical rewrites change.
-- **AC-23** (ST-2): Given the transition "Format 2 to format 1", then it is refused: migration is one-way.
-- **AC-24** (ST-3): Given the transition "Format 1 to format 3 in one step", then it is refused: one format at a time.
+- **AC-19** (EX-19): Given A format 2 project has a small spec with no ## Tasks section, when the spec check runs, then it passes: format 1 spec rules do not run under format 2.
+- **AC-20** (EX-20): Given A format 1 project has a test tag for an id its FRD does not hold, when the coverage scan runs, then it passes and prints "WARN (format 2): dead tag".
+- **AC-21** (EX-21): Given A format 1 project whose only format 2 failure is the line "Version: 1.2" in a document, when migrate runs without apply, then it lists that line among what fails under format 2.
+- **AC-22** (EX-22): Given SPEC-01-x.md has CRLF line endings, no Rests on line, and TP-01-x.md beside it, when migrate runs with apply, then the Rests on line is written ending in CRLF.
+- **AC-23** (EX-23): Given install has run in a repository, when a commit of a failing document is made from a subfolder, then the hook runs from the repository root and blocks it.
+- **AC-24** (EX-24): Given A project pinned to format 9, and the tool started from another folder, when the spec command runs on a document of that project, then it exits 1 with the update message.
+- **AC-25** (EX-25): Given install has written the hook, when the hook file is read, then it runs $SCRIPTORIUM_CLI or the tool path in .scriptorium/local, never a package fetched by name, and with neither it fails with "run scriptorium install".
+- **AC-26** (EX-26): Given HEAD pins format 2 and a commit stages .scriptorium/config.json pinning format 1, when pre-commit runs, then it is blocked: migration is one-way.
+- **AC-27** (DT-1): Given the pin above the newest known format: yes, and the rule's format above the pin: any, when a check runs, then the result is: command-line tool exits 1, hooks warn: update Scriptorium.
+- **AC-28** (DT-2): Given the pin above the newest known format: no, and the rule's format above the pin: no, when a check runs, then the result is: failure.
+- **AC-29** (DT-3): Given the pin above the newest known format: no, and the rule's format above the pin: yes, when a check runs, then the result is: warning naming the rule's format.
+- **AC-30** (ST-1): Given the transition "Format 1 to format 2 by migrate when format 2 passes", then it is allowed, and only the pin and the mechanical rewrites change.
+- **AC-31** (ST-2): Given the transition "Format 2 to format 1", then it is refused: migration is one-way.
+- **AC-32** (ST-3): Given the transition "Format 1 to format 3 in one step", then it is refused: one format at a time.

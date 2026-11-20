@@ -92,6 +92,8 @@ const specRows = (ids: string[], rests = "../frd/FRD-01-a.md") =>
   spec(row("scripts/a.ts"))
     .replace("../frd/FRD-01-a.md", rests)
     .replace("| EX-1 | a | b |", ids.map((i) => "| " + i + " | RULE-1 | positive | g | w | t |").join("\n"));
+// Fixture tags are built so this file's own source holds no literal tag for the repository scan.
+const tagOf = (slice: string, frd: string, id: string) => "// cov" + "ers: " + slice + "/" + frd + "/" + id + '\ntest("t", () => {});\n';
 const tag = (id: string) => "// covers: chain/FRD-01/" + id + '\ntest("t", () => {});\n';
 
 // covers: chain/FRD-04/EX-1
@@ -124,7 +126,7 @@ test("a spec changed after its approval does not unlock its files", () => {
 
 // covers: chain/FRD-04/EX-15
 test("a covers tag for another FRD does not count", () => {
-  const other = '// covers: chain/FRD-02/EX-4\ntest("t", () => {});\n';
+  const other = tagOf("chain", "FRD-02", "EX-4");
   const root = project({ "docs/chain/frd/FRD-01-a.md": frdRows(["EX-4"]), [SPEC]: specRows(["EX-4"]), "test/a.test.ts": other }, true);
   expect(gateFile(root, "scripts/a.ts")).toContain("write the tests first: FRD-01/EX-4");
 });
@@ -132,8 +134,8 @@ test("a covers tag for another FRD does not count", () => {
 // covers: chain/FRD-04/EX-15
 test("a covers tag for the same FRD number in another slice does not count", () => {
   const twoSlices = { "docs/chain/frd/FRD-01-a.md": frdRows(["EX-4"]), "docs/other/PRD.md": PRD, "docs/other/frd/FRD-01-b.md": frdRows(["EX-4"]), [SPEC]: specRows(["EX-4"]) };
-  const wrong = project({ ...twoSlices, "test/a.test.ts": '// covers: other/FRD-01/EX-4\ntest("t", () => {});\n' }, true);
+  const wrong = project({ ...twoSlices, "test/a.test.ts": tagOf("other", "FRD-01", "EX-4") }, true);
   expect(gateFile(wrong, "scripts/a.ts")).toContain("write the tests first");
-  const right = project({ ...twoSlices, "test/a.test.ts": '// covers: chain/FRD-01/EX-4\ntest("t", () => {});\n' }, true); // mutant: the tag of its own slice counts
+  const right = project({ ...twoSlices, "test/a.test.ts": tagOf("chain", "FRD-01", "EX-4") }, true); // mutant: the tag of its own slice counts
   expect(gateFile(right, "scripts/a.ts")).toBeUndefined();
 });

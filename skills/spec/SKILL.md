@@ -35,7 +35,7 @@ Copy `${CLAUDE_PLUGIN_ROOT}/templates/SPEC.md` to `docs/$0/specs/SPEC-$1-<k>-<na
   bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" excerpt docs/$0/frd/FRD-$1-<name>.md EX-4 EX-5 INV-1
   ```
   Rows from a document other than the parent (the FRD under a TP) go under a `Quoted from:` line.
-- **Files**: each path created or changed, at most 3. A file no row needs does not belong (L-13).
+- **Files**: each path created or changed, at most 3. A file no row needs does not belong (L-13). Every clause in a row's "Holds" column needs a row in Rows that tests it; a clause with none is the second most frequent cause in `docs/metrics/rework.md`.
 - **Tests first**: exactly the ids in Rows. Bad: "tests for booking". Good: "EX-4, EX-5, INV-1, written before the code, without it in view".
 - **Build**: the code that makes them pass, with exact signatures.
 - **Done when**: one command in backticks. Bad: "works". Good: `bun test test/book.test.ts`.

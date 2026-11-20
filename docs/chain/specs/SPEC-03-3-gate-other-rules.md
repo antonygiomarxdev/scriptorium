@@ -1,7 +1,7 @@
 # SPEC-03-3: Gate the other format 2 rules
 
 Status: Approved (2026-11-20)
-Approval: content SOZGuM3pnZfL; rests on ../frd/FRD-03-formats-migrate-cli.md aIObYriuLtbi
+Approval: content SOZGuM3pnZfL; rests on ../frd/FRD-03-formats-migrate-cli.md qE3unsi9mr_h
 Rests on: ../frd/FRD-03-formats-migrate-cli.md
 
 ## Summary

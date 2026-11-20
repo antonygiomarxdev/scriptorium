@@ -60,7 +60,7 @@ docs/
 | Any chain document | | `## Summary` in the first 20 lines, ending with `Last change: YYYY-MM-DD, <what>` | | `check.ts summary <file>` |
 | Status | | Every document and where it stands | `/scriptorium:status` | `check.ts status .` |
 
-Every document type has its own skill that teaches how to write it: `/scriptorium:fix`, `/scriptorium:ops`, `/scriptorium:request`, `/scriptorium:decision`, `/scriptorium:glossary`, `/scriptorium:invariant`, `/scriptorium:concern`, `/scriptorium:ux`, `/scriptorium:adr`, and for the rest of the loop `/scriptorium:check` (add a project rule), `/scriptorium:review` (closed review) and `/scriptorium:retro` (turn a failure into a proven prevention). PRD and FRD name no technology. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md` the same day; shared terms in `docs/GLOSSARY.md`.
+Every document type has its own skill that teaches how to write it: `/scriptorium:migrate` (move the project to the next format), `/scriptorium:fix`, `/scriptorium:ops`, `/scriptorium:request`, `/scriptorium:decision`, `/scriptorium:glossary`, `/scriptorium:invariant`, `/scriptorium:concern`, `/scriptorium:ux`, `/scriptorium:adr`, and for the rest of the loop `/scriptorium:check` (add a project rule), `/scriptorium:review` (closed review) and `/scriptorium:retro` (turn a failure into a proven prevention). PRD and FRD name no technology. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md` the same day; shared terms in `docs/GLOSSARY.md`.
 
 ## Short path
 
@@ -84,17 +84,33 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" status .
 
 Exit 0 passes. Exit 1 prints every failure. Exit 2 is a usage error.
 
+## Formats and updates
+
+A project pins the format of its rules in `.scriptorium/config.json` beside `docs/` (no file means format 1, the rules of 0.3.0). An update never changes which rules block a project: a rule from a newer format prints `WARN (format N): ...` until the project migrates with `/scriptorium:migrate`, one format at a time. The checks keep the current and the previous format.
+
+The same checks run outside Claude Code as `bun <scriptorium>/scripts/cli.ts <check|lint|trace|migrate|install|pre-commit>`, where `<scriptorium>` is a checkout or the installed plugin. Never run it as `bunx scriptorium`: that name on the public registry belongs to another project. The git hook runs `$SCRIPTORIUM_CLI`, or the path `install` wrote to `.scriptorium/local`.
+
 ## Enforcement
 
 A rule that exists only in prose does not count. Three layers run without the agent choosing to run a check (L-12). Each acts only in a project that has `docs/PRODUCT.md`:
 
-1. **Plugin hooks** (`hooks/hooks.json`): after an edit under `docs/`, `scripts/hook-doc-check.ts` runs that document's check and the docs lint on it; before the agent stops, `scripts/hook-stop.ts` checks the documents changed since HEAD, plus `check.ts status .`. Failures reach the agent with exit 2; if the agent is already continuing because of this hook, it warns and lets it stop.
-2. **Git pre-commit** (`scripts/pre-commit.ts`): the same checks on staged documents, for any agent or person. Install it with the one-line command in the script's header.
+1. **Plugin hooks** (`hooks/hooks.json`): before an edit to code or configuration, `scripts/hook-gate.ts` runs the gate described below; after an edit under `docs/`, `scripts/hook-doc-check.ts` runs that document's check and the docs lint on it; before the agent stops, `scripts/hook-stop.ts` checks the documents changed since HEAD, plus `check.ts status .`. Failures reach the agent with exit 2; if the agent is already continuing because of this hook, it warns and lets it stop.
+2. **Git pre-commit** (`scripts/pre-commit.ts`): the same checks on staged documents, for any agent or person. `bun "${CLAUDE_PLUGIN_ROOT}/scripts/cli.ts" install` writes it to `.scriptorium/pre-commit` and points git at that folder, so the hook is committed with the project.
 3. **CI** (`.github/workflows/ci.yml`): tests, typecheck, status, lint and the example chain on every pull request.
 
-Not built yet: the hook that, before the agent edits code or configuration, requires an approved spec or a declared short path (L-12, D-30). Until then, follow it by hand. Where `.changeset/config.json` exists, pre-commit fails a commit that changes code without a changeset (L-15).
+Before the agent edits code or configuration, a hook refuses the edit unless an approved spec names the file, or an accepted request declares it as a short path, and every FRD row the spec quotes has a test (L-12, D-30, FRD-04). Pre-commit runs the same rule on staged files. Where `.changeset/config.json` exists, pre-commit fails a commit that changes code without a changeset (L-15).
 
 Project rules learned from a failure live in `docs/CHECKS.md`: id, what it prevents, the command, and the replay of the failure it catches; a row without a command fails (`/scriptorium:check`). Documents are linted by `bun "${CLAUDE_PLUGIN_ROOT}/scripts/lint-docs.ts" .` (banned phrases, dead links, filler sections, line caps, empty registry cells, copied text).
+
+## Why the process
+
+Rework is a queue in `docs/metrics/rework.md`: open findings only, each with one cause and the step that should have caught it (D-32). On the first runs, review found no change built against its spec; most findings were examples the FRD or the spec lacked. So the order is fixed, and each step exists for a measured reason (L-17):
+
+1. **An approved spec before any code.** A rule in prose did not hold: the lead and two builders edited code outside a spec on the same day. The edit hook now refuses it.
+2. **Tests from the spec, by a tester who has not seen the code.** Tests written after the code copy its faults; a tester grounded in the spec found 27 of 30 bugs against 2 of 30 ([research](../../docs/research/2026-11-20-templates-tests-consistency.md)).
+3. **The builder makes them pass and never edits them.** A wrong test goes back to the lead.
+4. **Review against the spec only, with mutants.** A surviving mutant is a missing row. Review never invents scope; a gap it finds is a finding against the spec, logged with its step.
+5. **Every finding goes in the rework queue with one cause.** A cause found twice with no prevention blocks, and so does a prevented cause that comes back. The queue only holds open findings, so it shrinks when the process improves.
 
 ## With a team
 
