@@ -76,7 +76,11 @@ export function runDocChecks(root: string, rel: string, strict = false): string[
 // The plugin is installed user-wide: a project without docs/PRODUCT.md is not a Scriptorium project and is never touched.
 export const isChainProject = (root: string) => existsSync(join(root, "docs", "PRODUCT.md"));
 
+// status also runs the drift check (body edited or parent changed since approval).
 export const runStatus = (root: string): string[] => failures("status", run(root, CHECK, ["status", "."]));
+
+// Covers tags against the FRDs. shortcut: the test directory is always "test" (skipped when absent); read it from docs/CHECKS.md when a project needs another.
+export const runTrace = (root: string): string[] => (existsSync(join(root, "test")) ? failures("trace", run(root, CHECK, ["trace", "."])) : []);
 
 // Documents under docs/ that changed since HEAD, are staged, or are new. Legacy documents that did not change are left alone,
 // so a project in the middle of an adoption is not blocked by the documents it has not migrated yet.

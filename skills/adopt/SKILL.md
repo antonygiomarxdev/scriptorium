@@ -83,7 +83,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" summary <document>
 
 ## 6. Status lines
 
-Every document starts as `Status: Draft`, except a request (`Status: Open`) and an ADR (`## Status` then `Proposed`). Never mark one approved yourself. Ask the owner which ones were already approved, accepted or rejected in the old process; for each one the owner confirms, write `Status: Approved (YYYY-MM-DD)` with the date the owner gives (a request: `Accepted`, `Rejected` or `Merged into REQ-m`; an ADR: `Accepted`, `Superseded` or `Rejected`). A document can be approved only if the one it rests on is, and only with no Q-n left. Then:
+Every document starts as `Status: Draft`, except a request (`Status: Open`) and an ADR (`## Status` then `Proposed`). Never mark one approved yourself. Ask the owner which ones were already approved, accepted or rejected in the old process; for each one the owner confirms, run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" approve <document> --date YYYY-MM-DD` with the date the owner gives, parents first. It writes the status line and the Approval record; never write them by hand. A document the owner does not confirm stays a draft. A request is set by hand to `Accepted`, `Rejected` or `Merged into REQ-m`, and an ADR to `Accepted`, `Superseded` or `Rejected`; neither has an Approval record. A document can be approved only if the one it rests on is, and only with no Q-n left. Then:
 
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" status .

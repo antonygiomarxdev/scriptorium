@@ -45,7 +45,7 @@ Every point the owner has not settled becomes a Q-n. A document with a Q-n is a 
 
 ## Finish
 
-Run the checks, show the owner the output and any Q-n left, then stop. Only the owner approves; you never write `Status: Approved` yourself. When they approve, set `Status: Approved (YYYY-MM-DD)` with their date and update `Last change:`.
+Run the checks, show the owner the output and any Q-n left, then stop. Only the owner approves; you never write `Status: Approved` yourself. When the owner approves, update `Last change:`, then run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" approve <this document>`. It writes the status line and the Approval record; never write them by hand. A later check that says `suspect` or `body changed since approval` goes back to the owner: they approve again, or run `check.ts clear <document>` when only a parent changed.
 
 ## Checks
 

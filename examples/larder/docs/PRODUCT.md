@@ -1,6 +1,7 @@
 # Larder: product overview
 
 Status: Approved (2026-11-12)
+Approval: content u-zkqZ9JA_n6
 
 ## Summary
 

@@ -41,7 +41,7 @@ Every point the owner has not settled becomes a Q-n in the Open questions sectio
 
 ## Finish
 
-Run the checks, show the owner the output and any Q-n left, then stop. Only the owner approves; you never write `Status: Approved` yourself. When the owner approves, set `Status: Approved (YYYY-MM-DD)` with their date and update the `Last change:` line.
+Run the checks, show the owner the output and any Q-n left, then stop. Only the owner approves; you never write `Status: Approved` yourself. When the owner approves, update `Last change:`, then run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" approve <this document>`. It writes the status line and the Approval record; never write them by hand. A later check that says `suspect` or `body changed since approval` goes back to the owner: they approve again, or run `check.ts clear <document>` when only a parent changed. `check.ts history <document>` prints its commits from git.
 
 PRODUCT has no structural script check: the owner reads and approves it. Run:
 

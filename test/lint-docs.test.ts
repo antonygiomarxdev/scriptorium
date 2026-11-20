@@ -139,3 +139,15 @@ test("glossary: lintDocs reads docs/GLOSSARY.md", () => {
   expect(lintDocs(root, []).map((f) => f.file + ":" + f.line)).toEqual(["a/PRD.md:3"]);
   expect(lintDocs(tree({ "GLOSSARY.md": GLOSSARY, "a/PRD.md": "# P\n## A\nThe family books.\n" }), [])).toEqual([]);
 });
+
+// covers: chain/FRD-01/EX-20
+test("a Version line fails and names the line, plain or bold, with or without v", () => {
+  for (const v of ["Version: 1.2", "**Version:** 1.2", "Version 2.0.1", "  Version: v1.0"])
+    expect(reasons("a/PRD.md", "# P\n## A\n" + v + "\n")).toEqual(["3: version number in a document"]);
+  expect(reasons("a/PRD.md", "# P\n## A\n```\nVersion: 1.2\n```\ntext\n")).toEqual([]);
+});
+
+// covers: chain/FRD-01/EX-21
+test("a release named in prose is not a document version", () => {
+  expect(reasons("a/PRD.md", "# P\n## A\nThis requirement is met by the 0.3.0 release.\nVersion control stays in git.\n")).toEqual([]);
+});

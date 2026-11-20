@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { splitDocPath, checksFor, runDocChecks, isChainProject, changedDocs } from "../scripts/hook-doc-check.ts";
@@ -136,4 +136,15 @@ test("pre-commit checks staged documents and --all checks a whole project", () =
   expect(bad.r.err).toContain("commit blocked");
   expect(hook("pre-commit.ts", { cwd: bad.root, args: ["--all", bad.root] }).code).toBe(1);
   expect(hook("pre-commit.ts", { cwd: bad.root, args: ["--all", commit(REQ).root] }).code).toBe(0);
+}, 60000);
+
+test("pre-commit --all fails a document edited after approval", () => {
+  const root = project({ "docs/PRODUCT.md": PRODUCT });
+  const cli = (...a: string[]) => Bun.spawnSync([process.execPath, join(S, "check.ts"), ...a], { cwd: root });
+  expect(cli("approve", "docs/PRODUCT.md", ".").exitCode).toBe(0);
+  expect(hook("pre-commit.ts", { cwd: root, args: ["--all", root] }).code).toBe(0);
+  writeFileSync(join(root, "docs/PRODUCT.md"), readFileSync(join(root, "docs/PRODUCT.md"), "utf8") + "\nAn extra requirement.\n");
+  const r = hook("pre-commit.ts", { cwd: root, args: ["--all", root] });
+  expect(r.code).toBe(1);
+  expect(r.err).toContain("body changed since approval");
 }, 60000);

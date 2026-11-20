@@ -8,7 +8,7 @@
 // shortcut: reads the working-tree file, not the staged blob; stage everything you mean to commit.
 import { readdirSync } from "node:fs";
 import { join, relative } from "node:path";
-import { isChainProject, runDocChecks, runStatus, splitDocPath } from "./hook-doc-check.ts";
+import { isChainProject, runDocChecks, runStatus, runTrace, splitDocPath } from "./hook-doc-check.ts";
 
 const sh = (args: string[], cwd?: string) => Bun.spawnSync(args, { cwd }).stdout.toString().trim();
 const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
@@ -26,7 +26,7 @@ if (import.meta.main) {
   }
   const fails: string[] = [];
   for (const d of docs) fails.push(...runDocChecks(d.root, d.rel, all));
-  for (const root of new Set(docs.map((d) => d.root))) fails.push(...runStatus(root));
+  for (const root of new Set(docs.map((d) => d.root))) fails.push(...runStatus(root), ...runTrace(root));
   if (fails.length) {
     console.error("Scriptorium: commit blocked.\n" + [...new Set(fails)].join("\n"));
     process.exit(1);

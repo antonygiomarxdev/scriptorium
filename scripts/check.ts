@@ -7,8 +7,16 @@
 //   bun scripts/check.ts spec <SPEC.md> <FRD.md>
 //   bun scripts/check.ts status [root]
 //   bun scripts/check.ts summary <file>
+//   bun scripts/check.ts approve <doc> [root] [--date YYYY-MM-DD]   write Status and the Approval record (default: today)
+//   bun scripts/check.ts clear <doc> [root]        rewrite the parent fingerprints of a suspect document
+//   bun scripts/check.ts drift [root]              fail an approved document whose body or parent changed since approval
+//   bun scripts/check.ts trace [root] [test dir]...  covers tags against the ids the FRDs define (default test dir: test)
+//   bun scripts/check.ts history <doc>             one line per commit, from git
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
+import { approve, clear, driftReport, driftFails } from "./drift.ts";
+import { traceFails } from "./trace.ts";
+import { history } from "./history.ts";
 
 // A PRD or FRD says what, not how: these names belong in the Technical Proposal.
 // shortcut: fixed list, make it configurable per project when a project needs other words.
@@ -326,6 +334,10 @@ const USAGE = [
   "check.ts spec <SPEC.md> <FRD.md>",
   "check.ts status [root]",
   "check.ts summary <file>",
+  "check.ts approve|clear <doc> [root]",
+  "check.ts drift [root]",
+  "check.ts trace [root] [test dir]...",
+  "check.ts history <doc>",
 ];
 
 if (import.meta.main) {
@@ -342,12 +354,49 @@ if (import.meta.main) {
 
   if (kind === "status") {
     const root = a && !a.startsWith("--") ? a : ".";
-    const { docs, fails } = chainStatus(root);
+    const { docs, fails: chainFails } = chainStatus(root);
     const rel = (p: string) => relative(root, p).replaceAll("\\", "/");
+    const drift = driftFails(root);
+    const fails = [...chainFails, ...drift.fails];
     console.log("| Document | Kind | Status |\n|---|---|---|");
     for (const d of docs) console.log("| " + rel(d.path) + " | " + d.kind + " | " + d.status + " |");
     console.log("\n" + docs.filter((d) => d.approved).length + " of " + docs.length + " approved or accepted.");
+    for (const d of driftReport(root).filter((x) => x.cause !== "missing"))
+      console.log("drifted: " + rel(d.path) + ": " + (d.cause === "body" ? "edited after approval" : "suspect, " + d.parent + " changed"));
+    for (const w of drift.warnings) console.log("WARN", w.replaceAll("\\", "/"));
     finish(fails, "status");
+  }
+  if (kind === "approve" || kind === "clear") {
+    if (!a) usage();
+    try {
+      if (kind === "approve") {
+        const date = opt("--date", new Date().toISOString().slice(0, 10));
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) usage();
+        approve(a, b && !b.startsWith("--") ? b : ".", date);
+      }
+      else clear(a, b ?? ".");
+    } catch (e) { console.log("FAIL", a.replaceAll("\\", "/") + ": " + (e as Error).message); process.exit(1); }
+    console.log("PASS " + kind + " " + a);
+    process.exit(0);
+  }
+  if (kind === "drift") {
+    const r = driftFails(a ?? ".");
+    for (const w of r.warnings) console.log("WARN", w.replaceAll("\\", "/"));
+    finish(r.fails, "drift");
+  }
+  if (kind === "trace") {
+    const root = a ?? ".";
+    const dirs = args.slice(2).length ? args.slice(2) : [join(root, "test")].filter(existsSync);
+    if (!dirs.length || !dirs.every(existsSync)) { console.error("no test directory to scan"); process.exit(2); }
+    const r = traceFails(join(root, "docs"), dirs);
+    for (const n of r.notes) console.log("NOTE", n);
+    finish(r.fails, "trace");
+  }
+  if (kind === "history") {
+    if (!a || !existsSync(a)) usage();
+    try { console.log(history(a).join("\n")); }
+    catch (e) { console.error("history failed: " + ((e as { stderr?: string }).stderr || (e as Error).message).trim()); process.exit(1); }
+    process.exit(0);
   }
   if (kind === "summary") {
     if (!a) usage();

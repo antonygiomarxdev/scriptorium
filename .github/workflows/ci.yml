@@ -24,8 +24,13 @@ jobs:
         run: |
           bun scripts/check.ts status .
           bun scripts/lint-docs.ts .
+          bun scripts/check.ts drift .
+          bun scripts/check.ts trace .
       - name: The Larder example passes every check
-        run: bun scripts/pre-commit.ts --all examples/larder
+        run: |
+          bun scripts/pre-commit.ts --all examples/larder
+          bun scripts/check.ts drift examples/larder
+          bun scripts/check.ts trace examples/larder
 
   summary:
     if: github.event_name == 'pull_request'

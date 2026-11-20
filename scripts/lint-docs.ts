@@ -74,6 +74,10 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
       for (const p of phrases) if (new RegExp("(^|[^a-z0-9])" + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "($|[^a-z0-9])").test(t)) f(n, 'banned phrase "' + p + '" (rewrite it, or add <!-- lint-ok: reason -->)');
     }
 
+  // R-CHAIN-25: no document carries a version number; a release named in prose is fine.
+  if (!rel.startsWith("research/"))
+    for (const { n, s } of lines) if (/^\s*\**Version:?\**\s*v?\d+\.\d+/i.test(s)) f(n, "version number in a document");
+
   // Glossary: a word the glossary says to avoid fails anywhere but in the glossary and research.
   if (rel !== "GLOSSARY.md" && !rel.startsWith("research/"))
     for (const { n, s } of lines) {

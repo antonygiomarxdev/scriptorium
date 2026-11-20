@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus } from "../scripts/check.ts";
@@ -273,4 +273,24 @@ test("a request status must be Open, Accepted, Rejected or Merged into REQ-n", (
   expect(docStatus("Status: Open.", "REQUEST").status).toBe("missing");
   expect(docStatus("Status: Open until Friday", "REQUEST").status).toBe("missing");
   expect(docStatus("no status line", "REQUEST").status).toBe("missing");
+});
+
+test("approve, drift, status and clear work end to end from the command line", () => {
+  const root = project("Status: Draft\n\n" + SUM, "Status: Draft\n\n" + SUM);
+  const cli = (...a: string[]) => { const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: root }); return { code: r.exitCode, out: r.stdout.toString() }; };
+  const prd = "docs/inbox/PRD.md", product = "docs/PRODUCT.md";
+  expect(cli("approve", product, ".", "--date", "2026-11-17").code).toBe(0);
+  expect(cli("approve", prd, ".", "--date", "2026-11-17").code).toBe(0);
+  expect(cli("approve", prd, ".", "--date", "17-11-2026").code).toBe(2);
+  expect(cli("drift", ".").out).toContain("PASS drift");
+  // The parent changes: the PRD is suspect and status says so.
+  writeFileSync(join(root, product), readFileSync(join(root, product), "utf8") + "\nnew words\n");
+  const s = cli("status", ".");
+  expect(s.code).toBe(1);
+  expect(s.out).toContain("drifted: docs/PRODUCT.md: edited after approval");
+  expect(s.out).toContain("drifted: docs/inbox/PRD.md: suspect, ../PRODUCT.md changed");
+  expect(cli("clear", prd, ".").code).toBe(0);
+  expect(cli("history", prd).code).toBe(1); // not a git repository
+  expect(cli("history", "docs/nope.md").code).toBe(2);
+  expect(cli("trace", ".").code).toBe(2); // no test directory
 });

@@ -1,12 +1,13 @@
 # FRD-01: Book a slot
 
 Status: Approved (2026-11-18)
+Approval: content 8WxIQxWxLGQS; rests on ../PRD.md w_EvcZJdSWy4
 
 ## Summary
 
 A signed-in family picks a slot with free places and books it. Each family holds one booking per week (Monday to Sunday), a slot never takes more families than it has places, and a slot that has started cannot be booked. Messages follow the family's language. The examples below are the oracle the owner approved.
 
-Last change: 2026-11-18, added the started-slot rule after RETRO-1
+Last change: 2026-11-20, waived coverage: the example has no code
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -107,6 +108,20 @@ All three are listed with their checks in [INVARIANTS.md](../../INVARIANTS.md).
 
 ## Information
 A booking holds the family, the slot and its state. A slot holds its date, start time, places and free places. A family holds its name and language.
+
+- uncovered: EX-1 Larder is an example product with no code to test
+- uncovered: EX-2 Larder is an example product with no code to test
+- uncovered: EX-3 Larder is an example product with no code to test
+- uncovered: EX-4 Larder is an example product with no code to test
+- uncovered: EX-5 Larder is an example product with no code to test
+- uncovered: EX-6 Larder is an example product with no code to test
+- uncovered: EX-7 Larder is an example product with no code to test
+- uncovered: EX-8 Larder is an example product with no code to test
+- uncovered: EX-9 Larder is an example product with no code to test
+- uncovered: EX-10 Larder is an example product with no code to test
+- uncovered: ST-1 Larder is an example product with no code to test
+- uncovered: ST-2 Larder is an example product with no code to test
+- uncovered: ST-3 Larder is an example product with no code to test
 
 ## Open questions
 None.

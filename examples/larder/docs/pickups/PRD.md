@@ -1,6 +1,7 @@
 # Pickups PRD
 
 Status: Approved (2026-11-14)
+Approval: content w_EvcZJdSWy4; rests on ../PRODUCT.md u-zkqZ9JA_n6
 
 ## Summary
 
