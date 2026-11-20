@@ -1,0 +1,45 @@
+name: Version
+
+# On every push to main: while changesets are pending, keep a "Version Packages" pull request open.
+# When that pull request is merged (package.json carries a version with no tag yet), tag it and publish the GitHub release.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency: version-${{ github.ref }}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Open or update the Version Packages pull request
+        uses: changesets/action@v1
+        with:
+          version: bun run version
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag and release a version that has no tag yet
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(bun -e 'console.log(require("./package.json").version)')
+          TAG="v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG already released"; exit 0
+          fi
+          awk -v v="## $VERSION" '$0==v{on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" --title "Scriptorium $VERSION" --notes-file notes.md

@@ -1,6 +1,7 @@
 name: Release
 
-# A release is cut on purpose: `bun run version` and a commit, then `bun run release` pushes the tag.
+# Manual path only: `bun run release` pushes a tag. The usual path is version.yml, which tags and releases itself
+# (a tag pushed by GITHUB_TOKEN does not start this workflow).
 on:
   push:
     tags: ["v*"]

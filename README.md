@@ -101,7 +101,7 @@ bun test
 bun run typecheck
 ```
 
-Every change a user would notice adds a changeset (`bunx changeset`). Release: `bun run version` (bumps `package.json`, copies the version to `.claude-plugin/plugin.json`, writes `CHANGELOG.md`), commit, then `bun run release` (tags `vX.Y.Z` and pushes); the tag creates the GitHub release.
+Every change a user would notice adds a changeset (`bunx changeset`). Release: on every push to `main`, the Version workflow keeps a "Version Packages" pull request open while changesets are pending (it bumps `package.json`, copies the version to `.claude-plugin/plugin.json` and writes `CHANGELOG.md`). Merging it tags `vX.Y.Z` and publishes the GitHub release. `bun run version` and `bun run release` still work by hand.
 
 ## License
 
