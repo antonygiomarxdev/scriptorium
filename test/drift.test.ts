@@ -123,8 +123,25 @@ test("FRD-01/EX-11: clear is refused for an edited body and leaves the file byte
   expect(rd(prd)).toBe(before);
 });
 
+// covers: chain/FRD-02/ST-2
+test("a superseded document cannot be approved again: write a new document", () => {
+  const { root, prd } = project();
+  edit(prd, "Status: Draft", "Status: Superseded by ../PRODUCT.md (2026-11-21)");
+  refuses(() => approve(prd, root, "2026-11-22"), "no Status line");
+});
+
+// covers: chain/FRD-02/DT-3
+test("a superseded document is not checked for drift", () => {
+  const { root, prd } = approved();
+  edit(prd, "B.", "B changed.");
+  expect(driftReport(root).some((d) => d.path === prd)).toBe(true);
+  edit(prd, "Status: Approved (2026-11-21)", "Status: Superseded by ../PRODUCT.md (2026-11-21)");
+  expect(driftReport(root).some((d) => d.path === prd)).toBe(false);
+});
+
 // covers: chain/FRD-01/EX-12
 // covers: chain/FRD-01/ST-4
+// covers: chain/FRD-01/EX-12
 test("FRD-01/EX-12: clear is refused for a draft and leaves the file byte-identical", () => {
   const { root, prd } = project();
   refuses(() => clear(prd, root), "not approved: nothing to clear");

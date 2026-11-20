@@ -3,6 +3,7 @@
 //   bun scripts/trace.ts <docs root> <test dir>...     exit 0 pass, 1 fail ("FAIL <reason>"), 2 usage or unreadable path
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { toPosix } from "./paths.ts";
 
 export type Tag = { file: string; slice?: string; frd: string; id: string };
 
@@ -44,7 +45,7 @@ export function scanTags(...dirs: string[]): Tag[] {
   return tags;
 }
 
-type Frd = { slice: string; frd: string; path: string; approved: boolean; ids: string[]; waive: Record<string, string> };
+type Frd = { slice: string; frd: string; path: string; approved: boolean; superseded: boolean; ids: string[]; waive: Record<string, string> };
 
 function loadFrds(docsRoot: string): Frd[] {
   const out: Frd[] = [];
@@ -55,7 +56,7 @@ function loadFrds(docsRoot: string): Frd[] {
       const m = /^(FRD-\d+)-.*\.md$/.exec(f);
       if (!m) continue;
       const path = join(dir, f), text = readFileSync(path, "utf8");
-      out.push({ slice: s.name, frd: m[1]!, path, approved: /^Status:\s*Approved/m.test(text), ids: frdIds(text), waive: waivers(text) });
+      out.push({ slice: s.name, frd: m[1]!, path, approved: /^Status:\s*Approved/m.test(text), superseded: /^Status:\s*Superseded by /m.test(text), ids: frdIds(text), waive: waivers(text) });
     }
   }
   return out;
@@ -70,10 +71,11 @@ export function traceFails(docsRoot: string, testDirs: string[]): { fails: strin
     const cands = frds.filter((f) => f.frd === t.frd && (!t.slice || f.slice === t.slice));
     if (cands.length > 1) { fails.push("ambiguous tag " + name + at + ": write " + cands.map((c) => c.slice + "/" + t.frd + "/" + t.id).join(" or ")); continue; }
     const f = cands[0];
+    if (f?.superseded) continue; // L-15: a superseded FRD is out of the chain; its tags are neither dead nor coverage
     if (!f || !f.ids.includes(t.id)) { fails.push("dead tag " + name + at); continue; }
     covered.add(f); hit.add(f.path + "|" + t.id);
   }
-  for (const f of frds) {
+  for (const f of frds.filter((x) => !x.superseded)) {
     const name = (id: string) => f.frd + "/" + id;
     for (const [id, why] of Object.entries(f.waive)) {
       if (!f.ids.includes(id)) fails.push("waiver for an id the FRD does not define: " + name(id));
@@ -85,7 +87,7 @@ export function traceFails(docsRoot: string, testDirs: string[]): { fails: strin
       else if (f.approved) fails.push("uncovered: " + name(id) + " (" + relative(docsRoot, f.path) + ")");
     }
   }
-  return { fails, notes };
+  return { fails: fails.map(toPosix), notes: notes.map(toPosix) };
 }
 
 if (import.meta.main) {

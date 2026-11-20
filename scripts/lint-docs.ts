@@ -3,9 +3,10 @@
 //   bun scripts/lint-docs.ts [root]     exit 0 pass, 1 fail ("FAIL <file>:<line>: <reason>")
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
+import { toPosix } from "./paths.ts";
 
 // Line cap per document type.
-export const CAPS: Record<string, number> = { PRODUCT: 250, PRD: 150, FRD: 300, UX: 150, TP: 250, ADR: 80, SPEC: 250, REQUEST: 60, DECISIONS: 120 };
+export const CAPS: Record<string, number> = { PRODUCT: 250, PRD: 150, FRD: 300, UX: 150, TP: 250, ADR: 80, SPEC: 80, REQUEST: 60, DECISIONS: 120 };
 // Registry rows must fill this column.
 const REGISTRY: Record<string, string> = { DECISIONS: "Goes into", INVARIANTS: "Check", CHECKS: "Command", "CROSS-CUTTING": "Rule" };
 const COPY_WORDS = 12;
@@ -134,7 +135,12 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
 
   if (upstream.length && kind && ["FRD", "UX", "TP", "SPEC"].includes(kind)) {
     const seen = new Set(upstream.flatMap((u) => u.split(/\r?\n/).flatMap(sentences)));
-    for (const { n, s } of lines) for (const x of sentences(s)) if (seen.has(x)) f(n, "sentence copied from the PRD or PRODUCT (link the id instead): " + x.slice(0, 60) + "...");
+    let inRows = false; // L-15: a spec quotes its rows on purpose
+    for (const { n, s } of lines) {
+      if (/^## /.test(s)) inRows = kind === "SPEC" && /^## .*Rows/i.test(s);
+      if (inRows) continue;
+      for (const x of sentences(s)) if (seen.has(x)) f(n, "sentence copied from the PRD or PRODUCT (link the id instead): " + x.slice(0, 60) + "...");
+    }
   }
   return fails;
 }
@@ -148,7 +154,7 @@ export function lintDocs(root: string, phrases: string[]): Fail[] {
   const product = read(join(docs, "PRODUCT.md"));
   const avoid = avoidWords(read(join(docs, "GLOSSARY.md")) ?? "");
   for (const p of walk(docs)) {
-    const rel = relative(docs, p).replaceAll("\\", "/");
+    const rel = toPosix(relative(docs, p));
     const slice = rel.split("/")[0];
     const prd = rel.includes("/") ? read(join(docs, slice, "PRD.md")) : undefined;
     fails.push(...lintFile(rel, readFileSync(p, "utf8"), phrases, [product, prd].filter((x): x is string => !!x), dirname(p), avoid, root));

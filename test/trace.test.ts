@@ -88,6 +88,28 @@ test("EX-22, EX-23: a short tag is ambiguous when two slices share the FRD numbe
   expect(run(fixture(APPROVED, ROWS, { "a.ts": cov("nope/FRD-01/EX-1", "FRD-01/EX-2") })).fails.some((x) => x.startsWith("dead tag nope/FRD-01/EX-1"))).toBe(true);
 });
 
+// covers: chain/FRD-02/EX-16
+// covers: chain/FRD-02/DT-3
+test("a superseded FRD is skipped: no coverage demanded, its tags are not dead, nothing is noted", () => {
+  const rows = ROWS + "\n| DT-1 | c |";
+  const live = fixture(APPROVED, rows, { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2") });
+  expect(run(live).fails).toEqual([]);
+  const sup = fixture("Superseded by ../PRD.md (2026-11-21)", rows, { "a.ts": cov("FRD-01/EX-9") });
+  expect(run(sup)).toEqual({ fails: [], notes: [] });
+  const mutant = fixture("Draft", rows, { "a.ts": cov("FRD-01/EX-9") });
+  expect(run(mutant).fails.some((f) => f.includes("dead tag"))).toBe(true);
+});
+
+// covers: chain/FRD-02/EX-21
+test("failures name paths with forward slashes only", () => {
+  const f = fixture(APPROVED, ROWS, { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-9") });
+  const out = run(f);
+  expect(out.fails.length).toBeGreaterThan(1);
+  expect(out.fails.some((x) => x.includes("chain/frd/FRD-01-x.md"))).toBe(true);
+  expect(out.fails.join("\n")).not.toContain("\\");
+  expect(run(fixture(APPROVED, ROWS + "\n| DT-1 | c |", { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2") })).notes.join("")).not.toContain("\\");
+});
+
 test("DT ids are reported, never failed", () => {
   const f = fixture(APPROVED, ROWS + "\n| DT-1 | c |", { "a.ts": cov("FRD-01/EX-1", "FRD-01/EX-2") });
   const r = run(f);

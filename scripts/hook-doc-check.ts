@@ -2,9 +2,10 @@
 // L-12 layer 1, PostToolUse on Write|Edit|MultiEdit: after the agent edits a chain document, run that document's
 // check and the docs lint on it. Hook input (JSON) arrives on stdin; failures go to stderr with exit 2 so the agent sees them.
 // The same functions serve the Stop hook, the git pre-commit hook and CI (see hook-stop.ts, pre-commit.ts).
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { lintDocs, loadPhrases } from "./lint-docs.ts";
+import { toPosix } from "./paths.ts";
 
 const CHECK = join(import.meta.dir, "check.ts");
 
@@ -14,7 +15,7 @@ export type Check = { args?: string[]; only?: string; fail?: string };
 // root is the folder holding docs/, rel the document's path under it ("docs/pickups/PRD.md").
 // shortcut: the last "/docs/" in the path is the docs folder, wrong for a project nested inside a folder that is itself named docs.
 export function splitDocPath(file: string): { root: string; rel: string } | undefined {
-  const p = file.replaceAll("\\", "/");
+  const p = toPosix(file);
   const i = p.lastIndexOf("/docs/");
   return i < 0 || !p.endsWith(".md") ? undefined : { root: p.slice(0, i) || "/", rel: p.slice(i + 1) };
 }
@@ -39,12 +40,7 @@ export function checksFor(root: string, rel: string): Check[] {
   if (sub === "frd" && /^FRD-\d{2}-/.test(name)) return [{ args: ["frd", dir, id], only: name }, summary];
   if (sub === "ux" && /^UX-\d{2}-/.test(name)) return [{ args: ["ux", dir], only: name }, summary];
   if (sub === "tp" && /^TP-\d{2}-/.test(name)) return [{ args: ["tp", rel, "docs/adr"] }, summary];
-  if (sub === "specs" && /^SPEC-\d{2}-/.test(name)) {
-    const nn = name.slice(5, 7);
-    const frdDir = join(root, dir, "frd");
-    const frd = existsSync(frdDir) ? readdirSync(frdDir).find((f) => f.startsWith("FRD-" + nn + "-")) : undefined;
-    return [frd ? { args: ["spec", rel, dir + "/frd/" + frd] } : { fail: name + ": no FRD-" + nn + "-*.md in " + dir + "/frd" }, summary];
-  }
+  if (sub === "specs" && /^SPEC-\d{2}-/.test(name)) return [{ args: ["spec", rel] }, summary];
   return [];
 }
 
@@ -87,7 +83,7 @@ export const runTrace = (root: string): string[] => (existsSync(join(root, "test
 export function changedDocs(root: string): string[] {
   const git = (...a: string[]) => Bun.spawnSync(["git", ...a], { cwd: root }).stdout.toString().split(/\r?\n/).filter(Boolean);
   const files = new Set([...git("diff", "--name-only", "--relative", "HEAD"), ...git("diff", "--cached", "--name-only", "--relative"), ...git("ls-files", "--others", "--exclude-standard")]);
-  return [...files].map((f) => f.replaceAll("\\", "/")).filter((f) => f.startsWith("docs/") && f.endsWith(".md") && existsSync(join(root, f))).sort();
+  return [...files].map((f) => toPosix(f)).filter((f) => f.startsWith("docs/") && f.endsWith(".md") && existsSync(join(root, f))).sort();
 }
 
 // What the Stop hook runs: the per-document checks on the changed documents, plus the chain status.

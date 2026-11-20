@@ -61,7 +61,7 @@ test("each document type has a line cap", () => {
     expect(has(reasons(rel, lines(CAPS[kind])).filter((x) => x.includes("cap")), "cap")).toBe(false);
     expect(has(reasons(rel, lines(CAPS[kind] + 1)), kind + " is " + (CAPS[kind] + 1) + " lines, over its cap of " + CAPS[kind])).toBe(true);
   }
-  expect(CAPS).toEqual({ PRODUCT: 250, PRD: 150, FRD: 300, UX: 150, TP: 250, ADR: 80, SPEC: 250, REQUEST: 60, DECISIONS: 120 });
+  expect(CAPS).toEqual({ PRODUCT: 250, PRD: 150, FRD: 300, UX: 150, TP: 250, ADR: 80, SPEC: 80, REQUEST: 60, DECISIONS: 120 });
 });
 
 test("registry rows need their column filled: Goes into, Check, Command, Rule", () => {
@@ -88,6 +88,10 @@ test("a downstream document may not copy a 12-word sentence from its PRD or PROD
   expect(has(reasons("a/specs/SPEC-01-a.md", frd, [LONG]), "sentence copied")).toBe(true);
   expect(has(reasons("a/frd/FRD-01-a.md", "# F\n## A\nThe pantry must show every family the pickup slots.\n", ["The pantry must show every family the pickup slots."]), "copied")).toBe(false); // under 12 words
   expect(has(reasons("a/PRD.md", frd, [LONG]), "copied")).toBe(false); // the PRD itself is not downstream
+  const rows = "# S\n## Rows\n" + LONG + "\n## Build\nok\n";
+  expect(has(reasons("a/specs/SPEC-01-a.md", rows, [LONG]), "sentence copied")).toBe(false); // a spec quotes its Rows
+  expect(has(reasons("a/specs/SPEC-01-a.md", rows.replace("## Rows", "## Other"), [LONG]), "sentence copied")).toBe(true);
+  expect(has(reasons("a/frd/FRD-01-a.md", rows, [LONG]), "sentence copied")).toBe(true); // only a spec
 });
 
 test("lintDocs finds the PRD of the slice and PRODUCT for the copy rule", () => {

@@ -3,6 +3,7 @@
 //   bun scripts/summary-diff.ts <base ref> [PR body file]     (PR body also read from env PR_BODY)
 // Waiver: a PR body line "Summary unchanged: <file or all>, <reason>".
 import { readFileSync, existsSync } from "node:fs";
+import { typed } from "./paths.ts";
 
 // Registries and archives have no Summary to keep.
 const SKIP = /(^|\/)(GLOSSARY|INVARIANTS|CROSS-CUTTING|CHECKS|DECISIONS|RETRO)\.md$|(^|\/)(research|retro|decisions)\//;
@@ -28,7 +29,7 @@ export const staleSummary = (base: string | undefined, head: string) => {
 export const waived = (prBody: string, file: string) =>
   prBody.split(/\r?\n/).some((l) => {
     const m = /^\s*Summary unchanged:([^,]*)/i.exec(l);
-    return !!m && m[1].trim().split(/\s+/).some((t) => t.toLowerCase() === "all" || t.replaceAll("\\", "/") === file);
+    return !!m && m[1].trim().split(/\s+/).some((t) => t.toLowerCase() === "all" || typed(t) === file);
   });
 
 if (import.meta.main) {

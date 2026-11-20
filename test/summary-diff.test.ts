@@ -25,6 +25,9 @@ test("the waiver names the file or all, and needs a reason", () => {
   expect(waived("Summary unchanged: docs/a/PRD.md.bak, typo", "docs/a/PRD.md")).toBe(false);
   expect(waived("Summary unchanged: docs/b/FRD.md docs/a/PRD.md, typo", "docs/a/PRD.md")).toBe(true);
   expect(waived("nothing", "docs/a/PRD.md")).toBe(false);
+  // covers: chain/FRD-02/EX-24
+  expect(waived("Summary unchanged: docs\\a\\PRD.md, typo", "docs/a/PRD.md")).toBe(true); // typed with backslashes
+  expect(waived("Summary unchanged: docs\\b\\PRD.md, typo", "docs/a/PRD.md")).toBe(false);
 });
 
 // A temp git repo: base commit holds docs/a/PRD.md, a branch edits it.

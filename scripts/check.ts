@@ -4,7 +4,9 @@
 //   bun scripts/check.ts frd <docs/slice> <SLICE_ID>
 //   bun scripts/check.ts ux <docs/slice>
 //   bun scripts/check.ts tp <TP.md> <adr dir> [--root docs]
-//   bun scripts/check.ts spec <SPEC.md> <FRD.md>
+//   bun scripts/check.ts spec <SPEC.md>
+//   bun scripts/check.ts excerpt <file> <ID>...   print the rows of a file that a spec quotes
+//   bun scripts/check.ts done <SPEC.md>           run the command of Done when, if the spec is approved
 //   bun scripts/check.ts status [root]
 //   bun scripts/check.ts summary <file>
 //   bun scripts/check.ts approve <doc> [root] [--date YYYY-MM-DD]   write Status and the Approval record (default: today)
@@ -13,7 +15,8 @@
 //   bun scripts/check.ts trace [root] [test dir]...  covers tags against the ids the FRDs define (default test dir: test)
 //   bun scripts/check.ts history <doc>             one line per commit, from git
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { fromDoc, toPosix } from "./paths.ts";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
 import { history } from "./history.ts";
@@ -25,8 +28,9 @@ const TECH = /\b(Bun|Node(\.js)?|TypeScript|Python|SQLite|Postgres|MySQL|Redis|J
 export const RESERVED = ["requests", "tp", "adr", "retro", "decisions", "research"];
 const VAGUE = /^(fast|quick|secure|easy|simple|robust|user-friendly|good|nice)\.?$/i;
 
-const STATUS = /^\**Status:?\**\s*(Draft\b|Approved \(\d{4}-\d{2}-\d{2}\))/im;
-const NO_STATUS = "no Status line (Status: Draft or Status: Approved (YYYY-MM-DD))";
+const STATUS = /^\**Status:?\**\s*(Draft\b|Approved \(\d{4}-\d{2}-\d{2}\)|Superseded by \S.*? \(\d{4}-\d{2}-\d{2}\))/im;
+const SUPERSEDED = /^\**Status:?\**\s*Superseded by (\S.*?) \(\d{4}-\d{2}-\d{2}\)\s*$/im;
+const NO_STATUS = "no Status line (Status: Draft, Status: Approved (YYYY-MM-DD) or Status: Superseded by <path> (YYYY-MM-DD))";
 
 const missing = (text: string, heads: string[]) =>
   heads.filter((h) => !new RegExp("^## .*" + h, "mi").test(text)).map((h) => "missing section: ## " + h);
@@ -186,32 +190,61 @@ export function checkTp(text: string, adrDir: string, knownFrs: Set<string>): st
 
 const defsIn = (frd: string, head: string, re: RegExp) => [...idsIn(section(frd, head) ?? "", re)];
 
-// A spec turns one TP into files, interfaces and ordered ATDD tasks. It decides nothing new.
-// frd: the text of the FRD it implements; every EX, DT, ST and INV the FRD defines needs a task that tests it first.
-export function checkSpec(text: string, frd: string): string[] {
+// A small spec (L-15): one agent run. It rests on one parent, quotes the rows it builds verbatim, names the tests first and one command.
+const SPEC_ID = /\b[A-Z]+(?:-[A-Z0-9]+)*-\d+\b/g;
+const DOC_ID = /^(SPEC|FRD|TP|ADR|REQ|UX|PRD|R)-/;
+const PARENT_OK = /^(FRD-\d+-.+|TP(-\d+-.+)?|ADR-\d+-.+|REQ-\d+-.+)\.md$|^(CHECKS|INVARIANTS|CROSS-CUTTING)\.md$/;
+const REGISTRY = /^(CHECKS|INVARIANTS|CROSS-CUTTING)\.md$/;
+const isSep = (l: string) => /^[\s|:-]+$/.test(l);
+
+// Path after "Rests on:" in the first 20 lines.
+export const restsOn = (text: string): string | undefined => /^Rests on:\s*`?([^\s`]+)/m.exec(text.split(/\r?\n/).slice(0, 20).join("\n"))?.[1];
+
+// The row lines of a Rows section: table rows and bullets, minus the "Quoted from:" line and table separators.
+const rowLines = (body: string) => body.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l) && !/Quoted from:/.test(l));
+
+export function checkSpec(text: string, specPath: string): string[] {
   const fails: string[] = [];
   if (!STATUS.test(text)) fails.push(NO_STATUS);
-  fails.push(...checkSummary(text), ...missing(text, ["Context", "Files", "Interfaces", "Data", "Tasks", "Out of scope"]));
+  fails.push(...checkSummary(text), ...missing(text, ["Rows", "Files", "Tests first", "Build", "Done when", "Out of scope", "Open questions"]));
   if (/^### TD-\d+/m.test(text) || /^\s*[-*]\s+\*\*Option\b/im.test(text)) fails.push("makes a decision (TD or Option): decisions belong in the TP and an ADR");
-  const tasks = text.split(/^### (?=Task \d+)/m).slice(1);
-  if (!tasks.length) fails.push("no tasks written as ### Task n: title");
-  const tested = new Set<string>();
-  for (const t of tasks) {
-    const id = t.match(/^Task \d+/)![0];
-    const first = t.match(/^\s*[-*]\s+\*\*Tests first:?\*\*:?([\s\S]*?)(?=^\s*[-*]\s+\*\*|$(?![\s\S]))/im);
-    if (!first) fails.push(id + ': no "Tests first:" line');
-    else for (const m of first[1].matchAll(/\b(EX|DT|ST|INV)-\d+\b/g)) tested.add(m[0]);
-    if (!/^\s*[-*]\s+\*\*Done when:?\*\*/im.test(t)) fails.push(id + ': no "Done when:" line');
-  }
-  const defs = [
-    ...defsIn(frd, "Rules and examples", /\bEX-\d+\b/g),
-    ...defsIn(frd, "Decision table", /\bDT-\d+\b/g),
-    ...defsIn(frd, "States", /\bST-\d+\b/g),
-    ...defsIn(frd, "Invariants", /\bINV-\d+\b/g),
-  ];
-  for (const d of defs) if (!tested.has(d)) fails.push(d + " has no task whose Tests first line cites it");
   if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
+  const on = restsOn(text);
+  const parent = on ? fromDoc(specPath, on) : undefined;
+  if (!on) fails.push('no "Rests on: <path>" line in the first 20 lines');
+  else if (!existsSync(parent!)) fails.push("Rests on " + on + ", which does not exist");
+  else if (!PARENT_OK.test(basename(parent!))) fails.push("Rests on " + on + ": a spec rests on an FRD, a TP, an ADR, a request, or CHECKS.md, INVARIANTS.md or CROSS-CUTTING.md");
+  const rowsBody = section(text, "Rows") ?? "";
+  const from = /^Quoted from:\s*`?([^\s`]+)/m.exec(rowsBody)?.[1];
+  const quoted = from ? fromDoc(specPath, from) : parent;
+  const rows = rowLines(rowsBody);
+  if (!rows.length) fails.push("Rows holds no quoted row lines");
+  if (quoted && existsSync(quoted)) {
+    const have = new Set(readFileSync(quoted, "utf8").split(/\r?\n/).map((l) => l.trimEnd()));
+    for (const r of rows) if (!have.has(r)) fails.push("quoted row not found verbatim in " + (from ?? on) + ": " + r.trim().slice(0, 60));
+  } else if (from || on) fails.push("Quoted from " + (from ?? on) + ", which does not exist");
+  // Document ids (SPEC-, FRD-, R-<SLICE>-n ...) name other documents; they are never row ids.
+  const rowIds = new Set(rows.flatMap((r) => (r.trim().startsWith("|") ? r.trim().slice(1).split("|")[0]! : r).match(SPEC_ID)?.slice(0, 1) ?? []).filter((i) => !DOC_ID.test(i)));
+  const tested = new Set((section(text, "Tests first")?.match(SPEC_ID) ?? []).filter((i) => !DOC_ID.test(i)));
+  for (const id of rowIds) if (!tested.has(id)) fails.push(id + " is in Rows but Tests first does not cite it");
+  for (const id of tested) if (!rowIds.has(id)) fails.push(id + " is in Tests first but not in Rows");
+  const files = (section(text, "Files") ?? "").split(/\r?\n/).filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l));
+  const nFiles = files.filter((l) => !l.trim().startsWith("|")).length + Math.max(0, files.filter((l) => l.trim().startsWith("|")).length - 1);
+  if (nFiles > 3) fails.push("Files lists " + nFiles + " rows; the cap is 3");
+  const cmds = (section(text, "Done when") ?? "").match(/`[^`\n]+`/g) ?? [];
+  if (cmds.length !== 1) fails.push("Done when must hold exactly one backticked command, found " + cmds.length);
   return fails;
+}
+
+// Rows of file whose first cell (or bullet id) is one of ids; ids with no row come back in missingIds.
+export function excerpt(text: string, ids: string[]): { lines: string[]; missingIds: string[] } {
+  const lines: string[] = [], missingIds: string[] = [];
+  const all = text.split(/\r?\n/).map((l) => l.trimEnd());
+  for (const id of ids) {
+    const hit = all.filter((l) => new RegExp("^\\s*(\\||[-*]\\s+)\\s*\\**\\s*" + id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b").test(l));
+    if (hit.length) lines.push(...hit); else missingIds.push(id);
+  }
+  return { lines, missingIds };
 }
 
 export function checkAdr(text: string, name: string): string[] {
@@ -250,9 +283,9 @@ function frIds(root: string): Set<string> {
 // is present; anything else counts as a draft. ADRs use "## Status" followed by Proposed|Accepted|Superseded|Rejected,
 // requests "Status: Open|Accepted|Rejected|Merged into REQ-m".
 // A document may be approved only if the document it rests on is approved and no Q-n is left in its Open questions.
-export type Doc = { path: string; kind: string; approved: boolean; status: string; parent?: string; also?: string[] };
+export type Doc = { path: string; kind: string; approved: boolean; status: string; by?: string; parent?: string; also?: string[] };
 
-export function docStatus(text: string, kind: string): { approved: boolean; status: string } {
+export function docStatus(text: string, kind: string): { approved: boolean; status: string; by?: string } {
   if (kind === "ADR") {
     const s = text.match(/^## Status\s*\n+\s*(\w+)/m)?.[1] ?? "missing";
     return { approved: s === "Accepted", status: s };
@@ -264,6 +297,8 @@ export function docStatus(text: string, kind: string): { approved: boolean; stat
   }
   const m = text.match(/^\**Status:?\**\s*Approved \((\d{4}-\d{2}-\d{2})\)/im);
   if (m) return { approved: true, status: "Approved " + m[1] };
+  const by = SUPERSEDED.exec(text)?.[1];
+  if (by) return { approved: false, status: "Superseded", by };
   return /^\**Status:?\**\s*Draft\b/im.test(text) ? { approved: false, status: "Draft" } : { approved: false, status: "missing" };
 }
 
@@ -276,6 +311,7 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     const d = { path, kind, parent, also, ...docStatus(text, kind) };
     docs.push(d);
     if (d.status === "missing" && kind !== "ADR") fails.push(path + ": " + NO_STATUS);
+    if (d.by && !existsSync(fromDoc(path, d.by))) fails.push(path + ": superseded by " + d.by + ", which does not exist");
     if (d.approved && kind !== "ADR" && kind !== "REQUEST" && /\bQ-\d+\b/.test(section(text, "Open questions") ?? ""))
       fails.push(path + ": approved, but its Open questions section still holds a Q-n");
   };
@@ -295,7 +331,11 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     for (const f of ls(join(d, "frd"), /^FRD-\d{2}-.*\.md$/)) add(join(d, "frd", f), "FRD", prd);
     for (const f of ls(join(d, "ux"), /^UX-\d{2}-.*\.md$/)) add(join(d, "ux", f), "UX", sib("frd", "FRD", f.slice(3, 5)));
     for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) { add(join(d, "tp", f), "TP", sib("frd", "FRD", f.slice(3, 5)), [crossTp]); }
-    for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) add(join(d, "specs", f), "SPEC", sib("tp", "TP", f.slice(5, 7)));
+    for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) {
+      const sp = join(d, "specs", f), on = restsOn(readFileSync(sp, "utf8"));
+      add(sp, "SPEC", on ? fromDoc(sp, on) : undefined);
+      if (!on) fails.push(sp + ': no "Rests on: <path>" line in the first 20 lines');
+    }
   }
   // An ADR has no parent: it may be Accepted while its TP is a draft. The TP is what waits for its ADRs (below).
   for (const f of ls(join(dd, "adr"), /^ADR-\d{3}-.*\.md$/)) add(join(dd, "adr", f), "ADR");
@@ -306,7 +346,9 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     for (const par of [x.parent, ...(x.also ?? [])]) {
       if (!par) continue;
       const p = byPath.get(par);
+      if (!p && REGISTRY.test(basename(par)) && existsSync(par)) continue; // L-15: a registry counts as approved
       if (!p) fails.push(x.path + ": approved, but the document it rests on (" + par + ") does not exist");
+      else if (p.status === "Superseded") fails.push(x.path + ": approved, but " + p.path + " is superseded by " + p.by);
       else if (!p.approved) fails.push(x.path + ": approved, but " + p.path + " is still " + p.status);
     }
     // A TP is approved only when every ADR it cites ("ADR: ADR-NNN") is Accepted.
@@ -316,7 +358,7 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
         if (a && !a.approved) fails.push(x.path + ": approved, but " + id + " is still " + a.status);
       }
   }
-  return { docs, fails };
+  return { docs, fails: fails.map(toPosix) };
 }
 
 // Principles are the numbered list under the "Principles" heading of PRODUCT.md.
@@ -331,7 +373,9 @@ const USAGE = [
   "check.ts frd <docs/slice> <SLICE_ID>",
   "check.ts ux <docs/slice>",
   "check.ts tp <TP.md> <adr dir> [--root docs]",
-  "check.ts spec <SPEC.md> <FRD.md>",
+  "check.ts spec <SPEC.md>",
+  "check.ts excerpt <file> <ID>...",
+  "check.ts done <SPEC.md>",
   "check.ts status [root]",
   "check.ts summary <file>",
   "check.ts approve|clear <doc> [root]",
@@ -346,7 +390,7 @@ if (import.meta.main) {
   const opt = (name: string, dflt: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
   const usage = (): never => { console.error("usage:\n  " + USAGE.join("\n  ")); process.exit(2); };
   const finish = (fails: string[], ok: string): never => {
-    if (fails.length) { for (const f of fails) console.log("FAIL", f.replaceAll("\\", "/")); process.exit(1); }
+    if (fails.length) { for (const f of fails) console.log("FAIL", toPosix(f)); process.exit(1); }
     console.log("PASS " + ok);
     process.exit(0);
   };
@@ -355,7 +399,7 @@ if (import.meta.main) {
   if (kind === "status") {
     const root = a && !a.startsWith("--") ? a : ".";
     const { docs, fails: chainFails } = chainStatus(root);
-    const rel = (p: string) => relative(root, p).replaceAll("\\", "/");
+    const rel = (p: string) => toPosix(relative(root, p));
     const drift = driftFails(root);
     const fails = [...chainFails, ...drift.fails];
     console.log("| Document | Kind | Status |\n|---|---|---|");
@@ -363,7 +407,7 @@ if (import.meta.main) {
     console.log("\n" + docs.filter((d) => d.approved).length + " of " + docs.length + " approved or accepted.");
     for (const d of driftReport(root).filter((x) => x.cause !== "missing"))
       console.log("drifted: " + rel(d.path) + ": " + (d.cause === "body" ? "edited after approval" : "suspect, " + d.parent + " changed"));
-    for (const w of drift.warnings) console.log("WARN", w.replaceAll("\\", "/"));
+    for (const w of drift.warnings) console.log("WARN", toPosix(w));
     finish(fails, "status");
   }
   if (kind === "approve" || kind === "clear") {
@@ -375,13 +419,13 @@ if (import.meta.main) {
         approve(a, b && !b.startsWith("--") ? b : ".", date);
       }
       else clear(a, b ?? ".");
-    } catch (e) { console.log("FAIL", a.replaceAll("\\", "/") + ": " + (e as Error).message); process.exit(1); }
+    } catch (e) { console.log("FAIL", toPosix(a) + ": " + (e as Error).message); process.exit(1); }
     console.log("PASS " + kind + " " + a);
     process.exit(0);
   }
   if (kind === "drift") {
     const r = driftFails(a ?? ".");
-    for (const w of r.warnings) console.log("WARN", w.replaceAll("\\", "/"));
+    for (const w of r.warnings) console.log("WARN", toPosix(w));
     finish(r.fails, "drift");
   }
   if (kind === "trace") {
@@ -415,9 +459,26 @@ if (import.meta.main) {
     finish(fails, a + ": " + (text.split(/^### (?=TD-\d+)/m).length - 1) + " decisions, " + adrFiles.length + " ADRs");
   }
   if (kind === "spec") {
-    if (!a || !b) usage();
+    if (!a) usage();
+    finish(checkSpec(read(a), a), a + ": spec");
+  }
+  if (kind === "excerpt") {
+    if (!a || args.length < 3) usage();
+    const r = excerpt(read(a), args.slice(2));
+    if (r.missingIds.length) finish(r.missingIds.map((i) => a + ": no row with id " + i), "");
+    console.log(r.lines.join("\n"));
+    process.exit(0);
+  }
+  if (kind === "done") {
+    if (!a) usage();
     const text = read(a);
-    finish(checkSpec(text, read(b)), a + ": " + (text.split(/^### (?=Task \d+)/m).length - 1) + " tasks");
+    if (!docStatus(text, "SPEC").approved) finish([a + ": not approved, so not run"], "");
+    const cmds = (section(text, "Done when") ?? "").match(/`([^`\n]+)`/g) ?? [];
+    if (cmds.length !== 1) finish([a + ": Done when must hold exactly one backticked command"], "");
+    const cmd = cmds[0]!.slice(1, -1);
+    // Bun's own shell: the same globs and quoting on every system.
+    const r = await Bun.$`${{ raw: cmd }}`.nothrow();
+    process.exit(r.exitCode);
   }
   if (kind === "prd") {
     if (!a || !b) usage();

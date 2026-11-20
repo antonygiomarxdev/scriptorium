@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { chainStatus } from "./check.ts";
+import { toPosix } from "./paths.ts";
 
 const STATUS = /^\**Status:?\**\s*(Draft|Approved)/i;
 const APPROVAL = /^Approval: /;
@@ -17,7 +18,7 @@ export function normalize(text: string): string {
 export const fingerprint = (text: string): string => createHash("sha256").update(normalize(text)).digest("base64url").slice(0, 12);
 
 const read = (p: string) => readFileSync(p, "utf8");
-const rel = (from: string, to: string) => relative(dirname(from), to).replace(/\\/g, "/");
+const rel = (from: string, to: string) => toPosix(relative(dirname(from), to));
 
 // The documents a document rests on, as chainStatus sees them (existing files only).
 export function parents(docPath: string, root: string): string[] {

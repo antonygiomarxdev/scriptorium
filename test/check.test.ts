@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus } from "../scripts/check.ts";
+import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus, excerpt } from "../scripts/check.ts";
 
 const SUM = "## Summary\n\ns\n\nLast change: 2026-11-20, written\n";
 
@@ -99,7 +99,7 @@ test("n/a needs a real reason: a placeholder fails, a reason passes, in DT/ST/IN
 });
 
 test("PRD, FRD, UX and TP need a valid Status line; spec needs a Last change line in its Summary", () => {
-  const NS = "no Status line (Status: Draft or Status: Approved (YYYY-MM-DD))";
+  const NS = "no Status line (Status: Draft, Status: Approved (YYYY-MM-DD) or Status: Superseded by <path> (YYYY-MM-DD))";
   expect(checkPrd(PRD.replace("Status: Draft", "Status: Aproved"), "INBOX", PRODUCT)).toContain(NS);
   expect(checkPrd(PRD.replace("Status: Draft", "Status: Approved (2026-11-20)"), "INBOX", PRODUCT)).toEqual([]);
   expect(fr(FRD.replace("Status: Draft", ""))).toContain("FRD-01-a.md: " + NS);
@@ -161,30 +161,129 @@ test("an ADR needs its sections and a valid status", () => {
   expect(checkAdr(ADR.replace("## Options considered", "## Other"), "a")).toContain("a: missing section: ## Options considered");
 });
 
-const SPEC = "# Spec\n\nStatus: Draft\n\n" + SUM + "\n## Context\nc\n## Files\nf\n## Interfaces\ni\n## Data\nNone\n## Tasks\n### Task 1: a\n" +
-  "- **Tests first:** EX-1, EX-2, DT-1, INV-1\n- **Build:** b\n- **Done when:** bun test\n## Out of scope\nn\n";
-// The FRD above defines EX-1, EX-2, DT-1 and INV-1; its States section is n/a.
+const FRD_ROWS = "| EX-1 | a | b |\n| EX-2 | c | d |\n";
+const SPEC = "# Spec\n\nStatus: Draft\nRests on: ../frd/FRD-01-a.md\n\n" + SUM + "\n## Rows\nQuoted from: ../frd/FRD-01-a.md\n" + FRD_ROWS +
+  "\n## Files\n| File | Change |\n|---|---|\n| a.ts | new |\n\n## Tests first\nEX-1, EX-2\n\n## Build\nb\n\n## Done when\n`bun test`\n\n## Out of scope\nn\n\n## Open questions\nNone\n";
 
-test("spec: tests-first tasks cover every id the FRD defines and decide nothing", () => {
-  expect(checkSpec(SPEC, FRD)).toEqual([]);
-  expect(checkSpec(SPEC.replace("EX-2, ", ""), FRD)).toContain("EX-2 has no task whose Tests first line cites it");
-  expect(checkSpec(SPEC.replace("DT-1, ", ""), FRD)).toContain("DT-1 has no task whose Tests first line cites it");
-  expect(checkSpec(SPEC.replace(", INV-1", "").replace("- **Build:**", "- **Build:** INV-1"), FRD)).toContain("INV-1 has no task whose Tests first line cites it");
-  expect(checkSpec(SPEC.replace("## Out of scope", "### TD-1: x\n## Out of scope"), FRD).some((f) => f.includes("makes a decision"))).toBe(true);
+// A project with the FRD rows on disk; returns the spec path.
+function specAt(parent = FRD_ROWS + "other | row\n", files: Record<string, string> = {}) {
+  const root = project("Status: Draft\n", parent, files);
+  return join(root, "docs", "inbox", "specs", "SPEC-01-1-a.md");
+}
+const sp = (text: string, parent?: string) => { const p = specAt(parent); mkdirSync(join(p, ".."), { recursive: true }); return checkSpec(text, p); };
+
+// covers: chain/FRD-02/EX-1
+test("spec: a good small spec passes", () => expect(sp(SPEC)).toEqual([]));
+
+// covers: chain/FRD-02/EX-2
+// covers: chain/FRD-02/EX-3
+test("spec: Rests on names an existing parent of a known kind", () => {
+  expect(sp(SPEC.replace("Rests on: ../frd/FRD-01-a.md\n", ""))).toContain('no "Rests on: <path>" line in the first 20 lines');
+  expect(sp(SPEC.replace("Rests on: ../frd/FRD-01-a.md", "Rests on: ../frd/FRD-09-a.md")).some((f) => f.includes("which does not exist"))).toBe(true);
+  expect(sp(SPEC.replace("Rests on: ../frd/FRD-01-a.md", "Rests on: ../PRD.md").replace("Quoted from: ../frd/FRD-01-a.md\n", "")).some((f) => f.includes("a spec rests on an FRD"))).toBe(true);
+  const reg = checkSpec(SPEC.replace("Rests on: ../frd/FRD-01-a.md", "Rests on: ../../CHECKS.md"), specAt(undefined, { "docs/CHECKS.md": "x\n" }));
+  expect(reg.some((f) => f.includes("a spec rests on"))).toBe(false);
 });
 
-test("spec: ST ids of the FRD must be tested too", () => {
-  const frd = FRD.replace("n/a: no lifecycle", "ST-1 open to closed");
-  expect(checkSpec(SPEC, frd)).toContain("ST-1 has no task whose Tests first line cites it");
-  expect(checkSpec(SPEC.replace("INV-1", "INV-1, ST-1"), frd)).toEqual([]);
+// covers: chain/FRD-02/EX-4
+// covers: chain/FRD-02/EX-5
+// covers: chain/FRD-02/EX-2
+test("spec: a Rests on line after line 20 does not count, and an empty Rows fails", () => {
+  const late = SPEC.replace("Rests on: ../frd/FRD-01-a.md\n", "").replace("## Summary", "\n".repeat(20) + "Rests on: ../frd/FRD-01-a.md\n## Summary");
+  expect(sp(late)).toContain('no "Rests on: <path>" line in the first 20 lines');
+  expect(sp(SPEC.replace(FRD_ROWS, "")).some((f) => f.includes("Rows holds no quoted row lines"))).toBe(true);
 });
 
-test("spec: needs Status, sections, Done when and no TBD", () => {
-  expect(checkSpec(SPEC.replace("Status: Draft", "Status: Done"), FRD)).toContain("no Status line (Status: Draft or Status: Approved (YYYY-MM-DD))");
-  expect(checkSpec(SPEC.replace("## Data", "## Other"), FRD)).toContain("missing section: ## Data");
-  expect(checkSpec(SPEC.replace("- **Done when:** bun test\n", ""), FRD)).toContain('Task 1: no "Done when:" line');
-  expect(checkSpec(SPEC.replace("- **Tests first:**", "- **Tests:**"), FRD)).toContain('Task 1: no "Tests first:" line');
-  expect(checkSpec(SPEC.replace("None", "TBD"), FRD)).toContain("contains TBD or TODO");
+test("spec: quoted rows must appear verbatim, and Quoted from defaults to the parent", () => {
+  expect(sp(SPEC.replace("Quoted from: ../frd/FRD-01-a.md\n", ""))).toEqual([]);
+  expect(sp(SPEC.replace("| EX-2 | c | d |", "| EX-2 | c | changed |")).some((f) => f.includes("not found verbatim") && f.includes("EX-2"))).toBe(true);
+  expect(sp(SPEC.replace("| EX-2 | c | d |", "| EX-2 | c | d |   "))).toEqual([]); // trailing space trimmed
+  expect(sp(SPEC.replace("Quoted from: ../frd/FRD-01-a.md", "Quoted from: ../frd/none.md")).some((f) => f.includes("which does not exist"))).toBe(true);
+});
+
+// covers: chain/FRD-02/EX-6
+test("spec: Tests first cites exactly the ids of Rows", () => {
+  expect(sp(SPEC.replace("EX-1, EX-2", "EX-1"))).toContain("EX-2 is in Rows but Tests first does not cite it");
+  expect(sp(SPEC.replace("EX-1, EX-2", "EX-1, EX-2, EX-3"))).toContain("EX-3 is in Tests first but not in Rows");
+});
+
+// covers: chain/FRD-02/EX-6
+test("spec: document ids in Tests first are not row ids", () => {
+  const t = SPEC.replace("EX-1, EX-2", "EX-1, EX-2; SPEC-01-2 and FRD-01, TP-01, ADR-001, REQ-1, UX-01, R-PICKUPS-1 are named in prose");
+  expect(sp(t)).toEqual([]);
+  expect(sp(t.replace("EX-1, EX-2;", "EX-1;"))).toContain("EX-2 is in Rows but Tests first does not cite it"); // a document id never stands in for a row id
+  expect(sp(SPEC.replace("| EX-1 | a | b |", "| EX-1 | see SPEC-01-2 | b |"), FRD_ROWS.replace("| a |", "| see SPEC-01-2 |"))).toEqual([]); // nor does one in a later cell
+});
+
+// covers: chain/FRD-02/EX-9
+// covers: chain/FRD-02/EX-10
+// covers: chain/FRD-02/EX-11
+test("spec: at most 3 Files rows and exactly one command in Done when", () => {
+  expect(sp(SPEC.replace("| a.ts | new |", "| a.ts | new |\n| b.ts | new |\n| c.ts | new |"))).toEqual([]);
+  expect(sp(SPEC.replace("| a.ts | new |", "| a.ts | new |\n| b.ts | new |\n| c.ts | new |\n| d.ts | new |")).some((f) => f.includes("Files lists 4 rows"))).toBe(true);
+  expect(sp(SPEC.replace("`bun test`", "`bun test` and `bun run typecheck`"))).toContain("Done when must hold exactly one backticked command, found 2");
+  expect(sp(SPEC.replace("`bun test`", "bun test"))).toContain("Done when must hold exactly one backticked command, found 0");
+});
+
+test("spec: needs Status, every section and no TBD", () => {
+  expect(sp(SPEC.replace("Status: Draft", "Status: Done"))).toContain("no Status line (Status: Draft, Status: Approved (YYYY-MM-DD) or Status: Superseded by <path> (YYYY-MM-DD))");
+  for (const h of ["Rows", "Files", "Tests first", "Build", "Done when", "Out of scope", "Open questions"]) expect(sp(SPEC.replace("## " + h, "## Other"))).toContain("missing section: ## " + h);
+  expect(sp(SPEC.replace("\nb\n", "\nTBD\n"))).toContain("contains TBD or TODO");
+  expect(sp(SPEC.replace("## Build", "### TD-1: x\n## Build")).some((f) => f.includes("makes a decision"))).toBe(true);
+});
+
+// covers: chain/FRD-02/EX-7
+// covers: chain/FRD-02/EX-8
+test("excerpt prints the rows of the ids and reports an unknown id", () => {
+  expect(excerpt(FRD_ROWS + "- EX-10 bullet\n", ["EX-2", "EX-1"])).toEqual({ lines: ["| EX-2 | c | d |", "| EX-1 | a | b |"], missingIds: [] });
+  expect(excerpt(FRD_ROWS, ["EX-1", "EX-3"])).toEqual({ lines: ["| EX-1 | a | b |"], missingIds: ["EX-3"] });
+  expect(excerpt("- **EX-10** x\n", ["EX-1"]).missingIds).toEqual(["EX-1"]); // EX-1 is not EX-10
+});
+
+// covers: chain/FRD-02/EX-1
+// covers: chain/FRD-02/EX-15
+test("status: a spec rests on its Rests on path; a registry counts as approved", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const run = (spec: string, extra: Record<string, string> = {}) => chainStatus(project(ok, ok, { "docs/inbox/specs/SPEC-01-1-a.md": spec, ...extra })).fails;
+  expect(run(ok + "Rests on: ../frd/FRD-01-a.md\n")).toEqual([]);
+  expect(run(ok)).toEqual([expect.stringContaining("no \"Rests on")]);
+  expect(run(ok + "Rests on: ../tp/TP-01-a.md\n", { "docs/inbox/tp/TP-01-a.md": "Status: Draft\n" }).some((f) => f.includes("SPEC-01-1-a.md: approved, but") && f.includes("Draft"))).toBe(true);
+  expect(run(ok + "Rests on: ../../CHECKS.md\n", { "docs/CHECKS.md": "x\n" })).toEqual([]);
+  expect(run(ok + "Rests on: ../../CHECKS.md\n").some((f) => f.includes("does not exist"))).toBe(true);
+});
+
+// covers: chain/FRD-02/EX-12
+// covers: chain/FRD-02/EX-13
+// covers: chain/FRD-02/EX-1
+test("status: a spec in a folder with no PRD, frd or tp rests on a registry", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const files = { "docs/ops/specs/SPEC-01-1-a.md": ok + "Rests on: ../../CHECKS.md\n", "docs/CHECKS.md": "x\n" };
+  const { docs, fails } = chainStatus(project(ok, ok, files));
+  expect(fails).toEqual([]);
+  expect(docs.some((d) => d.kind === "SPEC" && d.approved)).toBe(true);
+  delete (files as Record<string, string>)["docs/CHECKS.md"];
+  expect(chainStatus(project(ok, ok, files)).fails.some((f) => f.includes("does not exist"))).toBe(true);
+});
+
+test("done runs the command of an approved spec and exits with its code; a draft is refused", () => {
+  const dir = mkdtempSync(join(tmpdir(), "scriptorium-done-"));
+  const spec = (status: string, cmd: string) => { const p = join(dir, "s.md"); writeFileSync(p, "Status: " + status + "\n## Done when\n`" + cmd + "`\n"); return p; };
+  const cli = (...a: string[]) => { const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: dir }); return { code: r.exitCode, out: r.stdout.toString() }; };
+  expect(cli("done", spec("Approved (2026-11-18)", "bun -e 0")).code).toBe(0);
+  // covers: chain/FRD-02/EX-22
+  writeFileSync(join(dir, "a.txt"), "");
+  writeFileSync(join(dir, "b.txt"), "");
+  writeFileSync(join(dir, "n.ts"), "process.exit(process.argv.length - 2 === 2 ? 0 : 5);");
+  expect(cli("done", spec("Approved (2026-11-18)", "bun n.ts *.txt")).code).toBe(0); // the shell expands the glob to two files
+  expect(cli("done", spec("Approved (2026-11-18)", "bun n.ts *.md")).code).toBe(5); // one file: s.md
+  expect(cli("done", spec("Approved (2026-11-18)", "bun -e process.exitCode=3")).code).toBe(3);
+  const draft = cli("done", spec("Draft", "bun -e 0"));
+  expect(draft.code).toBe(1);
+  expect(draft.out).toContain("not approved");
+  expect(cli("excerpt", join(dir, "s.md"), "X-1").code).toBe(1);
+  const two = cli("done", spec("Approved (2026-11-18)", "bun -e 0`\n`bun -e 0"));
+  expect(two.code).toBe(1); // two commands: nothing runs
+  expect(two.out).toContain("exactly one");
 });
 
 test("summary: ## Summary in the first 20 lines with a Last change line inside it", () => {
@@ -242,7 +341,7 @@ test("status follows UX, TP, SPEC and ADR to the document each rests on", () => 
   const files = {
     "docs/inbox/ux/UX-01-a.md": ok,
     "docs/inbox/tp/TP-01-a.md": "Status: Draft\nADR-001\n",
-    "docs/inbox/specs/SPEC-01-a.md": ok,
+    "docs/inbox/specs/SPEC-01-a.md": ok + "Rests on: ../tp/TP-01-a.md\n",
     "docs/adr/ADR-001-x.md": "## Status\nAccepted\n",
     "docs/requests/REQ-1-a.md": "Status: Open\n",
   };
@@ -263,6 +362,57 @@ test("status: a TP-NN rests on the cross-cutting TP, and a TP cites only Accepte
   expect(run(ok, "Accepted")).toEqual([]);
   expect(run("Status: Draft\n", "Accepted").some((f) => f.includes("TP-01-a.md: approved, but") && /[\\/]tp[\\/]TP\.md is still Draft/.test(f))).toBe(true);
   expect(run(ok, "Proposed").some((f) => f.includes("TP-01-a.md: approved, but ADR-001 is still Proposed"))).toBe(true);
+});
+
+// covers: chain/FRD-02/EX-14
+// covers: chain/FRD-02/DT-1
+// covers: chain/FRD-02/DT-2
+// covers: chain/FRD-02/ST-1
+// covers: chain/FRD-02/DT-3
+// covers: chain/FRD-02/ST-1
+test("a Superseded status line is a valid Status for PRD, FRD and spec checks, and not for a request", () => {
+  const NS = "no Status line";
+  const noStatus = (fails: string[]) => fails.some((f) => f.includes(NS));
+  expect(noStatus(checkPrd(PRD.replace("Status: Draft", "Status: Superseded by ../PRD.md (2026-11-20)"), "INBOX", PRODUCT))).toBe(false);
+  expect(noStatus(checkPrd(PRD.replace("Status: Draft", "Status: Superseded by ../PRD.md"), "INBOX", PRODUCT))).toBe(true); // no date
+  expect(noStatus(checkFrds(slice(FRD.replace("Status: Draft", "Status: Superseded by ../PRD.md (2026-11-20)")), "INBOX").fails)).toBe(false);
+  expect(noStatus(sp(SPEC.replace("Status: Draft", "Status: Superseded by ../PRD.md (2026-11-20)")))).toBe(false);
+  expect(noStatus(sp(SPEC.replace("Status: Draft", "Status: Superseded")))).toBe(true);
+  expect(docStatus("Status: Superseded by REQ-2-x.md (2026-11-20)", "REQUEST").status).toBe("missing");
+});
+
+test("a superseded document needs an existing target; approval above it fails", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const run = (frd: string, extra: Record<string, string> = {}) => chainStatus(project(ok, frd, extra)).fails;
+  expect(docStatus("Status: Superseded by ../PRD.md (2026-11-20)\n", "FRD")).toEqual({ approved: false, status: "Superseded", by: "../PRD.md" });
+  expect(docStatus("Status: Superseded by ../PRD.md\n", "FRD").status).toBe("missing");
+  expect(docStatus("Status: Superseded by ../PRD.md (2026-11-20)\n", "ADR").status).toBe("missing");
+  expect(run("Status: Superseded by ../PRD.md (2026-11-20)\n")).toEqual([]);
+  expect(run("Status: Superseded by ../nope.md (2026-11-20)\n").some((f) => f.includes("FRD-01-a.md") && f.includes("does not exist"))).toBe(true);
+  expect(run("Status: Superseded by ../PRD.md\n").some((f) => f.includes("no Status line"))).toBe(true);
+  const fails = run("Status: Superseded by ../PRD.md (2026-11-20)\n", { "docs/inbox/ux/UX-01-a.md": ok });
+  expect(fails.some((f) => f.includes("UX-01-a.md: approved, but") && f.includes("superseded by ../PRD.md"))).toBe(true);
+});
+
+// covers: chain/FRD-02/EX-23
+test("status failures name both documents with forward slashes only", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const fails = chainStatus(project(ok, ok, { "docs/inbox/tp/TP-01-a.md": "Status: Superseded by ../PRD.md (2026-11-20)\n", "docs/inbox/specs/SPEC-01-1-a.md": ok + "Rests on: ../tp/TP-01-a.md\n" })).fails;
+  const f = fails.find((x) => x.includes("SPEC-01-1-a.md"))!;
+  expect(f).toContain("inbox/specs/SPEC-01-1-a.md");
+  expect(f).toContain("inbox/tp/TP-01-a.md");
+  expect(fails.join("\n")).not.toContain("\\");
+});
+
+// covers: chain/FRD-02/EX-24
+test("a path typed with backslashes in a document resolves like one with slashes", () => {
+  const p = specAt();
+  expect(checkSpec(SPEC.replace("Rests on: ../frd/FRD-01-a.md", "Rests on: ..\\frd\\FRD-01-a.md").replace("Quoted from: ../frd/FRD-01-a.md", "Quoted from: ..\\frd\\FRD-01-a.md"), p)).toEqual([]);
+  expect(checkSpec(SPEC.replace("Rests on: ../frd/FRD-01-a.md", "Rests on: ..\\frd\\FRD-09-a.md"), p).join("\n")).toContain("which does not exist");
+  const ok = "Status: Approved (2026-11-18)\n";
+  const f = chainStatus(project(ok, ok, { "docs/inbox/specs/SPEC-01-1-a.md": ok + "Rests on: ..\\tp\\TP-09-x.md\n" })).fails.join("\n");
+  expect(f).toContain("does not exist");
+  expect(f).not.toContain("\\");
 });
 
 test("a request status must be Open, Accepted, Rejected or Merged into REQ-n", () => {

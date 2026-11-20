@@ -2,6 +2,7 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { changesetRule } from "../scripts/pre-commit.ts";
 import { splitDocPath, checksFor, runDocChecks, isChainProject, changedDocs } from "../scripts/hook-doc-check.ts";
 
 const S = join(import.meta.dir, "..", "scripts");
@@ -40,8 +41,7 @@ test("each document kind maps to its check", () => {
   expect(args("docs/pickups/ux/UX-01-book.md")[0]).toEqual(["ux", "docs/pickups"]);
   expect(args("docs/tp/TP.md")[0]).toEqual(["tp", "docs/tp/TP.md", "docs/adr"]);
   expect(args("docs/pickups/tp/TP-01-book.md")[0]).toEqual(["tp", "docs/pickups/tp/TP-01-book.md", "docs/adr"]);
-  expect(args("docs/pickups/specs/SPEC-01-book.md")[0]).toEqual(["spec", "docs/pickups/specs/SPEC-01-book.md", "docs/pickups/frd/FRD-01-book.md"]);
-  expect(args("docs/pickups/specs/SPEC-02-x.md")[0]).toContain("no FRD-02-");
+  expect(args("docs/pickups/specs/SPEC-01-1-book.md")[0]).toEqual(["spec", "docs/pickups/specs/SPEC-01-1-book.md"]);
   expect(args("docs/PRODUCT.md")).toEqual([["summary", "docs/PRODUCT.md"]]);
   expect(args("docs/requests/REQ-1-a.md")).toEqual([["summary", "docs/requests/REQ-1-a.md"]]);
   expect(args("docs/adr/ADR-001-a.md")).toEqual([["summary", "docs/adr/ADR-001-a.md"]]);
@@ -136,6 +136,58 @@ test("pre-commit checks staged documents and --all checks a whole project", () =
   expect(bad.r.err).toContain("commit blocked");
   expect(hook("pre-commit.ts", { cwd: bad.root, args: ["--all", bad.root] }).code).toBe(1);
   expect(hook("pre-commit.ts", { cwd: bad.root, args: ["--all", commit(REQ).root] }).code).toBe(0);
+}, 60000);
+
+// covers: chain/FRD-02/EX-17
+// covers: chain/FRD-02/EX-18
+// covers: chain/FRD-02/EX-19
+test("changesetRule: code needs a new changeset, docs and tests do not", () => {
+  const A = (p: string) => "A\t" + p, M = (p: string) => "M\t" + p;
+  expect(changesetRule([M("scripts/check.ts")])).toHaveLength(1);
+  expect(changesetRule([M("scripts/check.ts"), A(".changeset/x.md")])).toEqual([]);
+  expect(changesetRule([M("scripts/check.ts"), M(".changeset/x.md")])).toHaveLength(1);
+  expect(changesetRule([M("scripts/check.ts"), A(".changeset/README.md")])).toHaveLength(1);
+  expect(changesetRule([M("docs/PRD.md"), M("test/a.ts"), M("src/b.test.ts"), M("x/__tests__/c.ts"), M("d.spec.ts"), M(".changeset/config.json")])).toEqual([]);
+  expect(changesetRule([M("docs/PRD.md"), "R100\told.ts\tnew.ts"])).toHaveLength(1);
+});
+
+// covers: chain/FRD-02/EX-17
+test("changesetRule: a rename checks both paths, and a deleted code file counts", () => {
+  expect(changesetRule(["R100\tsrc/a.ts\tdocs/a.md"])).toHaveLength(1); // code moved into docs/
+  expect(changesetRule(["R100\tdocs/a.md\tsrc/a.ts"])).toHaveLength(1);
+  expect(changesetRule(["R100\tsrc/a.ts\tdocs/a.md", "A\t.changeset/x.md"])).toEqual([]);
+  expect(changesetRule(["R100\tdocs/a.md\tdocs/b.md", "R090\ttest/a.ts\ttests/a.ts"])).toEqual([]);
+  expect(changesetRule(["D\tsrc/a.ts"])).toHaveLength(1);
+  expect(changesetRule(["D\tdocs/a.md", "D\ttest/a.ts"])).toEqual([]);
+});
+
+test("pre-commit blocks a commit that only deletes code, where changesets are configured", () => {
+  const root = project({ "src/a.ts": "x", ".changeset/config.json": "{}" });
+  git(root, "init");
+  git(root, "add", ".");
+  git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m", "init", "--no-verify");
+  git(root, "rm", "src/a.ts");
+  const r = hook("pre-commit.ts", { cwd: root });
+  expect(r.code).toBe(1);
+  expect(r.err).toContain("src/a.ts");
+}, 60000);
+
+// covers: chain/FRD-02/EX-17
+// covers: chain/FRD-02/EX-18
+// covers: chain/FRD-02/EX-20
+test("pre-commit blocks code without a changeset only where .changeset/config.json exists", () => {
+  const run = (files: Record<string, string>) => {
+    const root = project(files);
+    git(root, "init");
+    git(root, "add", ".");
+    return hook("pre-commit.ts", { cwd: root });
+  };
+  const code = { "src/a.ts": "x" };
+  expect(run(code).code).toBe(0);
+  const r = run({ ...code, ".changeset/config.json": "{}" });
+  expect(r.code).toBe(1);
+  expect(r.err).toContain("bunx changeset");
+  expect(run({ ...code, ".changeset/config.json": "{}", ".changeset/a.md": "---\n---\nx\n" }).code).toBe(0);
 }, 60000);
 
 test("pre-commit --all fails a document edited after approval", () => {
