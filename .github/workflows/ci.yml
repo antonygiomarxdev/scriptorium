@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run typecheck
+      - name: Scriptorium's own documents
+        run: |
+          bun scripts/check.ts status .
+          bun scripts/lint-docs.ts .
+      - name: The Larder example passes every check
+        run: bun scripts/pre-commit.ts --all examples/larder
