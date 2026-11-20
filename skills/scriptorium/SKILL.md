@@ -12,13 +12,13 @@ Nothing moves to the next document until the current one passes its check and th
 ```mermaid
 flowchart LR
   R[Request] --> P[PRODUCT] --> PRD[PRD per slice] --> FRD[FRD per feature] --> UX[UX, when the interface changes] --> CTP[Cross-cutting TP] --> TP[TP per FRD] --> S[Spec per FRD] --> C[Code, tests first]
-  R --> SP[Small change] --> S
+  R --> SP[Fix, CI, configuration, chore] --> S
   TP -. architecturally significant .-> ADR[ADR]
   C --> RV{Accepted first time?}
   RV -- no --> RT[Retro: prevention proven by replay]
 ```
 
-Each document rests on the one before it. A document may be approved only when the one it rests on is approved: PRD on PRODUCT, FRD on its PRD, UX-NN and TP-NN on FRD-NN, spec SPEC-NN on TP-NN, ADR on the TP that cites it. Only the owner approves.
+Each document rests on the one before it. A document may be approved only when the one it rests on is approved: PRD on PRODUCT, FRD on its PRD, UX-NN and TP-NN on FRD-NN, a spec on the document its `Rests on:` line names, ADR on the TP that cites it. Only the owner approves.
 
 ## Layout
 
@@ -37,7 +37,8 @@ docs/
     frd/FRD-NN-name.md
     ux/UX-NN-name.md
     tp/TP-NN-name.md
-    specs/SPEC-NN-name.md
+    specs/SPEC-NN-k-name.md   one agent run each
+  ops/specs/SPEC-NN-k-name.md CI, configuration, chores
 ```
 
 `requests`, `tp`, `adr`, `retro`, `decisions` and `research` are not slices. Templates are in `${CLAUDE_PLUGIN_ROOT}/templates/`; the templates are the source of truth for sections and ids.
@@ -53,15 +54,17 @@ docs/
 | Cross-cutting TP | `docs/tp/TP.md` | Written after the FRDs: stack, storage, conventions, threat model | `/scriptorium:tp` | `check.ts tp` |
 | TP per FRD | `docs/<slice>/tp/` | Options compared, one chosen, ADR or "none: reason" | `/scriptorium:tp` | `check.ts tp` |
 | ADR | `docs/adr/` | One architecturally significant decision | with the TP | `check.ts tp` checks the ADRs in its dir |
-| Spec | `docs/<slice>/specs/` | Files, interfaces, ordered tasks; each task lists the EX, DT, ST and INV ids it tests first; decides nothing new | `/scriptorium:spec` | `check.ts spec <SPEC> <FRD>` |
+| Spec | `docs/<folder>/specs/` | One agent run: rows quoted from its parent, at most 3 files, tests first, one done command; decides nothing new | `/scriptorium:spec` | `check.ts spec <SPEC>` |
+| Fix | a spec on an FRD | The broken row, its failing test, the fix | `/scriptorium:fix` | `check.ts spec` |
+| CI, configuration, chores | a spec on a TP, ADR, CHECKS row or request | The rule it keeps, one command that reproduces the job | `/scriptorium:ops` | `check.ts spec` |
 | Any chain document | | `## Summary` in the first 20 lines, ending with `Last change: YYYY-MM-DD, <what>` | | `check.ts summary <file>` |
 | Status | | Every document and where it stands | `/scriptorium:status` | `check.ts status .` |
 
-Every document type has its own skill that teaches how to write it: `/scriptorium:request`, `/scriptorium:decision`, `/scriptorium:glossary`, `/scriptorium:invariant`, `/scriptorium:concern`, `/scriptorium:ux`, `/scriptorium:adr`, and for the rest of the loop `/scriptorium:check` (add a project rule), `/scriptorium:review` (closed review) and `/scriptorium:retro` (turn a failure into a proven prevention). PRD and FRD name no technology. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md` the same day; shared terms in `docs/GLOSSARY.md`.
+Every document type has its own skill that teaches how to write it: `/scriptorium:fix`, `/scriptorium:ops`, `/scriptorium:request`, `/scriptorium:decision`, `/scriptorium:glossary`, `/scriptorium:invariant`, `/scriptorium:concern`, `/scriptorium:ux`, `/scriptorium:adr`, and for the rest of the loop `/scriptorium:check` (add a project rule), `/scriptorium:review` (closed review) and `/scriptorium:retro` (turn a failure into a proven prevention). PRD and FRD name no technology. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md` the same day; shared terms in `docs/GLOSSARY.md`.
 
 ## Short path
 
-A bug or small change does not need a PRD or an FRD. It goes to a spec that rests on an existing FRD, and the request it answers is cited in the spec. Only a new feature or a new slice goes through PRD and FRD. If the change touches behavior that has no FRD, offer (never force) to map it from the code into draft documents and report the gaps between what the owner believes and what the code does.
+A bug or small change does not need a PRD or an FRD. It goes to a small spec that rests on an existing FRD (`/scriptorium:fix`); CI, configuration and chores go to a small spec that rests on a TP, an ADR, a CHECKS row or an accepted request (`/scriptorium:ops`). Only a new feature or a new slice goes through PRD and FRD. If the change touches behavior that has no FRD, offer (never force) to map it from the code into draft documents and report the gaps between what the owner believes and what the code does.
 
 ## Checks
 
@@ -72,7 +75,9 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" prd docs/<slice>/PRD.md <SLICE_ID>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" frd docs/<slice> <SLICE_ID>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" ux docs/<slice>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" tp docs/tp/TP.md docs/adr
-bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" spec docs/<slice>/specs/SPEC-NN-name.md docs/<slice>/frd/FRD-NN-name.md
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" spec docs/<folder>/specs/SPEC-NN-k-name.md
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" excerpt <document> <ID>...
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" done <spec>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" summary <document>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" status .
 ```
@@ -87,7 +92,7 @@ A rule that exists only in prose does not count. Three layers run without the ag
 2. **Git pre-commit** (`scripts/pre-commit.ts`): the same checks on staged documents, for any agent or person. Install it with the one-line command in the script's header.
 3. **CI** (`.github/workflows/ci.yml`): tests, typecheck, status, lint and the example chain on every pull request.
 
-Not built yet, planned for the next release: the hook that, before the agent edits code, requires an approved spec or a declared short path (L-12), and the check that a document whose body changed in a pull request also changed its Summary unless the pull request says `Summary unchanged: <reason>` (L-11). Until then, follow both by hand.
+Not built yet: the hook that, before the agent edits code or configuration, requires an approved spec or a declared short path (L-12, D-30). Until then, follow it by hand. Where `.changeset/config.json` exists, pre-commit fails a commit that changes code without a changeset (L-15).
 
 Project rules learned from a failure live in `docs/CHECKS.md`: id, what it prevents, the command, and the replay of the failure it catches; a row without a command fails (`/scriptorium:check`). Documents are linted by `bun "${CLAUDE_PLUGIN_ROOT}/scripts/lint-docs.ts" .` (banned phrases, dead links, filler sections, line caps, empty registry cells, copied text).
 
@@ -112,6 +117,6 @@ The check only sees structure. A reviewer also looks for these, because the chec
 
 ## Status and approval
 
-Every chain document carries one status line. PRODUCT, PRD, FRD, UX, TP and spec use `Status: Draft` or `Status: Approved (YYYY-MM-DD)`; a request uses `Open`, `Accepted`, `Rejected` or `Merged into REQ-m`. ADRs use `## Status` followed by `Proposed`, `Accepted`, `Superseded` or `Rejected`.
+Every chain document carries one status line. PRODUCT, PRD, FRD, UX, TP and spec use `Status: Draft`, `Status: Approved (YYYY-MM-DD)` or `Status: Superseded by <relative path> (YYYY-MM-DD)`; a request uses `Open`, `Accepted`, `Rejected` or `Merged into REQ-m`. ADRs use `## Status` followed by `Proposed`, `Accepted`, `Superseded` or `Rejected`.
 
 Nothing advances with an open question. A document is approved only with no Q-n left in its Open questions; when an answer is unclear, ask the owner whether to open a grilling session now or wait for someone else. Approval is the owner's approval of the document's pull request, or an explicit "approved" in the conversation. The lead then runs `bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" approve <document>`, which writes the status line and the Approval record (what the document said and what it rested on), commits them in that pull request and merges it. Never write them by hand. An approved document whose body was edited, or whose parent changed, fails status as `drifted`: it goes back to the owner, who approves again or runs `check.ts clear <document>` when only a parent changed. `check.ts history <document>` prints its commits from git. What is on the main branch is approved; what is not is a draft. `check.ts status .` fails on an approval above a draft and on an approved document with an open question.

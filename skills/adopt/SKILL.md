@@ -12,7 +12,7 @@ The target layout, from `${CLAUDE_PLUGIN_ROOT}/templates/`:
 ```text
 docs/PRODUCT.md  GLOSSARY.md  INVARIANTS.md  CROSS-CUTTING.md  CHECKS.md  DECISIONS.md
 docs/requests/REQ-n-name.md      docs/tp/TP.md      docs/adr/ADR-NNN-name.md      docs/retro/RETRO.md
-docs/<slice>/PRD.md  frd/FRD-NN-name.md  ux/UX-NN-name.md  tp/TP-NN-name.md  specs/SPEC-NN-name.md
+docs/<slice>/PRD.md  frd/FRD-NN-name.md  ux/UX-NN-name.md  tp/TP-NN-name.md  specs/SPEC-NN-k-name.md
 ```
 
 ## 1. Safe start
@@ -75,7 +75,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" prd docs/<slice>/PRD.md <SLICE_ID>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" frd docs/<slice> <SLICE_ID>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" ux docs/<slice>
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" tp docs/tp/TP.md docs/adr
-bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" spec docs/<slice>/specs/SPEC-NN-name.md docs/<slice>/frd/FRD-NN-name.md
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" spec docs/<slice>/specs/SPEC-NN-k-name.md
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" summary <document>
 ```
 

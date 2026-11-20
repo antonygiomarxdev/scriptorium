@@ -1,61 +1,68 @@
 ---
 name: spec
-description: Write or check the spec for one FRD (docs/<slice>/specs/SPEC-NN-name.md): files, interfaces and ordered tests-first tasks that cover every example, decision row, state and invariant of the FRD. Decides nothing new. Use after the FRD's TP is approved.
-argument-hint: <slice> <FRD number NN>
+description: Write or check small specs (docs/<folder>/specs/SPEC-NN-k-name.md), each one agent run that a small model finishes from start to end - the rows it builds quoted from its parent, at most 3 files, tests first, one done command. Splits an FRD or TP into several specs. Decides nothing new. Use after a TP is approved, and for fixes, CI, configuration and chores through /scriptorium:fix and /scriptorium:ops.
+argument-hint: <folder> <NN> [parent document]
 ---
 
-# Spec for one FRD
+# Small specs (REQ-1, L-15)
 
 Never overwrite an existing file. If it exists, read it and edit it in place; copy a template only to a path that does not exist yet.
 
-Arguments: slice `$0`, FRD number `$1`. Ask for them if missing. A small change that already rests on an existing FRD takes this path too (short path, D-1): the spec cites the request it answers.
+A spec is what an agent is handed, and the only thing it reads. No brief: a brief retold by the lead loses meaning, sets the wrong goal and goes stale. A spec quotes its rows verbatim, the check proves the quote, and drift marks it suspect when its parent changes.
 
-1. The FRD `docs/$0/frd/FRD-$1-*.md` and its TP `docs/$0/tp/TP-$1-*.md` must be approved, and every ADR the TP names accepted. If not, stop and say which. Status checks a spec only against its TP: it does not yet check that the ADRs the TP names are accepted, or that the cross-cutting TP is approved. Look at both yourself.
-2. Copy `${CLAUDE_PLUGIN_ROOT}/templates/SPEC.md` to `docs/$0/specs/SPEC-$1-<name>.md`, same name as the FRD. Worked example: `${CLAUDE_PLUGIN_ROOT}/examples/larder/docs/pickups/specs/`.
-3. Fill it, run the checks, and fix every failure.
+## 1. Check the parent
 
-## How to write each section
+Arguments: folder `$0` (a slice, or any folder under `docs/` such as `ci`), number `$1`, and the parent when it is not the TP `docs/$0/tp/TP-$1-*.md`. The parent must be approved (an FRD, a TP, an ADR), accepted (a request), or a registry (`docs/CHECKS.md`, `docs/INVARIANTS.md`, `docs/CROSS-CUTTING.md`). If not, stop and say which.
 
-- **Context**: links to the FRD, the UX and the TP, and what already exists that this builds on.
-- **Files**: every path that is created or changed, and what it holds. Nothing outside the FRD's scope: a file with no FR, EX, DT, ST or INV behind it does not belong (L-13). If you need one, the FRD or the TP is missing something; go back.
-- **Interfaces**: the exact types and signatures, as code in the project's language.
-- **Data**: schema or migration, or `None`.
-- **Tasks**: ordered `### Task n: <name>`, each with three lines:
-  - `**Tests first:**` the FRD ids the task proves: every EX-n, DT-n, ST-n and INV-n the FRD defines appears in some task's line. Bad: "tests for booking". Good: "EX-1, EX-2, DT-3".
-  - `**Build:**` the code that makes them pass.
-  - `**Done when:**` the command and its result. Bad: "works". Good: `bun test test/booking.test.ts` passes, 0 fail.
-- **Out of scope**: what a reader might expect here and will not get.
+## 2. Split
+
+List every id the parent defines that this work must build (EX, DT, ST, INV for an FRD; FR or a decision for a TP; a CHECK-n, INV-n or CC-n row). Group them into runs, in dependency order:
+
+- One run builds one thing a test can prove alone: a pure rule, one write, one screen state, one CI job.
+- At most 3 files per run; test files do not count.
+- The spec, rows included, fits in 80 lines.
+- The specs of one parent together cover every id; `check.ts trace` proves it on the tests.
+
+A strong model splits; a small model runs each spec. If a run does not fit, split it again. Never give a small agent more context instead.
+
+## 3. Write each spec
+
+Copy `${CLAUDE_PLUGIN_ROOT}/templates/SPEC.md` to `docs/$0/specs/SPEC-$1-<k>-<name>.md`, k = 1, 2, 3 in build order. Worked example: `${CLAUDE_PLUGIN_ROOT}/examples/larder/docs/pickups/specs/`.
+
+- **Rests on**: the relative path of the parent.
+- **Rows**: print them, never retype them:
+  ```bash
+  bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" excerpt docs/$0/frd/FRD-$1-<name>.md EX-4 EX-5 INV-1
+  ```
+  Rows from a document other than the parent (the FRD under a TP) go under a `Quoted from:` line.
+- **Files**: each path created or changed, at most 3. A file no row needs does not belong (L-13).
+- **Tests first**: exactly the ids in Rows. Bad: "tests for booking". Good: "EX-4, EX-5, INV-1, written before the code, without it in view".
+- **Build**: the code that makes them pass, with exact signatures.
+- **Done when**: one command in backticks. Bad: "works". Good: `bun test test/book.test.ts`.
+- **Out of scope**: what the next spec builds.
 
 ## Tests are written first, blind (L-8)
 
-- The tests come from the FRD ids, in a step where the implementation is not in view: the author reads the FRD, not the code. A test written after the code copies its faults.
-- Hold out some examples: keep a few EX rows out of the implementer's brief and run them only at the gate.
-- Every test asserts something. A test with no assertion fails the review.
-- The mutation gate runs on the changed lines only, with a threshold that rises; a surviving mutant is a missing test, not noise.
-- Property tests for each INV-n.
+The tests come from the rows, without the implementation in view. Every test asserts something and carries `covers: <slice>/FRD-NN/<ID>`. A surviving mutant is a missing test. Property tests for each INV-n.
 
 ## A spec decides nothing new
 
-A missing decision goes back to the TP, and to an ADR when significant. A spec with `### TD-` or `- **Option` lines fails the check. No `TBD` or `TODO`.
+A missing decision goes back to the TP, and to an ADR when significant. `### TD-` or `- **Option` lines fail. No `TBD` or `TODO`.
 
-## Summary (D-24)
+## Handing it over
 
-`## Summary` sits in the first 20 lines: what gets built and in what order, five lines at most, ending with `Last change: YYYY-MM-DD, <what>`. Rewrite it whenever anything below changes in a way that matters.
+Give the agent the path of one approved spec, nothing else. It reports the output of the done command; whoever handed it over runs the command again. A question goes back as a Q-n in the spec, and the spec waits. `check.ts done <spec>` runs the command for an approved spec: that is what Done means.
 
-## Open questions block approval
+## Open questions, approval
 
-Every point the owner has not settled becomes a Q-n in the Open questions section. A document with a Q-n is a draft. For each Q-n ask the owner, one question at a time, with your recommendation, and offer a choice: open a grilling session now (you ask, they answer, you record), or wait for the person who knows. Write each answer into the document and in `docs/DECISIONS.md` the same day, then delete the Q-n.
-
-## Finish
-
-Run the checks, show the owner the output and any Q-n left, then stop. Only the owner approves; you never write `Status: Approved` yourself. When the owner approves, update `Last change:`, then run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" approve <this document>`. It writes the status line and the Approval record; never write them by hand. A later check that says `suspect` or `body changed since approval` goes back to the owner: they approve again, or run `check.ts clear <document>` when only a parent changed.
+A Q-n blocks approval: ask the owner, one question at a time, with your recommendation. Only the owner approves; then run `bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" approve <spec>`. A replaced spec gets `Status: Superseded by <relative path> (YYYY-MM-DD)`.
 
 ## Checks
 
 ```bash
-bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" spec docs/$0/specs/SPEC-$1-<name>.md docs/$0/frd/FRD-$1-<name>.md
-bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" summary docs/$0/specs/SPEC-$1-<name>.md
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" spec docs/$0/specs/SPEC-$1-<k>-<name>.md
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/check.ts" summary docs/$0/specs/SPEC-$1-<k>-<name>.md
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/lint-docs.ts" .
 ```
 
-After approval, implementation follows the tasks in order: test first, then code. Review it with `/scriptorium:review`.
+After approval, the work is reviewed with `/scriptorium:review`.

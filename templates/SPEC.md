@@ -1,35 +1,36 @@
-# Spec: <FRD name>
+# SPEC-NN-k: <what this run builds>
 
 Status: Draft
+Rests on: <relative path to the FRD, TP, ADR, accepted request, or docs/CHECKS.md, INVARIANTS.md or CROSS-CUTTING.md>
 
 ## Summary
 
-<What gets built and in what order. Five lines at most. Kept current: a change that matters anywhere below shows here.>
+<What this one agent run builds, in three lines at most. Kept current: a change that matters anywhere below shows here.>
 
 Last change: <YYYY-MM-DD, what changed>
 
-One per FRD: `docs/<slice>/specs/SPEC-NN-name.md`, resting on `TP-NN`. A spec decides nothing new: a missing decision goes back to the TP.
+One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 
-## Context
-<Links to the FRD, UX and TP. What already exists that this builds on.>
+## Rows
+Quoted from: <relative path; leave out when it is the Rests on document>
+
+<The rows this spec builds, printed by `check.ts excerpt <file> <ID>...`, never retyped.>
 
 ## Files
 | Path | Create or change | Holds |
 |---|---|---|
 
-## Interfaces
-<The exact types and signatures, in the project's language, as code.>
+## Tests first
+<The ids of the Rows above, every one and no other, written as tests before the code, without the implementation in view.>
 
-## Data
-<Schema or migration, or "None".>
+## Build
+<The code that makes those tests pass: the exact types and signatures, as code in the project's language.>
 
-## Tasks
-### Task 1: <name>
-- **Tests first:** <the FRD ids this task proves (EX-n, DT-n, ST-n, INV-n, QC-n), written before the code, without the implementation in view>.
-- **Build:** <the code that makes them pass>.
-- **Done when:** <the command and its result>.
+## Done when
+`<one command>`
+
+## Out of scope
+<What a reader might expect here and will not get, and the spec that has it.>
 
 ## Open questions
 <Q-n. Must be empty to approve.>
-
-## Out of scope

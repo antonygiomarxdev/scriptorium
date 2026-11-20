@@ -55,7 +55,7 @@ docs/
     frd/FRD-NN-name.md
     ux/UX-NN-name.md
     tp/TP-NN-name.md
-    specs/SPEC-NN-name.md
+    specs/SPEC-NN-k-name.md
 ```
 
 The checks read this layout: `docs/<slice>/` for each slice, never `src/`.
@@ -78,10 +78,13 @@ Turn on auto-update for the `scriptorium` marketplace under `/plugin` → Market
 | `/scriptorium:prd <slice> <ID>` | Writes and checks a slice PRD |
 | `/scriptorium:frd <slice> <ID>` | Writes and checks the slice FRDs |
 | `/scriptorium:tp [cross \| <slice> <NN>]` | Writes and checks a TP and its ADRs |
-| `/scriptorium:spec <slice> <NN>` | Writes and checks the spec for one FRD |
+| `/scriptorium:spec <folder> <NN> [parent]` | Splits a TP or FRD into small specs, one agent run each, with rows quoted from the parent |
+| `/scriptorium:fix <what is wrong>` | A bug or small change: the broken row, a failing test, one small spec |
+| `/scriptorium:ops <work>` | CI, configuration, dependencies and refactors as small specs on a TP, ADR, CHECKS row or request |
+| `/scriptorium:review <spec>` | Closed review of one spec's work: rows are the criteria, files the scope |
 | `/scriptorium:status` | Shows every document, its status and what is next; fails on an approval above a draft or with an open question |
 
-Skills for requests, decisions, glossary, UX, invariants, concerns, ADRs, review and retro are not written yet.
+Requests, decisions, glossary, UX, invariants, concerns, ADRs, checks and retro have their own skills too.
 
 Or run a check directly: `bun scripts/check.ts prd docs/inbox/PRD.md INBOX`. Exit 0 passes; exit 1 prints every failure.
 
