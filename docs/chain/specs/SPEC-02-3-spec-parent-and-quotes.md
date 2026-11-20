@@ -1,6 +1,7 @@
 # SPEC-02-3: Spec parent and quoted rows
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content 5tmrs0QAJ8_I; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary

@@ -1,6 +1,7 @@
 # SPEC-02-1: Require a changeset in pre-commit
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content RW2EOMc_uE3s; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary

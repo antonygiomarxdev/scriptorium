@@ -1,6 +1,7 @@
 # FRD-01: Drift, traceability and history
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content DMw49CZMI-jd; rests on ../PRD.md weJ_tC_U7K43
 
 ## Summary
 

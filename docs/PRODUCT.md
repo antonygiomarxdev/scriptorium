@@ -1,6 +1,7 @@
 # Scriptorium: product overview
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content OHZ_OJ4Vuiy1
 
 ## Summary
 
@@ -11,7 +12,7 @@ Scriptorium makes a project write down what it is building, and why, before an a
 - Every rule that can be checked is a script, and every check says what it cannot see (principle 4).
 - Review is closed: a change fails only against an approved acceptance criterion or a failed gate, and every recurring failure becomes a proven check (D-19, L-6, L-10).
 
-Last change: 2026-11-20, the model is decided (D-1 to D-24, L-2 to L-11); templates and checks are next.
+Last change: 2026-11-20, product diagram fixed (text after the closing fence broke it) and shows small specs
 
 What every slice shares. Product decisions: [DECISIONS.md](DECISIONS.md). Terms: [GLOSSARY.md](GLOSSARY.md). Research: [research/](research/).
 
@@ -31,17 +32,19 @@ Templates, checks run by script (Bun), and one skill per step in the open SKILL.
 
 ```mermaid
 flowchart LR
-  P[PRODUCT] --> PRD[PRD per slice] --> FRD[FRDs] --> CTP[Cross-cutting TP] --> TP[TP per FRD] --> S[Spec per FRD] --> C[Code, tests first]
+  P[PRODUCT] --> PRD[PRD per slice] --> FRD[FRDs] --> CTP[Cross-cutting TP] --> TP[TP per FRD] --> S[Small specs, one agent run each] --> C[Code, tests first]
   TP -. architecturally significant .-> ADR[ADR]
   CTP -.-> ADR
-  Q{{Open questions closed?}} -.gate.- PRD & FRD & TP & S
-  SP[Small change] --> S
+  Q{{Open questions closed?}} -. gate .- PRD & FRD & TP & S
+  SP[Fix, CI, configuration] --> S
   R[Request: who and why] --> PRD
   R --> SP
   FRD --> UX[UX, when the interface changes] --> TP
   C --> RV{Accepted first time?}
   RV -- no: log step and cause --> M[(Rework log)] --> RT[Retro: fix templates and checks]
-``` It starts a chain in a new project, adopts the documents an existing project already has, maps undocumented code into draft documents, and shows the status of every document. It runs with one owner and agents, or with an agent team.
+```
+
+It starts a chain in a new project, adopts the documents an existing project already has, maps undocumented code into draft documents, and shows the status of every document. It runs with one owner and agents, or with an agent team.
 
 ## 3. Users
 

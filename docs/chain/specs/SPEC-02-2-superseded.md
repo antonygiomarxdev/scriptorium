@@ -1,6 +1,7 @@
 # SPEC-02-2: Superseded documents
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content TRMgRNCEpzc1; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary

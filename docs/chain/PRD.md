@@ -1,12 +1,13 @@
 # Chain PRD
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content weJ_tC_U7K43; rests on ../PRODUCT.md OHZ_OJ4Vuiy1
 
 ## Summary
 
-The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-26 to R-CHAIN-29 are being built. No question is open.
+The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
 
-Last change: 2026-11-20, small specs, Superseded and changesets (R-CHAIN-26 to 29, L-15)
+Last change: 2026-11-20, pinned formats, migrate and the command-line tool (R-CHAIN-30 to 34, D-31, L-16)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -46,6 +47,11 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-27.** Work that is not product, such as CI, configuration, dependencies or a fix, uses the same spec, resting on a TP, an ADR, a registry row or an accepted request (REQ-1, L-15).
 - **R-CHAIN-28.** A replaced document says what replaced it, and the checks stop demanding coverage and freshness from it; whether a spec is done is computed by running its done command, never written by hand (REQ-2, L-15).
 - **R-CHAIN-29.** In a project that uses Changesets, a commit that changes code without a changeset fails (D-22, L-15).
+- **R-CHAIN-30.** Each project pins the format of its rules in a folder of its own; a project with no pin keeps the oldest supported rules, and a pin newer than the tool is reported, never guessed (REQ-5, D-31, L-16).
+- **R-CHAIN-31.** A rule newer than a project's pin only warns, in every hook, pre-commit and CI, and names the format that brings it (REQ-5, D-31, L-16).
+- **R-CHAIN-32.** One command migrates a project to the next format: a dry run first, mechanical rewrites only, and the pin moves only when the next format passes; a skill does what needs judgment (REQ-5, L-16).
+- **R-CHAIN-33.** The checks support the current and the previous format, and each released format has a frozen example that today's checks must pass under its own pin (REQ-5, D-31, L-16).
+- **R-CHAIN-34.** The checks run outside the agent as a command-line tool a project pins by version, and the git hook is installed from a folder the project commits (REQ-5, D-15, L-16).
 
 ## Principles honored
 Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9, R-CHAIN-23 and R-CHAIN-24: drift is detected, coverage is scanned and history is read from git, none of it assumed.
@@ -64,4 +70,4 @@ The product overview must be approved first. The questions, intake and ux slices
 - Every approved example in Scriptorium's own FRDs has a test that names it, or a stated reason why not.
 
 ## Open questions
-None. Q-1 to Q-5 were answered by the owner on 2026-11-20 (D-29).
+None. The five questions were answered by the owner on 2026-11-20 (D-29).

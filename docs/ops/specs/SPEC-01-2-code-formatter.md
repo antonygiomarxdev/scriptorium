@@ -1,6 +1,7 @@
 # SPEC-01-2: Code formatter
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content nnD_IC2EmIzN; rests on ../../requests/REQ-4-code-formatter.md PqAd-ArS_aV4
 Rests on: ../../requests/REQ-4-code-formatter.md
 
 ## Summary

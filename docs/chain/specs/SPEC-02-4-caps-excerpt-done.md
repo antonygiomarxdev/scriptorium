@@ -1,6 +1,7 @@
 # SPEC-02-4: Spec caps, excerpt and done
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content b6nUgEA0FdiO; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary

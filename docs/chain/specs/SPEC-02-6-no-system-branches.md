@@ -1,6 +1,7 @@
 # SPEC-02-6: No branch on the system
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content GjP9lZ7V5tRN; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary

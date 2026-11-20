@@ -1,6 +1,7 @@
 # SPEC-01-1: LF line endings
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content daHdnZrm2HdX; rests on ../../requests/REQ-3-lf-line-endings.md JmpogVoFh8qf
 Rests on: ../../requests/REQ-3-lf-line-endings.md
 
 ## Summary
