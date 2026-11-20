@@ -7,9 +7,13 @@
   "scripts": {
     "check": "bun scripts/check.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "changeset": "changeset",
+    "version": "changeset version && bun scripts/sync-version.ts",
+    "release": "changeset tag && git push --follow-tags"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@types/bun": "latest",
     "typescript": "^5.6.0"
   }
