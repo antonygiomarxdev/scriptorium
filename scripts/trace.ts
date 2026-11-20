@@ -37,7 +37,7 @@ export function scanTags(...dirs: string[]): Tag[] {
   const files: string[] = [];
   for (const d of dirs) walk(d, files);
   const tags: Tag[] = [];
-  for (const file of files) {
+  for (const file of files.sort()) { // readdir order differs between Windows and Linux
     const text = readFileSync(file, "utf8");
     for (const m of text.matchAll(TAG)) tags.push({ file, slice: m[1], frd: m[2]!, id: m[3]! });
   }
@@ -48,10 +48,10 @@ type Frd = { slice: string; frd: string; path: string; approved: boolean; ids: s
 
 function loadFrds(docsRoot: string): Frd[] {
   const out: Frd[] = [];
-  for (const s of readdirSync(docsRoot, { withFileTypes: true })) {
+  for (const s of readdirSync(docsRoot, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const dir = join(docsRoot, s.name, "frd");
     if (!s.isDirectory() || !existsSync(dir)) continue;
-    for (const f of readdirSync(dir)) {
+    for (const f of readdirSync(dir).sort()) {
       const m = /^(FRD-\d+)-.*\.md$/.exec(f);
       if (!m) continue;
       const path = join(dir, f), text = readFileSync(path, "utf8");
