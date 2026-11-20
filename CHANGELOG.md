@@ -1,5 +1,15 @@
 # scriptorium
 
+## 0.3.0
+
+### Minor Changes
+
+- effa6a6: CI fails a pull request that changes a chain document's body but not its Summary, unless the PR body says "Summary unchanged: <file or all>, <reason>".
+
+### Patch Changes
+
+- ab673fe: Checks: a TP is approved only when the cross-cutting TP and every ADR it cites are; lint fails dead link anchors and Replay paths that do not exist.
+
 ## 0.2.0
 
 ### Minor Changes
