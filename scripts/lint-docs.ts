@@ -41,6 +41,10 @@ function prose(text: string): { n: number; s: string }[] {
 const cells = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 const sentences = (s: string) => s.replace(/[*_\x60]/g, "").split(/(?<=[.!?])\s+/).map((x) => x.replace(/\s+/g, " ").trim()).filter((x) => x.split(" ").length >= COPY_WORDS);
 
+// GitHub's heading slug: lowercase, punctuation dropped, spaces to hyphens.
+export const slug = (h: string) => h.trim().toLowerCase().replace(/[\x60*_]/g, "").replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s/g, "-");
+const anchorsOf = (md: string) => new Set(prose(md).filter((l) => /^#{1,6}\s/.test(l.s)).map((l) => slug(l.s.replace(/^#+\s+/, ""))));
+
 const hasWord = (t: string, w: string) => new RegExp("(^|[^a-z0-9])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "($|[^a-z0-9])").test(t);
 
 // The words in the Avoid column of the glossary table.
@@ -57,7 +61,7 @@ export function avoidWords(glossary: string): string[] {
   return [...new Set(out)];
 }
 
-export function lintFile(rel: string, text: string, phrases: string[], upstream: string[] = [], dirOnDisk?: string, avoid: string[] = []): Fail[] {
+export function lintFile(rel: string, text: string, phrases: string[], upstream: string[] = [], dirOnDisk?: string, avoid: string[] = [], projectRoot?: string): Fail[] {
   const fails: Fail[] = [];
   const f = (line: number, reason: string) => fails.push({ file: rel, line, reason });
   const kind = docKind(rel);
@@ -80,9 +84,12 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
   if (dirOnDisk)
     for (const { n, s } of lines)
       for (const m of s.matchAll(/\]\(([^)\s]+)\)/g)) {
-        const target = m[1].split("#")[0];
-        if (!target || /^(https?:|mailto:)/i.test(m[1])) continue;
-        if (!existsSync(resolve(dirOnDisk, decodeURIComponent(target)))) f(n, "link does not resolve: " + m[1]);
+        const [target, anchor] = m[1].split("#");
+        if (/^(https?:|mailto:)/i.test(m[1]) || (!target && !anchor)) continue;
+        const path = target ? resolve(dirOnDisk, decodeURIComponent(target)) : undefined;
+        if (path && !existsSync(path)) { f(n, "link does not resolve: " + m[1]); continue; }
+        if (anchor && (!path || path.endsWith(".md")) && !anchorsOf(path ? readFileSync(path, "utf8") : text).has(decodeURIComponent(anchor).toLowerCase()))
+          f(n, "link anchor has no heading: " + m[1]);
       }
 
   // Filler: a section holding nothing, TBD, TODO, or n/a without a reason.
@@ -109,6 +116,18 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
     }
   }
 
+  // CHECKS.md: a path named in the Replay cell must exist under the project root.
+  if (kind === "CHECKS" && projectRoot) {
+    let at = -1;
+    for (const { n, s } of lines) {
+      if (!/^\s*\|/.test(s)) { at = -1; continue; }
+      if (/^[\s:|-]+$/.test(s)) continue;
+      const c = cells(s);
+      if (at === -1) { at = c.indexOf("Replay"); continue; }
+      if (at >= 0) for (const m of (c[at] ?? "").matchAll(/\x60([^\x60\s]+[\/.][^\x60\s]*)\x60/g)) if (!existsSync(resolve(projectRoot, m[1]))) f(n, (c[0] || "row") + ": Replay path does not exist: " + m[1]);
+    }
+  }
+
   if (upstream.length && kind && ["FRD", "UX", "TP", "SPEC"].includes(kind)) {
     const seen = new Set(upstream.flatMap((u) => u.split(/\r?\n/).flatMap(sentences)));
     for (const { n, s } of lines) for (const x of sentences(s)) if (seen.has(x)) f(n, "sentence copied from the PRD or PRODUCT (link the id instead): " + x.slice(0, 60) + "...");
@@ -128,7 +147,7 @@ export function lintDocs(root: string, phrases: string[]): Fail[] {
     const rel = relative(docs, p).replaceAll("\\", "/");
     const slice = rel.split("/")[0];
     const prd = rel.includes("/") ? read(join(docs, slice, "PRD.md")) : undefined;
-    fails.push(...lintFile(rel, readFileSync(p, "utf8"), phrases, [product, prd].filter((x): x is string => !!x), dirname(p), avoid));
+    fails.push(...lintFile(rel, readFileSync(p, "utf8"), phrases, [product, prd].filter((x): x is string => !!x), dirname(p), avoid, root));
   }
   return fails;
 }

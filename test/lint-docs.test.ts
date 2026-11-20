@@ -37,7 +37,7 @@ function tree(files: Record<string, string>) {
 }
 
 test("a relative link must resolve to a file or directory; http, mailto and anchors are skipped", () => {
-  const root = tree({ "a/PRD.md": "## A\n[ok](../b.md) [dir](../c) [web](https://x.y/z) [m](mailto:a@b.c) [anchor](#a) [sec](../b.md#s)\n", "b.md": "## B\nx\n", "c/n.md": "## C\nx\n" });
+  const root = tree({ "a/PRD.md": "## A\n[ok](../b.md) [dir](../c) [web](https://x.y/z) [m](mailto:a@b.c) [anchor](#a) [sec](../b.md#b)\n", "b.md": "## B\nx\n", "c/n.md": "## C\nx\n" });
   expect(lintDocs(root, []).filter((f) => f.reason.includes("link"))).toEqual([]);
   const bad = tree({ "a/PRD.md": "## A\n[gone](../missing.md)\n" });
   expect(lintDocs(bad, []).map((f) => f.file + ":" + f.line + " " + f.reason)).toEqual(["a/PRD.md:2 link does not resolve: ../missing.md"]);
@@ -99,6 +99,22 @@ test("lintDocs finds the PRD of the slice and PRODUCT for the copy rule", () => 
 });
 
 const GLOSSARY = "# Glossary\n\n| Term | Meaning | Avoid |\n|---|---|---|\n| Booking | One place in a slot. | Reservation, appointment |\n| Family | A household. | client |\n";
+
+test("a link anchor needs a heading with that GitHub slug, in the target or in the file itself", () => {
+  const root = tree({ "a/PRD.md": "## A\n[ok](../b.md#the-why-2) [self](#a) [bad](../b.md#nope) [bad2](#zzz) [file](../b.md)\n", "b.md": "# B\n## The Why? 2\nbody\n" });
+  const out = lintDocs(root, []).map((f) => f.file + ":" + f.line + ": " + f.reason);
+  expect(out).toEqual(["a/PRD.md:2: link anchor has no heading: ../b.md#nope", "a/PRD.md:2: link anchor has no heading: #zzz"]);
+});
+
+test("a CHECKS.md Replay path in backticks must exist under the project root", () => {
+  const checks = (cell: string) => "# C\n## A\n| ID | Prevents | Command | Replay |\n|---|---|---|---|\n| CHECK-1 | x | `bun test` | " + cell + " |\n";
+  const root = tree({ "CHECKS.md": checks("`test/x.ts` fails") });
+  expect(lintDocs(root, []).map((f) => f.reason)).toEqual(["CHECK-1: Replay path does not exist: test/x.ts"]);
+  mkdirSync(join(root, "test"));
+  writeFileSync(join(root, "test", "x.ts"), "");
+  expect(lintDocs(root, [])).toEqual([]);
+  expect(lintDocs(tree({ "CHECKS.md": checks("no path here, `bun` only") }), [])).toEqual([]);
+});
 
 test("glossary: the Avoid words are read from the table", () => {
   expect(avoidWords(GLOSSARY)).toEqual(["reservation", "appointment", "client"]);
