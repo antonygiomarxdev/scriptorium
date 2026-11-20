@@ -9,6 +9,8 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { isChainProject, runDocChecks, runStatus, runTrace, splitDocPath } from "./hook-doc-check.ts";
+import { gate, readFormat } from "./format.ts";
+import { gateFile } from "./gate.ts";
 import { toPosix } from "./paths.ts";
 
 const sh = (args: string[], cwd?: string) => Bun.spawnSync(args, { cwd }).stdout.toString().trim();
@@ -23,7 +25,7 @@ export function changesetRule(nameStatus: string[]): string[] {
   // A rename or copy has two paths: code moved into docs/ is still a code change.
   const codePath = rows.flatMap((r) => r.ps).find((p) => !p.startsWith("docs/") && !p.startsWith(".changeset/") && !isTest(p));
   if (!codePath || rows.some(isChangeset)) return [];
-  return [`Changeset missing: ${codePath} is staged without a new .changeset/*.md. Run \`bunx changeset\` (or \`bunx changeset --empty\` when no user notices the change) and stage it.`];
+  return [`[format 2] Changeset missing: ${codePath} is staged without a new .changeset/*.md. Run \`bunx changeset\` (or \`bunx changeset --empty\` when no user notices the change) and stage it.`];
 }
 
 const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
@@ -45,12 +47,27 @@ if (import.meta.main) {
       .filter((d): d is { root: string; rel: string } => !!d && isChainProject(d.root));
   }
   const fails: string[] = [];
+  const warnings: string[] = [];
   if (!all) {
     const top = sh(["git", "rev-parse", "--show-toplevel"]);
-    if (existsSync(join(top, ".changeset", "config.json"))) fails.push(...changesetRule(sh(["git", "diff", "--cached", "--name-status", "--diff-filter=ACMRD"], top).split("\n").filter(Boolean)));
+    if (isChainProject(top)) {
+      const staged = sh(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], top).split("\n").filter(Boolean);
+      const g = gate(
+        staged.filter((f) => !f.startsWith(".scriptorium/")).flatMap((f) => gateFile(top, toPosix(f)) ?? []),
+        readFormat(top),
+      );
+      fails.push(...g.fails);
+      warnings.push(...g.warnings);
+    }
+    if (existsSync(join(top, ".changeset", "config.json"))) {
+      const g = gate(changesetRule(sh(["git", "diff", "--cached", "--name-status", "--diff-filter=ACMRD"], top).split("\n").filter(Boolean)), readFormat(top));
+      fails.push(...g.fails);
+      warnings.push(...g.warnings);
+    }
   }
   for (const d of docs) fails.push(...runDocChecks(d.root, d.rel, all));
   for (const root of new Set(docs.map((d) => d.root))) fails.push(...runStatus(root), ...runTrace(root));
+  for (const w of warnings) console.log(w);
   if (fails.length) {
     console.error("Scriptorium: commit blocked.\n" + [...new Set(fails)].join("\n"));
     process.exit(1);

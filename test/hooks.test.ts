@@ -172,7 +172,7 @@ test("changesetRule: a rename checks both paths, and a deleted code file counts"
 });
 
 test("pre-commit blocks a commit that only deletes code, where changesets are configured", () => {
-  const root = project({ "src/a.ts": "x", ".changeset/config.json": "{}" });
+  const root = project({ "src/a.ts": "x", ".changeset/config.json": "{}", ".scriptorium/config.json": '{"format":2}' });
   git(root, "init");
   git(root, "add", ".");
   git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-m", "init", "--no-verify");
@@ -194,7 +194,7 @@ test("pre-commit blocks code without a changeset only where .changeset/config.js
   };
   const code = { "src/a.ts": "x" };
   expect(run(code).code).toBe(0);
-  const r = run({ ...code, ".changeset/config.json": "{}" });
+  const r = run({ ...code, ".changeset/config.json": "{}", ".scriptorium/config.json": '{"format":2}' });
   expect(r.code).toBe(1);
   expect(r.err).toContain("bunx changeset");
   expect(run({ ...code, ".changeset/config.json": "{}", ".changeset/a.md": "---\n---\nx\n" }).code).toBe(0);
@@ -210,3 +210,66 @@ test("pre-commit --all fails a document edited after approval", () => {
   expect(r.code).toBe(1);
   expect(r.err).toContain("body changed since approval");
 }, 60000);
+
+// covers: chain/FRD-03/EX-6
+// covers: chain/FRD-03/EX-7
+test("EX-6, EX-7: a missing changeset warns under format 1 and blocks under format 2", () => {
+  const repo = project({ ".changeset/config.json": "{}", "scripts/a.ts": "x" });
+  const git = (...a: string[]) => Bun.spawnSync(["git", ...a], { cwd: repo });
+  git("init", "-q"), git("add", "scripts/a.ts");
+  const run = () => Bun.spawnSync([process.execPath, join(S, "pre-commit.ts")], { cwd: repo });
+  const r = run();
+  expect(r.exitCode).toBe(0);
+  expect(r.stdout.toString()).toContain("WARN (format 2): Changeset missing");
+  mkdirSync(join(repo, ".scriptorium"));
+  writeFileSync(join(repo, ".scriptorium", "config.json"), '{"format":2}');
+  expect(run().exitCode).toBe(1);
+});
+
+// covers: chain/FRD-03/EX-3
+test("the stop hook in a project pinned to an unknown format passes with the update warning", () => {
+  const root = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 9}' });
+  const r = hook("hook-stop.ts", { cwd: root });
+  expect(r.code).toBe(0);
+  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 2: update Scriptorium");
+  const ok = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 2}' }); // mutant: a known pin gives no warning
+  expect(hook("hook-stop.ts", { cwd: ok }).err).not.toContain("update Scriptorium");
+});
+
+const gateCall = (root: string, rel: string) => hook("hook-gate.ts", { cwd: root, input: { cwd: root, tool_input: { file_path: join(root, rel) } } });
+const PIN2 = '{"format":2}';
+
+// covers: chain/FRD-04/EX-9
+test("pre-commit fails a staged code file no approved spec lists, and names it", () => {
+  const root = project({ "docs/PRODUCT.md": PRODUCT, "scripts/b.ts": "x", ".scriptorium/config.json": PIN2 });
+  git(root, "init");
+  git(root, "add", ".");
+  const r = hook("pre-commit.ts", { cwd: root });
+  expect(r.code).toBe(1);
+  expect(r.err + r.out).toContain("scripts/b.ts");
+  const docsOnly = project({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2 }); // mutant: nothing to gate
+  git(docsOnly, "init");
+  git(docsOnly, "add", ".");
+  expect(hook("pre-commit.ts", { cwd: docsOnly }).code).toBe(0);
+}, 60000);
+
+// covers: chain/FRD-04/EX-12
+test("under format 1 the edit hook warns with the refusal text and lets the edit go ahead", () => {
+  const root = project({ "docs/PRODUCT.md": PRODUCT, "scripts/b.ts": "x" });
+  const r = gateCall(root, "scripts/b.ts");
+  expect(r.code).toBe(0);
+  expect(r.err + r.out).toContain("WARN (format 2):");
+  expect(r.err + r.out).toContain("scripts/b.ts: no approved spec names it in its Files table");
+  const pinned = project({ "docs/PRODUCT.md": PRODUCT, "scripts/b.ts": "x", ".scriptorium/config.json": PIN2 }); // mutant: format 2 refuses
+  const p = gateCall(pinned, "scripts/b.ts");
+  expect(p.code).toBe(2);
+  expect(p.err).toContain("scripts/b.ts: no approved spec names it in its Files table");
+});
+
+// covers: chain/FRD-04/EX-13
+test("a project without docs/PRODUCT.md: the edit hook does nothing", () => {
+  const root = project({ "scripts/b.ts": "x", ".scriptorium/config.json": PIN2 });
+  const r = gateCall(root, "scripts/b.ts");
+  expect(r.code).toBe(0);
+  expect(r.err + r.out).toBe("");
+});
