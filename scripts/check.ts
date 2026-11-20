@@ -3,7 +3,7 @@
 //   bun scripts/check.ts prd <slice>/docs/PRD.md <SLICE_ID> [--product docs/PRODUCT.md]
 //   bun scripts/check.ts frd <slice dir> <SLICE_ID>
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 // A PRD or FRD says what, not how: these names belong in the Technical Proposal.
 // shortcut: fixed list, make it configurable per project when a project needs other words.
@@ -202,7 +202,7 @@ if (import.meta.main) {
     // check.ts status [project root]: a table of every chain document and its status; fails on an approval above a draft.
     const root = target ?? ".";
     const { docs, fails } = chainStatus(root);
-    const rel = (p: string) => p.slice(root.length).replace(/^[\\/]/, "").replaceAll("\\", "/");
+    const rel = (p: string) => relative(root, p).replaceAll("\\", "/");
     console.log("| Document | Kind | Status |\n|---|---|---|");
     for (const d of docs) console.log(`| ${rel(d.path)} | ${d.kind} | ${d.status} |`);
     const done = docs.filter((d) => d.approved).length;
