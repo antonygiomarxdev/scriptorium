@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Write the product before the code: a checked document chain for agent teams, above spec-driven development",
+  "description": "Write the product before the code: a checked document chain (requests, product, PRDs, FRDs, UX, technical proposals, ADRs, specs) that AI coding agents write, build from and are reviewed against",
   "scripts": {
     "check": "bun scripts/check.ts",
     "test": "bun test",

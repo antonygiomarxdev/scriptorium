@@ -8,7 +8,7 @@
     {
       "name": "scriptorium",
       "source": "./",
-      "description": "Write the product before the code: PRODUCT, PRDs, FRDs, TPs, ADRs and specs, each checked before the next"
+      "description": "Write the product before the code: a checked document chain (requests, product, PRDs, FRDs, UX, technical proposals, ADRs, specs) that AI coding agents write, build from and are reviewed against"
     }
   ]
 }
