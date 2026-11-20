@@ -90,7 +90,7 @@ test("a project without docs/PRODUCT.md is never touched, even with a broken doc
   git(root, "init");
   git(root, "add", ".");
   expect(hook("pre-commit.ts", { cwd: root }).code).toBe(0);
-});
+}, 60000);
 
 test("the stop hook checks only changed documents: legacy broken ones do not block, a changed broken one does", () => {
   const root = committed({ "docs/PRODUCT.md": PRODUCT, "docs/requests/REQ-1-legacy.md": BAD_REQ });
@@ -121,7 +121,7 @@ test("the stop hook fails on the chain status: an approved document holding an o
   const r = hook("hook-stop.ts", { cwd: root });
   expect(r.code).toBe(2);
   expect(r.err).toContain("Open questions");
-});
+}, 60000);
 
 test("pre-commit checks staged documents and --all checks a whole project", () => {
   const commit = (text: string) => {

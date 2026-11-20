@@ -7,16 +7,35 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bun test
+      - run: bun run test
       - run: bun run typecheck
+      - name: Plugin manifests parse and share the package version
+        run: bun -e "const r=(f)=>require('./'+f);const v=r('package.json').version;r('.claude-plugin/marketplace.json');if(r('.claude-plugin/plugin.json').version!==v)throw new Error('plugin.json version differs from package.json')"
       - name: Scriptorium's own documents
         run: |
           bun scripts/check.ts status .
           bun scripts/lint-docs.ts .
       - name: The Larder example passes every check
         run: bun scripts/pre-commit.ts --all examples/larder
+
+  summary:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - name: A changed document changes its Summary
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bun scripts/summary-diff.ts origin/${{ github.base_ref }}

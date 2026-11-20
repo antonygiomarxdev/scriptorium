@@ -6,7 +6,7 @@
   "description": "Write the product before the code: a checked document chain (requests, product, PRDs, FRDs, UX, technical proposals, ADRs, specs) that AI coding agents write, build from and are reviewed against",
   "scripts": {
     "check": "bun scripts/check.ts",
-    "test": "bun test",
+    "test": "bun test --timeout 120000",
     "typecheck": "tsc --noEmit",
     "changeset": "changeset",
     "version": "changeset version && bun scripts/sync-version.ts",
