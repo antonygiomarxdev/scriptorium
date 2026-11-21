@@ -6,7 +6,43 @@ on:
     branches: [main]
 
 jobs:
+  # What the change touches: decides which of the jobs below run, and which tests (SPEC-01-4).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      base: ${{ steps.diff.outputs.base }}
+      code: ${{ steps.diff.outputs.code }}
+      examples: ${{ steps.diff.outputs.examples }}
+      plan: ${{ steps.diff.outputs.plan }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          if git rev-parse --verify -q "$BASE^{commit}" >/dev/null; then
+            git diff --name-only "$BASE...HEAD" > changed.txt
+            # a plan that cannot be computed (the script fails or prints nothing) runs the whole suite
+            plan=$(bun scripts/affected.ts < changed.txt) || plan=all
+            plan=${plan//$'\n'/ } # one line for the output; no pipe, so a failing script is seen
+            if [ -z "$plan" ]; then plan=all; fi
+            code=$(bun scripts/affected.ts --code < changed.txt) || code=true
+            if [ -z "$code" ]; then code=true; fi
+            examples=false
+            grep -qE '^(scripts|examples)/' changed.txt && examples=true
+          else
+            # no base to compare with (first push, forced push): run everything
+            BASE=""; plan=all; code=true; examples=true
+          fi
+          { echo "base=$BASE"; echo "plan=$plan"; echo "code=$code"; echo "examples=$examples"; } >> "$GITHUB_OUTPUT"
+
   test:
+    needs: changes
+    # A change of documents only runs no tests, no typecheck and no format check; the windows leg is part of this job.
+    if: needs.changes.outputs.code == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -14,9 +50,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bun run test
+      - name: The whole suite
+        if: needs.changes.outputs.plan == 'all'
+        run: bun run test
+      - name: Tests the change affects (import graph, then the script-to-test map)
+        if: needs.changes.outputs.plan != 'all'
+        shell: bash
+        run: |
+          bun test --timeout 120000 --changed="${{ needs.changes.outputs.base }}"
+          plan="${{ needs.changes.outputs.plan }}"
+          if [ "$plan" != none ] && [ -n "$plan" ]; then bun test --timeout 120000 $plan; fi
       - run: bun run typecheck
       - run: bun run format:check
       - name: Plugin manifests parse and share the package version
@@ -28,10 +75,29 @@ jobs:
           bun scripts/check.ts drift .
           bun scripts/check.ts trace .
       - name: The Larder example passes every check
+        if: needs.changes.outputs.examples == 'true'
         run: |
           bun scripts/pre-commit.ts --all examples/larder
           bun scripts/check.ts drift examples/larder
           bun scripts/check.ts trace examples/larder
+
+  # The document checks run on every change; when code changed, the test job above runs them too.
+  docs:
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Plugin manifests parse and share the package version
+        run: bun -e "const r=(f)=>require('./'+f);const v=r('package.json').version;r('.claude-plugin/marketplace.json');if(r('.claude-plugin/plugin.json').version!==v)throw new Error('plugin.json version differs from package.json')"
+      - name: Scriptorium's own documents
+        run: |
+          bun scripts/check.ts status .
+          bun scripts/lint-docs.ts .
+          bun scripts/check.ts drift .
+          bun scripts/check.ts trace .
 
   summary:
     if: github.event_name == 'pull_request'

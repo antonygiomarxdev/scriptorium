@@ -1,0 +1,74 @@
+name: Mutation
+
+# Nightly mutation testing, CI only (SPEC-01-3). 09:00 UTC is 03:00 in UTC-6. Nothing runs it on a developer machine.
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # AFF-5: CI runs only what a change affects, so the whole suite runs once a night to show a missed dependency within a day.
+  suite:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun test --timeout 120000
+
+  mutation:
+    # A schedule only runs on the default branch; a manual dispatch from another branch is skipped.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Verdicts of unchanged mutants from the previous run
+        uses: actions/cache/restore@v4
+        with:
+          path: .stryker-incremental
+          key: mutation-${{ github.run_id }}
+          restore-keys: mutation-
+      - name: Run the tool file by file with that file's own tests
+        run: |
+          mkdir -p .stryker-incremental reports
+          : > failed.txt
+          unmapped=$(bun scripts/mutation.ts list 2>&1 >/dev/null || true)
+          while IFS=$'\t' read -r file tests; do
+            name=$(echo "$file" | tr '/' '_')
+            npx --yes @stryker-mutator/core@10.1.1 run --mutate "$file" --testRunner command --coverageAnalysis off \
+              --commandRunner.command "bun test $tests" --incremental --incrementalFile ".stryker-incremental/$name.json" \
+              --reporters json --jsonReporter.fileName "reports/$name.json" </dev/null || echo "$file" >> failed.txt
+            [ -s "reports/$name.json" ] || echo "$file" >> failed.txt
+          done < <(bun scripts/mutation.ts list 2>/dev/null)
+          sort -u failed.txt -o failed.txt
+          { bun scripts/mutation.ts summary reports/*.json; [ -z "$unmapped" ] || printf '\nUnmapped scripts, not tested: %s\n' "$unmapped"; [ ! -s failed.txt ] || { printf '\nRun failed for:\n'; sed 's/^/- /' failed.txt; }; } > body.md
+      - name: Save the verdicts, also when a run failed
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .stryker-incremental
+          key: mutation-${{ github.run_id }}
+      - name: One issue labeled mutation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -s body.md ] || exit 0
+          gh label create mutation --description "Surviving mutants" --force
+          open=$(gh issue list --label mutation --state open --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then gh issue comment "$open" --body-file body.md
+          else gh issue create --label mutation --title "Surviving mutants" --body-file body.md; fi
+      - name: A file whose run failed fails the job
+        run: |
+          if [ -s failed.txt ]; then echo "Run failed for:"; cat failed.txt; exit 1; fi
