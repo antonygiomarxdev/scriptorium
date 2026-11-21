@@ -249,3 +249,24 @@ test("FRD-08/EX-12: a document approved before the Links line existed, with the 
   writeFileSync(product, withLinks(approvedText));
   expect(driftFails(root).fails).toEqual([]);
 });
+
+// covers: chain/FRD-08/EX-18
+test("FRD-08/EX-18: a Links line below the first heading is drift", () => {
+  const { root, product } = approved();
+  edit(product, "## Summary\n", "## Summary\n" + LINKS + "\n");
+  const r = driftFails(root).fails;
+  expect(r.some((f) => f.includes("PRODUCT.md") && f.includes("body changed since approval"))).toBe(true);
+});
+
+// covers: chain/FRD-08/EX-19
+test("FRD-08/EX-19: a second Links line in the header is drift, and a change of the first one is not", () => {
+  const { root, product } = approved();
+  writeFileSync(product, withLinks(rd(product)));
+  expect(driftFails(root).fails).toEqual([]); // the first header Links line is left out
+  edit(product, "app.asana.com/1/1/project/2/task/3", "app.asana.com/9/9/project/9/task/9");
+  expect(driftFails(root).fails).toEqual([]); // and so is a change of it
+  const first = LINKS.replace("1/1/project/2/task/3", "9/9/project/9/task/9");
+  edit(product, first + "\n", first + "\nLinks: [Other](https://app.asana.com/1/1/1)\n");
+  const r = driftFails(root).fails;
+  expect(r.some((f) => f.includes("PRODUCT.md") && f.includes("body changed since approval"))).toBe(true);
+});

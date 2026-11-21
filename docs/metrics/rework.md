@@ -109,3 +109,5 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-71 | 2026-11-21 | chain FRD-09 | C-13 | "The project root above docs/" is written three times: projectOf, splitDocPath and reusesFails. |
 | R-72 | 2026-11-21 | SPEC-08-5 | C-1 | No example for a body line that holds "Links:" in the middle, for a link URL with spaces, or for an empty link text; each mutant survives. |
 | R-73 | 2026-11-21 | chain FRD-08 | C-1 | The Links line is left out of the fingerprint and any link text passes the lint, so a sentence written as link text can be added after approval with no drift. |
+| R-74 | 2026-11-21 | SPEC-08-5 | C-1 | The rows say a header line, but the fingerprint and the cap leave out every line starting with "Links:" anywhere; 400 body Links lines pass the cap, and no example puts a Links line in the body. |
+| R-75 | 2026-11-21 | SPEC-08-7 | C-1 | No example for a document with no "## " heading, or for a "##x" line, around the Links rule; each mutant survives. |

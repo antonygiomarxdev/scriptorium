@@ -8,14 +8,22 @@ import { toPosix } from "./paths.ts";
 
 const STATUS = /^\**Status:?\**\s*(Draft|Approved)/i;
 const APPROVAL = /^Approval: /;
-const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^(Last change|Links):/.test(l); // header lines that may change after approval
+const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^Last change:/.test(l); // header lines that may change after approval
+
+// Index of the one Links line left out of the fingerprint and the line cap: the first line starting "Links:" above the first "## " heading.
+// A Links line in the body, or a second one in the header, is counted like any line.
+export function linksLine(lines: string[]): number {
+  const i = lines.findIndex((l) => /^Links:/.test(l));
+  const h = lines.findIndex((l) => /^## /.test(l));
+  return i >= 0 && (h < 0 || i < h) ? i : -1;
+}
 
 // The form fingerprints had before FRD-08: kept so a document approved then still matches until it is approved again.
 export function normalizeV1(text: string): string {
   return text
     .split(/\r?\n/)
     .map((l) => l.replace(/\s+$/, ""))
-    .filter((l) => !IGNORED(l))
+    .filter((l, i, all) => !IGNORED(l) && i !== linksLine(all))
     .join("\n")
     .trim();
 }

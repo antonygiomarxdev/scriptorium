@@ -290,3 +290,50 @@ test("EX-15: a Links line with an http link fails", () => {
   expect(r).toHaveLength(1);
   expect(r[0]).toContain("Links line holds text that is not a link");
 });
+
+const capLines = (n: number) => "## A\n" + "x\n".repeat(n - 1);
+const LINKS_LINE = "Links: [Asana](https://app.asana.com/0/2/3)\n";
+const uxCap = (text: string) => reasons("a/ux/UX-01-a.md", text).filter((r) => r.includes("cap"));
+
+// covers: chain/FRD-08/EX-16
+test("EX-16: a Links header line is not counted toward the cap", () => {
+  expect(CAPS.UX).toBe(150);
+  expect(uxCap(capLines(150))).toEqual([]);
+  expect(uxCap(LINKS_LINE + capLines(150))).toEqual([]); // 151 lines in the file, 150 counted
+});
+
+// covers: chain/FRD-08/EX-17
+test("EX-17: one more content line over the cap fails, and the count leaves the Links line out", () => {
+  const r = uxCap(LINKS_LINE + capLines(151));
+  expect(r).toHaveLength(1);
+  expect(r[0]).toContain("UX is 151 lines, over its cap of 150");
+  expect(uxCap(capLines(151))[0]).toContain("UX is 151 lines, over its cap of 150"); // mutant: no Links line gives the same count
+});
+
+// covers: chain/FRD-08/EX-18
+test("EX-18: only a Links line in the header is left out of the cap; a body Links line counts", () => {
+  const body = LINKS_LINE.trim() + "\n";
+  const inBody = "## A\n" + body + "x\n".repeat(149); // 151 lines, the Links line is below the first heading
+  expect(uxCap(inBody)[0]).toContain("UX is 151 lines, over its cap of 150");
+  expect(uxCap("## A\n" + "x\n".repeat(149))).toEqual([]); // mutant: without the line it is 150
+  const many = "## A\n" + body.repeat(400);
+  expect(uxCap(many)[0]).toContain("UX is 401 lines, over its cap of 150");
+});
+
+// covers: chain/FRD-08/EX-19
+test("EX-19: a second Links line in the header counts toward the cap", () => {
+  const second = "Links: [Other](https://app.asana.com/1/1/1)\n";
+  const r = uxCap(LINKS_LINE + second + capLines(150));
+  expect(r).toHaveLength(1);
+  expect(r[0]).toContain("UX is 151 lines, over its cap of 150");
+  expect(uxCap(LINKS_LINE + capLines(150))).toEqual([]); // the first one is still left out
+});
+
+// covers: chain/FRD-08/EX-18
+test("EX-18: lines that only look like a Links line are counted", () => {
+  for (const line of ["Linksys notes", "Lines: x", "links: [a](https://app.asana.com/0/2/3)", " Links: [a](https://app.asana.com/0/2/3)"]) {
+    const r = uxCap(line + "\n" + capLines(150));
+    expect([line, r.length]).toEqual([line, 1]);
+    expect(r[0]).toContain("UX is 151 lines, over its cap of 150");
+  }
+});

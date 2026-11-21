@@ -1,13 +1,13 @@
 # FRD-08: Adopted documents checked as they are
 
 Status: Approved (2026-11-21)
-Approval: content rwGRMj9NyHJQ; rests on ../PRD.md _I099qjvgjrm
+Approval: content aNNKSmp8IORy; rests on ../PRD.md _I099qjvgjrm
 
 ## Summary
 
 A project that adopts the chain keeps its existing ADR file names and its accepted ADRs as they are, and a formatter run at commit does not invalidate an approval. An ADR file may be named NNNN-name.md or ADR-NNNN-name.md, an ADR numbered at or below the cutoff set at adoption is not held to the ADR line cap or template, and the approval fingerprint ignores spacing, blank lines and table padding.
 
-Last change: 2026-11-21, a Links header line stays out of the fingerprint and holds only https links (owner)
+Last change: 2026-11-21, only the first Links line of the header is left out (owner)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -26,8 +26,9 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | FR-CHAIN-08-3 | WHERE | WHERE an ADR's number is at or below the "legacyAdrsThrough" number in the project's Scriptorium config, the docs lint and the TP check shall not apply the ADR line cap or the ADR template to it. |
 | FR-CHAIN-08-4 | IF | IF a TP cites such an ADR and a status line in it says Proposed, Superseded or Rejected THEN the TP check shall fail and name its status; with no status line, it counts as accepted. |
 | FR-CHAIN-08-7 | IF | IF "legacyAdrsThrough" is set and is not a whole number THEN the checks shall fail and say what to write. |
-| FR-CHAIN-08-8 | WHEN | WHEN the fingerprint of a document is computed, it shall leave out a header line that starts with "Links:", as it leaves out the status, approval and last-change lines. |
+| FR-CHAIN-08-8 | WHEN | WHEN the fingerprint of a document is computed, it shall leave out the first line that starts with "Links:" above the first "## " heading, and only that one, as it leaves out the status, approval and last-change lines. |
 | FR-CHAIN-08-9 | IF | IF a "Links:" line holds anything but markdown links to https URLs, separated by commas or spaces, THEN the docs lint shall fail and name it. |
+| FR-CHAIN-08-10 | always | The line cap of a document shall always leave out the same one Links line the fingerprint leaves out, and count every other line. |
 | FR-CHAIN-08-5 | WHEN | WHEN the fingerprint of a document is computed, it shall ignore runs of spaces, blank lines and the dashes, colons and padding of a table separator row. |
 | FR-CHAIN-08-6 | WHEN | WHEN a document was approved with the earlier fingerprint, the checks shall accept that fingerprint until it is approved again. |
 
@@ -37,7 +38,7 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 |---|---|---|
 | RULE-1 | An ADR is found under either name. | FR-CHAIN-08-1, FR-CHAIN-08-2 |
 | RULE-2 | An ADR written before adoption is kept as it is, below a cutoff the project sets. | FR-CHAIN-08-3, FR-CHAIN-08-4, FR-CHAIN-08-7 |
-| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9 |
+| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9, FR-CHAIN-08-10 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -53,6 +54,10 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | EX-13 | RULE-3 | positive | A Links line holds two links, the second to https://app.asana.com/0/2/3 | the docs lint runs | it reports nothing for that line |
 | EX-14 | RULE-3 | negative | A Links line says "[Asana](https://app.asana.com/0/2/3) and a slot holds 10 families" | the docs lint runs | it fails with "Links line holds text that is not a link" |
 | EX-15 | RULE-3 | negative | A Links line holds "[Asana](http://example.com/x)" | the docs lint runs | it fails with "Links line holds text that is not a link" |
+| EX-16 | RULE-3 | boundary | A UX document of 150 lines, its cap, gets a "Links:" header line, so it has 151 lines | the docs lint runs | it reports no cap failure |
+| EX-17 | RULE-3 | negative | A UX document of 150 lines with a "Links:" header line gets one more content line, so it has 152 lines | the docs lint runs | it fails "UX is 151 lines, over its cap of 150" |
+| EX-18 | RULE-3 | negative | An approved PRODUCT gets "Links: [Asana](https://app.asana.com/0/2/3)" as a line below its first "## " heading | status runs, and the docs lint runs on a copy at its cap | status reports "body changed since approval", and the line counts toward the cap |
+| EX-19 | RULE-3 | negative | An approved PRODUCT has one Links line in its header and gets a second one there | status runs | it reports "body changed since approval" |
 | EX-8 | RULE-3 | positive | An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row | status runs | it reports no drift |
 | EX-9 | RULE-3 | negative | An approved spec where one word of a row changes | status runs | it fails with "body changed since approval" |
 | EX-10 | RULE-3 | positive | A document approved before this change, with no change since | status runs | it reports no drift |
@@ -104,6 +109,10 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-10** (EX-13): Given A Links line holds two links, the second to https://app.asana.com/0/2/3, when the docs lint runs, then it reports nothing for that line.
 - **AC-11** (EX-14): Given A Links line says "[Asana](https://app.asana.com/0/2/3) and a slot holds 10 families", when the docs lint runs, then it fails with "Links line holds text that is not a link".
 - **AC-12** (EX-15): Given A Links line holds "[Asana](http://example.com/x)", when the docs lint runs, then it fails with "Links line holds text that is not a link".
-- **AC-13** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
-- **AC-14** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
-- **AC-15** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.
+- **AC-13** (EX-16): Given A UX document of 150 lines, its cap, gets a "Links:" header line, so it has 151 lines, when the docs lint runs, then it reports no cap failure.
+- **AC-14** (EX-17): Given A UX document of 150 lines with a "Links:" header line gets one more content line, so it has 152 lines, when the docs lint runs, then it fails "UX is 151 lines, over its cap of 150".
+- **AC-15** (EX-18): Given An approved PRODUCT gets "Links: [Asana](https://app.asana.com/0/2/3)" as a line below its first "## " heading, when status runs, and the docs lint runs on a copy at its cap, then status reports "body changed since approval", and the line counts toward the cap.
+- **AC-16** (EX-19): Given An approved PRODUCT has one Links line in its header and gets a second one there, when status runs, then it reports "body changed since approval".
+- **AC-17** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
+- **AC-18** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
+- **AC-19** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.
