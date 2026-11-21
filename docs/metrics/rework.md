@@ -90,3 +90,11 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-52 | 2026-11-21 | SPEC-06-1 | C-1 | Two mutants survived: the answerer is not anchored right after the Q-n id, and the check may read the whole document instead of the Open questions section; no example covers either. |
 | R-53 | 2026-11-21 | Metrics SPEC-01-3 | C-1 | Four mutants survived: pre-commit ignoring the pin or dropping its format 2 warning, the report crashing on an unknown cause, and the root argument of rework ignored; no example covers pre-commit under format 2. |
 | R-54 | 2026-11-21 | FRD-05, FRD-06 | C-10 | The coverage waivers were written as prose, not "uncovered: EX-n reason", so the scan ignored them and blocked the commit; approval did not catch the wrong form. |
+| R-55 | 2026-11-21 | SPEC-07-1 | C-1 | Ids were read from the whole request, not only its Decision section, and no test failed: no example has an id outside the Decision. |
+| R-56 | 2026-11-21 | SPEC-07-1 | C-1 | An ADR-0029 file matcher without the trailing dash would also match ADR-00290-x.md, and no test failed. |
+| R-57 | 2026-11-21 | SPEC-07-1 | C-1 | A Rests on path to a missing file falls back to the FR-id rule silently; no example says what should happen. |
+| R-58 | 2026-11-21 | SPEC-07-1 | C-1 | With no Rests on line, a TP that cites no FR id is no longer reported, and no test failed: EX-6 tests only a wrong FR id. |
+| R-59 | 2026-11-21 | SPEC-07-2 | C-2 | The approve refusal of a request that is not accepted is needed by EX-8, but the Files text names only chainStatus. |
+| R-60 | 2026-11-21 | metrics SPEC-01-2 | C-12 | The rework report test checks only that C-9 is absent, so an extra "?: 1" line for an unknown cause passes. |
+| R-61 | 2026-11-21 | SPEC-07-3 | C-1 | Status with a TP resting on a registry was not tested: removing the registry half of the parent test in chainStatus fails nothing, since EX-15 uses a request. |
+| R-62 | 2026-11-21 | SPEC-07-3 | C-13 | "Is this parent a request or a registry" is written twice in scripts/check.ts, in parentIds and in chainStatus. |

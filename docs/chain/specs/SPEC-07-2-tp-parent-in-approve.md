@@ -1,14 +1,14 @@
 # SPEC-07-2: Approval rests a TP on its Rests on document
 
 Status: Approved (2026-11-21)
-Approval: content pJTFrnOVFVmL; rests on ../frd/FRD-07-tp-on-request.md ziLURA7EnfYa
+Approval: content UMagCMFqRTEM; rests on ../frd/FRD-07-tp-on-request.md iWE6ErQcSy7r
 Rests on: ../frd/FRD-07-tp-on-request.md
 
 ## Summary
 
 chainStatus gives a TP with a Rests on line that document as its parent, so approve records it and status checks it is accepted.
 
-Last change: 2026-11-21, first draft
+Last change: 2026-11-21, Files names the approve refusal of a request that is not accepted (review R-59)
 
 ## Rows
 
@@ -18,7 +18,7 @@ Last change: 2026-11-21, first draft
 ## Files
 | Path | Create or change | Holds |
 |---|---|---|
-| `scripts/check.ts` | Change | In chainStatus, a TP whose text has a Rests on line rests on that file; otherwise on the FRD of its number, as today |
+| `scripts/check.ts` | Change | In chainStatus, a TP whose text has a Rests on line rests on that file; otherwise on the FRD of its number, as today. The approve command refuses a document whose parent is a request that is not accepted, and only a request |
 
 ## Reuses
 - `scripts/check.ts` `restsOn`: the same reader the spec rows of chainStatus use.

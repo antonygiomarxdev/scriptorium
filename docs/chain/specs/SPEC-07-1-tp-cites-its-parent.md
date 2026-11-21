@@ -1,7 +1,7 @@
 # SPEC-07-1: The TP check reads what the TP rests on
 
 Status: Approved (2026-11-21)
-Approval: content b_xjt-gfxaDb; rests on ../frd/FRD-07-tp-on-request.md ziLURA7EnfYa
+Approval: content b_xjt-gfxaDb; rests on ../frd/FRD-07-tp-on-request.md iWE6ErQcSy7r
 Rests on: ../frd/FRD-07-tp-on-request.md
 
 ## Summary

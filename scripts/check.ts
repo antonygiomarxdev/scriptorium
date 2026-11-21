@@ -232,7 +232,8 @@ export function checkTp(text: string, adrDir: string, knownFrs: Set<string>, tpP
   const on = restsOn(text);
   const parent = on && tpPath ? fromDoc(tpPath, on) : undefined;
   const from = parent && existsSync(parent) ? parentIds(parent) : undefined;
-  if (from) {
+  if (on && parent && !existsSync(parent)) fails.push("rests on " + on + ", which does not exist");
+  else if (from) {
     if (!from.ids.size) fails.push(from.name + ": give each decision an id (CI-1, CI-2) so the TP can cite it");
     else {
       const prefixes = new Set([...from.ids].map((i) => i.split("-")[0]));
@@ -495,7 +496,10 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) {
       const tpPath = join(d, "tp", f);
       const on = restsOn(readFileSync(tpPath, "utf8"));
-      add(tpPath, "TP", on ? fromDoc(tpPath, on) : sib("frd", "FRD", f.slice(3, 5)), [crossTp]); // a Rests on line wins over the FRD of its number
+      const parent = on ? fromDoc(tpPath, on) : undefined;
+      // A Rests on line wins over the FRD of its number; resting on a request or a registry, a TP owes the cross-cutting TP nothing.
+      const own = parent && (/^REQ-\d+/.test(basename(parent)) || REGISTRY.test(basename(parent)));
+      add(tpPath, "TP", parent ?? sib("frd", "FRD", f.slice(3, 5)), own ? [] : [crossTp]);
     }
     for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) {
       const sp = join(d, "specs", f),
@@ -613,6 +617,7 @@ if (import.meta.main) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) usage();
         const root = b && !b.startsWith("--") ? b : ".";
         const all = chainStatus(root).docs;
+        if (all.find((y) => resolve(y.path) === resolve(a))?.kind === "REQUEST") throw new Error("the owner accepts a request on its Status line; approve is for chain documents");
         const par = all.find((x) => x.path === all.find((y) => resolve(y.path) === resolve(a))?.parent);
         if (par?.kind === "REQUEST" && !par.approved) throw new Error(basename(par.path).replace(/^(REQ-\d+).*/, "$1") + " is " + par.status + ", not accepted: a document resting on a request needs it accepted");
         approve(a, root, date);

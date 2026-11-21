@@ -895,3 +895,57 @@ test("EX-8: approve on a TP resting on a request that is still Open fails", () =
   expect(r.out).toMatch(/accepted/i);
   expect(readFileSync(join(root, "docs", "inbox", "tp", "TP-01-a.md"), "utf8")).not.toContain("Status: Approved"); // nothing was approved
 });
+
+// covers: chain/FRD-07/EX-11
+test("EX-11: an id defined outside the request's Decision section does not count", () => {
+  const req = "# REQ-6: x\n\nStatus: Accepted\n\n" + SUM + "\n## Context\n- CI-3: only background\n## Decision\n- CI-1: use a cache\n- CI-2: pin the tool\n";
+  const r = tpIn({ rests: ON_REQ, cites: "CI-3", files: { "docs/requests/REQ-6-ci.md": req } });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("cites CI-3, not in REQ-6's Decision");
+});
+
+// covers: chain/FRD-07/EX-12
+test("EX-12: an ADR file whose id only starts with the cited id does not match", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0029", adrFile: "ADR-00290-x.md" });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("ADR-0029 has no file");
+});
+
+// covers: chain/FRD-07/EX-13
+test("EX-13: a Rests on path that does not exist fails and names the path", () => {
+  const r = tpIn({ rests: "../../requests/REQ-9-x.md", cites: "CI-1" });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("rests on ../../requests/REQ-9-x.md, which does not exist");
+});
+
+// covers: chain/FRD-07/EX-14
+test("EX-14: a TP with no Rests on line that cites no FR id still fails", () => {
+  const r = tpIn({ cites: "nothing at all" });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("cites no FR id");
+});
+
+// covers: chain/FRD-07/EX-15
+test("EX-15: status asks no cross-cutting TP of an approved TP resting on an accepted request", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const { fails } = chainStatus(project(ok, ok, { "docs/requests/REQ-6-ci.md": "Status: Accepted\n", "docs/inbox/tp/TP-01-a.md": ok + "Rests on: ../../requests/REQ-6-ci.md\n" }));
+  expect(fails.filter((f) => f.includes("TP-01-a.md"))).toEqual([]);
+});
+
+// covers: chain/FRD-07/EX-16
+test("EX-16: status still asks the cross-cutting TP of an approved TP with no Rests on line", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const { fails } = chainStatus(project(ok, ok, { "docs/inbox/tp/TP-01-a.md": ok }));
+  expect(fails.some((f) => f.includes("TP-01-a.md") && /TP\.md/.test(f) && f.includes("does not exist"))).toBe(true);
+});
+
+// covers: chain/FRD-07/EX-17
+test("EX-17: approve on a request fails, says the owner accepts it on its Status line, and changes nothing", () => {
+  const root = tpOnRequest("Accepted");
+  const path = join(root, "docs", "requests", "REQ-6-ci.md");
+  const before = readFileSync(path, "utf8");
+  const r = cliIn(root, "approve", "docs/requests/REQ-6-ci.md", ".");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("the owner accepts a request on its Status line; approve is for chain documents");
+  expect(readFileSync(path, "utf8")).toBe(before);
+});
