@@ -15,7 +15,7 @@ Same small spec, different parent. Configuration is gated like code (D-30): an a
 | A red CI job | the CHECKS row the job enforces, or an accepted request | the CHECK-n row, or the failing step and its error in the request | that job's command, green |
 | A configuration change (strict mode, lint rule, runtime version) | the cross-cutting TP `docs/tp/TP.md` or an ADR | the decision row | typecheck, build or lint |
 | A dependency bump, a refactor | an accepted request (a chore) | the request's reason and files | tests and typecheck |
-| A failure seen twice | first `/scriptorium:retro`, which adds a CHECK-n | that CHECK-n | its replay |
+| A failure seen twice | first `/scriptorium:rework`, whose plan adds a CHECK-n | that CHECK-n | its replay |
 
 When nothing says why the configuration is the way it is, write the decision first: a TP row, or an ADR when it is hard to reverse.
 
@@ -28,7 +28,7 @@ When nothing says why the configuration is the way it is, write the decision fir
 
 ## An agent that keeps CI green
 
-Each red run is one small spec of a fix: the failing job is the row, its command is Done when. The agent never edits a workflow without a spec. A failure class seen twice goes to `/scriptorium:retro` and becomes a CHECKS row, so the next agent cannot break it the same way.
+Each red run is one small spec of a fix: the failing job is the row, its command is Done when. The agent never edits a workflow without a spec. Each failure is a finding of the rework queue with its cause; a cause seen twice goes to `/scriptorium:rework` and becomes a CHECKS row, so the next agent cannot break it the same way.
 
 ## Releases
 

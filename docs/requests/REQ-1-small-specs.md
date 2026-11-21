@@ -41,7 +41,7 @@ flowchart LR
 - **Split by a large model, run by a small one:** a stronger model splits an FRD into small specs in dependency order; `trace` fails when the specs together leave an FRD id uncovered.
 - **Review from the same spec:** the quoted rows are the acceptance criteria, the file list is the scope (a changed file outside it fails), and the done command is the gate.
 - **Fixes and small changes use the same format:** a spec on the short path (D-1) resting on an existing FRD. A bug the FRD's examples already forbid quotes that row; a bug no example covers first adds an example to the FRD for the owner to approve.
-- **Work that is not product:** CI, infrastructure, dependencies and refactors use the same small spec; only the parent changes. A spec rests on an FRD (behavior), a TP or ADR (a technical decision), a CHECKS or INVARIANTS row (a process rule) or an accepted request alone (a chore), and quotes the rows of that parent. A failure that repeats goes through the retro and becomes a CHECKS row first.
+- **Work that is not product:** CI, infrastructure, dependencies and refactors use the same small spec; only the parent changes. A spec rests on an FRD (behavior), a TP or ADR (a technical decision), a CHECKS or INVARIANTS row (a process rule) or an accepted request alone (a chore), and quotes the rows of that parent. A failure that repeats goes through the rework queue and becomes a CHECKS row first.
 - **Too big:** a spec over a cap is split again; the small agent never gets more context.
 
 ## Decision

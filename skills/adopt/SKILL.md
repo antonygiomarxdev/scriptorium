@@ -13,7 +13,7 @@ The target layout, from `${CLAUDE_PLUGIN_ROOT}/templates/`:
 
 ```text
 docs/PRODUCT.md  GLOSSARY.md  INVARIANTS.md  CROSS-CUTTING.md  CHECKS.md  DECISIONS.md
-docs/requests/REQ-n-name.md      docs/tp/TP.md      docs/adr/ADR-NNN-name.md      docs/retro/RETRO.md
+docs/requests/REQ-n-name.md      docs/tp/TP.md      docs/adr/ADR-NNN-name.md      docs/metrics/rework.md
 docs/<slice>/PRD.md  frd/FRD-NN-name.md  ux/UX-NN-name.md  tp/TP-NN-name.md  specs/SPEC-NN-k-name.md
 ```
 

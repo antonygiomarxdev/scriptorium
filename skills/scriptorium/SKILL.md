@@ -15,7 +15,7 @@ flowchart LR
   R --> SP[Fix, CI, configuration, chore] --> S
   TP -. architecturally significant .-> ADR[ADR]
   C --> RV{Accepted first time?}
-  RV -- no --> RT[Retro: prevention proven by replay]
+  RV -- no --> RT[Rework queue: prevention proven by replay]
 ```
 
 Each document rests on the one before it. A document may be approved only when the one it rests on is approved: PRD on PRODUCT, FRD on its PRD, UX-NN and TP-NN on FRD-NN, a spec on the document its `Rests on:` line names, ADR on the TP that cites it. Only the owner approves.
@@ -30,7 +30,7 @@ docs/
   requests/REQ-n-name.md
   tp/TP.md                cross-cutting technical proposal
   adr/ADR-NNN-name.md
-  retro/RETRO.md          open entries only; retro/YYYY-MM.md archive
+  metrics/rework.md       rework queue: open findings, causes, preventions
   research/
   <slice>/
     PRD.md
@@ -60,7 +60,7 @@ docs/
 | Any chain document | | `## Summary` in the first 20 lines, ending with `Last change: YYYY-MM-DD, <what>` | | `check.ts summary <file>` |
 | Status | | Every document and where it stands | `/scriptorium:status` | `check.ts status .` |
 
-Every document type has its own skill that teaches how to write it: `/scriptorium:migrate` (move the project to the next format), `/scriptorium:fix`, `/scriptorium:ops`, `/scriptorium:request`, `/scriptorium:decision`, `/scriptorium:glossary`, `/scriptorium:invariant`, `/scriptorium:concern`, `/scriptorium:ux`, `/scriptorium:adr`, and for the rest of the loop `/scriptorium:check` (add a project rule), `/scriptorium:review` (closed review) and `/scriptorium:retro` (turn a failure into a proven prevention). PRD and FRD name no technology. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md` the same day; shared terms in `docs/GLOSSARY.md`.
+Every document type has its own skill that teaches how to write it: `/scriptorium:migrate` (move the project to the next format), `/scriptorium:fix`, `/scriptorium:ops`, `/scriptorium:request`, `/scriptorium:decision`, `/scriptorium:glossary`, `/scriptorium:invariant`, `/scriptorium:concern`, `/scriptorium:ux`, `/scriptorium:adr`, and for the rest of the loop `/scriptorium:check` (add a project rule), `/scriptorium:review` (closed review) and `/scriptorium:rework` (turn the heaviest cause of the rework queue into an improvement plan, as a request for the owner). PRD and FRD name no technology. A TP proposes; an ADR decides. Owner decisions go in `docs/DECISIONS.md` the same day; shared terms in `docs/GLOSSARY.md`.
 
 ## Short path
 

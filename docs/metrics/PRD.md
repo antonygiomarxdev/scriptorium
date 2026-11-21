@@ -1,7 +1,7 @@
 # Metrics PRD
 
 Status: Approved (2026-11-20)
-Approval: content riaA1KBFJvV8; rests on ../PRODUCT.md OHZ_OJ4Vuiy1
+Approval: content riaA1KBFJvV8; rests on ../PRODUCT.md F7LrvhspMBeq
 
 ## Summary
 

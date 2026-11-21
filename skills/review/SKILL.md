@@ -38,7 +38,7 @@ List all findings in round 1. Do not hold any back for later.
 
 ## Rounds 2 and 3
 
-Check only the round 1 findings, and new defects in lines changed since the last round. Do not reopen what passed. A reviewer who finds a new class of issue in untouched code writes it as a note for the retro, not a FAIL.
+Check only the round 1 findings, and new defects in lines changed since the last round. Do not reopen what passed. A reviewer who finds a new class of issue in untouched code writes it as a finding of the rework queue, not a FAIL.
 
 ## Stop rule
 
@@ -46,4 +46,4 @@ At most three rounds. If findings remain after round 3, stop and give the owner 
 
 ## Output
 
-A verdict (PASS or FAIL), the findings table, the rounds used, and the log: one row per finding with Step and Cause, kept with the pull request. A class seen twice goes to `/scriptorium:retro`. A reviewer is measured too: if re-running you on the unchanged change gives different FAILs, report that as noise.
+A verdict (PASS or FAIL), the findings table, the rounds used, and the log: one row per finding with Step and Cause, kept with the pull request. Each finding is also a row of the rework queue (`docs/metrics/rework.md`) with one cause; a cause found twice with no prevention blocks until `/scriptorium:rework` plans one. A reviewer is measured too: if re-running you on the unchanged change gives different FAILs, report that as noise.

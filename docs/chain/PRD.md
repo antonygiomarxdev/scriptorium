@@ -1,13 +1,13 @@
 # Chain PRD
 
 Status: Approved (2026-11-21)
-Approval: content zIdfkERDCIVu; rests on ../PRODUCT.md wUVpd6tiW7fw
+Approval: content 1zQTsavpjmUJ; rests on ../PRODUCT.md F7LrvhspMBeq
 
 ## Summary
 
 The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
 
-Last change: 2026-11-21, ADRs written before adoption are exempt below a cutoff the project sets (R-CHAIN-6)
+Last change: 2026-11-21, the retro gives way to the rework queue and the rework skill (REQ-12, D-33)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -18,7 +18,7 @@ No request is recorded for this slice yet. It answers the problem in section 1 o
 UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) and UC-7 (see status and drift), all from the product overview.
 
 ## Requirements
-- **R-CHAIN-1.** Every document type of the chain (product overview, PRD, FRD, UX, cross-cutting TP, TP, ADR, spec, request, retro) has a template whose sections and ids match the decided model (D-27, L-7).
+- **R-CHAIN-1.** Every document type of the chain (product overview, PRD, FRD, UX, cross-cutting TP, TP, ADR, spec, request) has a template whose sections and ids match the decided model (D-27, L-7).
 - **R-CHAIN-2.** Every document lives at the place its type fixes under `docs/`, and a slice folder cannot take a reserved name (D-16).
 - **R-CHAIN-3.** Every document carries a status line, and only the owner moves it to Approved; an agent never writes an approval (D-6).
 - **R-CHAIN-4.** A document can be approved only if the document it rests on is approved and its own open questions section holds no Q-n (D-3, principle 2).
@@ -59,7 +59,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9, R-CHAIN-23 and R-CHAIN-24: drift is detected, coverage is scanned and history is read from git, none of it assumed.
 
 ## Non-goals
-This slice does not adopt existing documents or map code (the adopt slice), does not manage open questions beyond the gate that blocks approval (the questions slice), does not record requests (the intake slice), does not define the UX document's own check beyond its template (the ux slice), does not log run metrics (D-7), rework or the retro (L-6, L-10), which the metrics slice takes, and leaves the test model (L-8) to the spec step, and does not package or release the plugin (the package slice). It does not judge whether a document is good, only whether it is well formed and consistent.
+This slice does not adopt existing documents or map code (the adopt slice), does not manage open questions beyond the gate that blocks approval (the questions slice), does not record requests (the intake slice), does not define the UX document's own check beyond its template (the ux slice), does not log run metrics (D-7), or rework (L-6, L-10, D-33), which the metrics slice takes, and leaves the test model (L-8) to the spec step, and does not package or release the plugin (the package slice). It does not judge whether a document is good, only whether it is well formed and consistent.
 
 ## Dependencies
 The product overview must be approved first. The questions, intake and ux slices supply the Q-n, REQ-n and UX documents that this slice only checks for shape and links. The package slice ships what this slice defines.

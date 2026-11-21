@@ -15,6 +15,6 @@ A fix uses the same format as any other work: one small spec, tests first, one d
    - No FRD covers the behavior at all: offer to map it from the code (`/scriptorium:adopt`); never force it.
 3. **Write one small spec** with `/scriptorium:spec`: `Rests on:` the FRD, the broken row under Rows, the failing test first, then the fix. The test must fail before the fix and pass after it.
 4. **Hand it over** and review it with `/scriptorium:review`.
-5. **Second time?** The same class of bug twice goes to `/scriptorium:retro`, which turns it into a CHECKS row.
+5. **Second time?** Queue the finding in `docs/metrics/rework.md` with its cause. A cause found twice with no prevention blocks; `/scriptorium:rework` turns it into a plan for a CHECKS row.
 
 Not a fix: a change in what the product should do. That is a request for a PRD or FRD change.

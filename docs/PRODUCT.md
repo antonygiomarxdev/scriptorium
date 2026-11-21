@@ -1,7 +1,7 @@
 # Scriptorium: product overview
 
-Status: Approved (2026-11-20)
-Approval: content OHZ_OJ4Vuiy1
+Status: Approved (2026-11-21)
+Approval: content F7LrvhspMBeq
 
 ## Summary
 
@@ -12,7 +12,7 @@ Scriptorium makes a project write down what it is building, and why, before an a
 - Every rule that can be checked is a script, and every check says what it cannot see (principle 4).
 - Review is closed: a change fails only against an approved acceptance criterion or a failed gate, and every recurring failure becomes a proven check (D-19, L-6, L-10).
 
-Last change: 2026-11-20, product diagram fixed (text after the closing fence broke it) and shows small specs
+Last change: 2026-11-21, the retro gives way to the rework queue and the rework skill (REQ-12, D-33)
 
 What every slice shares. Product decisions: [DECISIONS.md](DECISIONS.md). Terms: [GLOSSARY.md](GLOSSARY.md). Research: [research/](research/).
 
@@ -41,7 +41,7 @@ flowchart LR
   R --> SP
   FRD --> UX[UX, when the interface changes] --> TP
   C --> RV{Accepted first time?}
-  RV -- no: log step and cause --> M[(Rework log)] --> RT[Retro: fix templates and checks]
+  RV -- no: log step and cause --> M[(Rework queue)] --> RT[Rework plan: fix templates and checks]
 ```
 
 It starts a chain in a new project, adopts the documents an existing project already has, maps undocumented code into draft documents, and shows the status of every document. It runs with one owner and agents, or with an agent team.
@@ -80,7 +80,7 @@ It starts a chain in a new project, adopts the documents an existing project alr
 | UC-8 | Read run metrics | The owner sees the first-pass rate, rework rounds and findings per change and over time. |
 | UC-10 | Record a request | Someone asks for a change, informally; the agent records who asked, what they said and the problem behind it, and the change cites it. |
 | UC-11 | Design the interface | For a change that touches the interface, an agent writes its flows, screens, states and design-system components before the technical proposal. |
-| UC-12 | Find where the chain fails | Every returned change logs where its problems should have been caught; a retro turns the most frequent failures into changes to templates and checks. |
+| UC-12 | Find where the chain fails | Every returned change logs where its problems should have been caught; the rework skill turns the heaviest cause into a plan of changes to templates and checks, for the owner to accept. |
 | UC-9 | Install and update | A user installs Scriptorium in their agent and receives each release automatically. |
 
 ## 6. Scope
@@ -98,7 +98,7 @@ Out of v1: a web UI, multi-product repositories, team permissions beyond one own
 | questions | `docs/questions/` | Open questions, grilling, waiting on someone | UC-6 |
 | intake | `docs/intake/` | Requests and the reason behind each change | UC-10 |
 | ux | `docs/ux/` | The UX document and its check | UC-11 |
-| metrics | `docs/metrics/` | The rework log, its report and the retro | UC-8, UC-12 |
+| metrics | `docs/metrics/` | The rework queue, its report, its history and the rework skill | UC-8, UC-12 |
 | package | `docs/package/` | Packaging for each agent host, releases and versions | UC-9 |
 
 ## 8. Success criteria

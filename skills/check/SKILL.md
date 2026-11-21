@@ -1,6 +1,6 @@
 ---
 name: check
-description: Add a rule this project learned from a failure to docs/CHECKS.md, with the command that enforces it and the replay of the failure it catches. Use after any failure that should never happen twice, and when the retro asks for a prevention.
+description: Add a rule this project learned from a failure to docs/CHECKS.md, with the command that enforces it and the replay of the failure it catches. Use after any failure that should never happen twice, and when a cause of the rework queue needs a prevention.
 argument-hint: <what it prevents>
 ---
 
@@ -16,7 +16,7 @@ A rule that exists only in prose does not count (D-26). A rule is a row in `docs
 4. Run it on the current project and show it passes.
 5. Add the row: `CHECK-n` (next free), what it prevents, the command, and the replay (the path and the command that shows it fails).
 6. Make it run on its own: wire the command into the pre-commit hook or CI, or the plugin hook. Say which. If you cannot, the rule is still prose: tell the owner.
-7. If a retro entry asked for it, put `CHECK-n` in that entry's Prevention (see `/scriptorium:retro`).
+7. If a cause of the rework queue asked for it, put `CHECK-n` in that cause's Prevention cell, with the date in Since (`docs/metrics/rework.md`, `/scriptorium:rework`).
 
 ## Good and bad rows
 

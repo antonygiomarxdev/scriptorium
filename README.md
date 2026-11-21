@@ -12,7 +12,7 @@ Coding agents write code faster than anyone can say what the code should do. Spe
 - **Open review never converges.** An AI reviewer re-run on the same diff finds new things. Teams that lowered rework closed the loop: gates first, failures only against approved criteria, a cap on rounds ([research](docs/research/2026-11-20-lowering-rework.md)).
 - **Tests written after the code copy its faults.** Tests grounded in the spec found 27 of 30 bugs; without it, 2 of 30 ([research](docs/research/2026-11-20-templates-tests-consistency.md)).
 
-Scriptorium claims only what it measures: every run logs its rework, and the retro turns each recurring failure into a proven check.
+Scriptorium claims only what it measures: every run logs its rework, and the rework queue turns each recurring failure into a proven check.
 
 ## The chain
 
@@ -22,7 +22,7 @@ flowchart LR
   R --> SP[Small change] --> S
   TP -. architecturally significant .-> ADR[ADR]
   C --> RV{Accepted first time?}
-  RV -- no --> RT[Retro: prevention proven by replay]
+  RV -- no --> RT[Rework queue: prevention proven by replay]
 ```
 
 | Document | Says |
@@ -49,7 +49,7 @@ docs/
   requests/REQ-n-name.md
   tp/TP.md                cross-cutting technical proposal
   adr/ADR-NNN-name.md
-  retro/RETRO.md          open entries only; retro/YYYY-MM.md archive
+  metrics/rework.md       rework queue: open findings, causes, preventions
   <slice>/
     PRD.md
     frd/FRD-NN-name.md
@@ -85,7 +85,7 @@ Turn on auto-update for the `scriptorium` marketplace under `/plugin` → Market
 | `/scriptorium:review <spec>` | Closed review of one spec's work: rows are the criteria, files the scope |
 | `/scriptorium:status` | Shows every document, its status and what is next; fails on an approval above a draft or with an open question |
 
-Requests, decisions, glossary, UX, invariants, concerns, ADRs, checks and retro have their own skills too.
+Requests, decisions, glossary, UX, invariants, concerns, ADRs, checks and rework have their own skills too.
 
 ### Outside Claude Code: CI and other agents
 
@@ -106,7 +106,7 @@ A project pins the format of its rules in `.scriptorium/config.json` (no file me
 
 | Done | Next |
 |---|---|
-| Checks for PRD, FRD, TP, ADR, spec and status; one skill per step; adopt; versioned releases | Templates of the decided model; checks on `docs/`; requests, UX, questions, metrics and retro slices |
+| Checks for PRD, FRD, TP, ADR, spec and status; one skill per step; adopt; versioned releases | Templates of the decided model; checks on `docs/`; requests, UX, questions, metrics and rework slices |
 
 The decisions behind each part are in [docs/DECISIONS.md](docs/DECISIONS.md); the product itself in [docs/PRODUCT.md](docs/PRODUCT.md). Scriptorium is written with its own chain. It works alongside [puppeteering](https://github.com/antonygiomarxdev/puppeteering) for agent teams, and does not need it. First used on [Deputy](https://github.com/antonygiomarxdev/deputy).
 

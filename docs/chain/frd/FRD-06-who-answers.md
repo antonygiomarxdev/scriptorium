@@ -1,7 +1,7 @@
 # FRD-06: Who answers an open question
 
 Status: Approved (2026-11-21)
-Approval: content JFJj2H12kMt8; rests on ../PRD.md zIdfkERDCIVu
+Approval: content JFJj2H12kMt8; rests on ../PRD.md 1zQTsavpjmUJ
 
 ## Summary
 
