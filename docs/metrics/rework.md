@@ -17,18 +17,20 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 
 | ID | Step | Cause | Open | Prevention | Since |
 |---|---|---|---|---|---|
-| C-1 | FRD | An example is missing, usually a negative one: another id, folder or slice, an error, a value going the wrong way. | 13 | none | n/a |
-| C-2 | Spec | A clause of a Files row's Holds column, or of the summary, has no row behind it. | 2 | none | n/a |
-| C-3 | Spec | The Files table misses a file the change needs. | 1 | none | n/a |
-| C-4 | Spec | The spec asks for behavior no row and no user needs. | 1 | none | n/a |
-| C-5 | FRD | A row describes something a test cannot assert. | 1 | none | n/a |
-| C-6 | Lead | The lead wrote text or code with no review against its source. | 1 | none | n/a |
+| C-1 | FRD | An example is missing, usually a negative one: another id, folder or slice, an error, a value going the wrong way. | 24 | none | n/a |
+| C-2 | Spec | A clause of a Files row's Holds column, or of the summary, has no row behind it. | 4 | none | n/a |
+| C-3 | Spec | The Files table misses a file the change needs. | 3 | none | n/a |
+| C-4 | Spec | The spec asks for behavior no row and no user needs. | 3 | none | n/a |
+| C-5 | FRD | A row describes something a test cannot assert. | 2 | none | n/a |
+| C-6 | Lead | The lead wrote text or code with no review against its source. | 2 | none | n/a |
 | C-7 | Lead | One instruction says two opposite things. | 1 | none | n/a |
 | C-8 | Team practice | A rule lives only in prose or in a message, so nothing enforces it. | 2 | none | n/a |
 | C-9 | Check | Two checks apply the same rule differently. | 2 | none | n/a |
-| C-10 | Check | A document error no check catches. | 1 | none | n/a |
+| C-10 | Check | A document error no check catches. | 3 | none | n/a |
 | C-11 | CI | A workflow step runs in a case it should not. | 1 | none | n/a |
-| C-12 | Test | A test fixture reads as a real tag or document to the repository's own checks. | 1 | none | n/a |
+| C-12 | Test | A test fixture reads as a real tag or document to the repository's own checks. | 2 | none | n/a |
+| C-13 | Build | New code repeats code that already exists in the project (REQ-7). | 3 | none | n/a |
+| C-14 | Ask | The owner was asked a question that research or the lead could answer (REQ-10). | 1 | none | n/a |
 
 ## Open findings
 
@@ -61,3 +63,30 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-25 | 2026-11-20 | SPEC-04-4 | C-1 | The edit hook counts a covers tag with no slice for any slice's FRD of that number; only the later coverage scan reports it as ambiguous. |
 | R-26 | 2026-11-20 | SPEC-04-4 | C-12 | A test fixture held the text of a covers tag for another slice; the repository's coverage scan read it as a dead tag and blocked the commit. |
 | R-27 | 2026-11-20 | Metrics FRD-01 | C-9 | approve accepted the FRD, then the coverage scan blocked every commit because its examples had no tests yet; the FRD went back to Draft until its tests exist. |
+| R-28 | 2026-11-20 | SPEC-04-1 | C-13 | The builder copied the isTest rule from scripts/pre-commit.ts into scripts/gate.ts; both copies remain. |
+| R-29 | 2026-11-20 | Chain FRD-05 | C-9 | A draft FRD that needs a new PRD requirement cannot sit in the repository: the PRD edit breaks its approval and the FRD alone fails the stop hook, so there is no place for a proposed amendment while the owner decides. |
+| R-30 | 2026-11-20 | Another project, FRD approval | C-14 | Before an approval the owner was asked a domain fact with published sources; it was researched only after the owner said so. |
+| R-31 | 2026-11-20 | Ops SPEC-01-3 | C-1 | No example for a mutation run that fails to start: an "or true" after each run made a broken night look clean (now MUT-6). |
+| R-32 | 2026-11-20 | Ops SPEC-01-3 | C-1 | Three mutants of scripts/mutation.ts survived: the script filter, a mapped test file that does not exist, and the merge of several reports. |
+| R-33 | 2026-11-20 | Ops SPEC-01-4 | C-3 | The Files table missed scripts/mutation.ts, which needed a map entry for scripts/affected.ts. |
+| R-34 | 2026-11-20 | Ops SPEC-01-4 | C-1 | A changed test fixture ran alone instead of the whole suite; no example covered a fixture. |
+| R-35 | 2026-11-20 | Ops SPEC-01-4 | C-13 | ci.yml repeats in a grep the rule of scripts/affected.ts for what a document is. |
+| R-36 | 2026-11-20 | Ops SPEC-01-4 | C-1 | No example for the plan script failing: CI then ran only bun test --changed and the failure went unseen (now AFF-6). |
+| R-37 | 2026-11-20 | SPEC-05-1 | C-1 | Two mutants survived: the format 3 tag dropped from Reuses failures other than a missing section, and specFails tagging twice; no example at pin 2 has a missing file. |
+| R-38 | 2026-11-20 | SPEC-05-1 | C-1 | QC-6 says the check reads files inside the project only, but no example covers a path outside it, and "../../x" is read as given. |
+| R-39 | 2026-11-20 | Metrics SPEC-01-3 | C-12 | The EX-6 test staged a file the FRD-04 gate blocks, so it failed for the wrong reason. |
+| R-40 | 2026-11-20 | Metrics SPEC-01-3 | C-3 | The Files table missed scripts/mutation.ts again: every new script needs an entry in its map. |
+| R-41 | 2026-11-20 | SPEC-05-2 | C-5 | Nothing tests the template and skill text: deleting the Reuses section or the C-13 sentence passes the whole suite. |
+| R-42 | 2026-11-21 | SPEC-06-2 | C-6 | The lead changed five templates and missed PRODUCT.md; the text test found it. |
+| R-43 | 2026-11-21 | SPEC-05-2, SPEC-06-2 | C-2 | The review-skill clause of each Files table had no quoted row, and Done when did not run the text tests. |
+| R-44 | 2026-11-21 | Ops SPEC-01-3 | C-1 | The MUT-6 test matched strings anywhere in the workflow: three of four mutants survived; and a failed job loses its incremental cache (MUT-4). |
+| R-45 | 2026-11-21 | Ops SPEC-01-4 | C-1 | The "or plan=all" fallback never fired behind a pipe, and the AFF-6 test accepted that dead line: removing the working -z guards survived. |
+| R-46 | 2026-11-21 | Metrics SPEC-01-1 | C-2 | Build says an unreadable table fails with the file name (QC-5), but no row or test covers it; three mutants survived. |
+| R-47 | 2026-11-21 | Metrics SPEC-01-1 | C-13 | scripts/rework.ts writes its own table-cell and CHECKS.md readers beside the ones in scripts/lint-docs.ts, against its Reuses section. |
+| R-48 | 2026-11-21 | Metrics SPEC-01-2 | C-4 | The build added behavior no row asks for: "n/a" and "-" as no prevention, several causes per finding, and a "no command" failure; the mutants that remove them survived. |
+| R-49 | 2026-11-21 | SPEC-06-1 | C-1 | Four mutants survived: the UX and TP calls of the answerer rule, the file name in folder checks, and a placeholder accepted as the owner reason; no example covers them. |
+| R-50 | 2026-11-21 | Metrics SPEC-01-3 | C-4 | The EX-6 test stages a document, so it cannot show that the pre-commit rework gate blocks a commit with no document; and the report added a no-queue message and a "?" step no row asks for; four mutants survived. |
+| R-51 | 2026-11-21 | Metrics SPEC-01-1 | C-10 | The Reuses section named docStatus and gate, which the build does not use; the check only proves the names exist, not that the code uses them. |
+| R-52 | 2026-11-21 | SPEC-06-1 | C-1 | Two mutants survived: the answerer is not anchored right after the Q-n id, and the check may read the whole document instead of the Open questions section; no example covers either. |
+| R-53 | 2026-11-21 | Metrics SPEC-01-3 | C-1 | Four mutants survived: pre-commit ignoring the pin or dropping its format 2 warning, the report crashing on an unknown cause, and the root argument of rework ignored; no example covers pre-commit under format 2. |
+| R-54 | 2026-11-21 | FRD-05, FRD-06 | C-10 | The coverage waivers were written as prose, not "uncovered: EX-n reason", so the scan ignored them and blocked the commit; approval did not catch the wrong form. |

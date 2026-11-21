@@ -1,7 +1,7 @@
 # FRD-04: The gate before code edits
 
 Status: Approved (2026-11-20)
-Approval: content 5qbSw4IYjIsG; rests on ../PRD.md weJ_tC_U7K43
+Approval: content 5qbSw4IYjIsG; rests on ../PRD.md ZXf8DR0qTJHf
 
 ## Summary
 

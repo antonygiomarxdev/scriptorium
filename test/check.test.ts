@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { runDocChecks } from "../scripts/hook-doc-check.ts";
 import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus, excerpt } from "../scripts/check.ts";
 
@@ -167,7 +167,11 @@ test("an ADR needs its sections and a valid status", () => {
 
 const FRD_ROWS = "| EX-1 | a | b |\n| EX-2 | c | d |\n";
 const SPEC =
-  "# Spec\n\nStatus: Draft\nRests on: ../frd/FRD-01-a.md\n\n" + SUM + "\n## Rows\nQuoted from: ../frd/FRD-01-a.md\n" + FRD_ROWS + "\n## Files\n| File | Change |\n|---|---|\n| a.ts | new |\n\n## Tests first\nEX-1, EX-2\n\n## Build\nb\n\n## Done when\n`bun test`\n\n## Out of scope\nn\n\n## Open questions\nNone\n";
+  "# Spec\n\nStatus: Draft\nRests on: ../frd/FRD-01-a.md\n\n" +
+  SUM +
+  "\n## Rows\nQuoted from: ../frd/FRD-01-a.md\n" +
+  FRD_ROWS +
+  "\n## Files\n| File | Change |\n|---|---|\n| a.ts | new |\n\n## Reuses\nNothing to reuse: the fixture builds on nothing\n\n## Tests first\nEX-1, EX-2\n\n## Build\nb\n\n## Done when\n`bun test`\n\n## Out of scope\nn\n\n## Open questions\nNone\n";
 
 // A project with the FRD rows on disk; returns the spec path.
 function specAt(parent = FRD_ROWS + "other | row\n", files: Record<string, string> = {}) {
@@ -519,4 +523,375 @@ test("EX-19: a small spec with no Tasks section passes under format 2; format 1 
   const r = cli();
   expect(r.code).toBe(0);
   expect(r.out).not.toContain("Tasks");
+});
+
+// Reuses section: the spec check through the CLI, so the project's pin decides how a failure counts.
+function reuses(body: string | undefined, pin?: number, files: Record<string, string> = {}) {
+  const p = specAt(undefined, { "scripts/paths.ts": "export const typed = (p: string) => p;\n", "docs/inbox/specs/SPEC-03-2-gate-spec-rules.md": "Status: Draft\n", ...files });
+  const root = join(p, "..", "..", "..", "..");
+  const text = body === undefined ? SPEC.replace("## Reuses\nNothing to reuse: the fixture builds on nothing\n\n", "") : SPEC.replace("Nothing to reuse: the fixture builds on nothing\n", body + "\n");
+  writeFileSync(p, text);
+  if (pin) {
+    mkdirSync(join(root, ".scriptorium"), { recursive: true });
+    writeFileSync(join(root, ".scriptorium", "config.json"), JSON.stringify({ format: pin }));
+  }
+  const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), "spec", p], { cwd: root });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+}
+const ok = (r: { code: number | null; out: string }) => {
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("Reuses");
+};
+const bad = (r: { code: number | null; out: string }, line: string) => {
+  expect(r.code).toBe(1);
+  expect(r.out).toContain(line);
+};
+const NO_SECTION = "no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>";
+
+// covers: chain/FRD-05/EX-1
+test("EX-1: a Reuses entry naming a file and a name it defines passes", () => ok(reuses("- `scripts/paths.ts` `typed`: reads a path", 3)));
+
+// covers: chain/FRD-05/EX-2
+test("EX-2: a spec with no Reuses section fails in a format 3 project", () => bad(reuses(undefined, 3), NO_SECTION));
+
+// covers: chain/FRD-05/EX-3
+test("EX-3: a Reuses file that does not exist fails", () => bad(reuses("- `scripts/nope.ts` `run`: x", 3), "Reuses: scripts/nope.ts does not exist"));
+
+// covers: chain/FRD-05/EX-4
+test("EX-4: a Reuses name the file does not hold fails, and a longer word does not stand in for it", () => {
+  bad(reuses("- `scripts/paths.ts` `nothere`: x", 3), "Reuses: nothere is not in scripts/paths.ts");
+  bad(reuses("- `scripts/paths.ts` `type`: x", 3), "Reuses: type is not in scripts/paths.ts"); // whole word only: "typed" holds "type"
+});
+
+// covers: chain/FRD-05/EX-5
+test("EX-5: Nothing to reuse with a reason passes", () => ok(reuses("Nothing to reuse: the first script that reads the host's notebook format", 3)));
+
+// covers: chain/FRD-05/EX-6
+test("EX-6: Nothing to reuse with no reason fails", () => bad(reuses("Nothing to reuse.", 3), "Reuses: say why there is nothing to reuse"));
+
+// covers: chain/FRD-05/EX-7
+test("EX-7: a precedent spec that does not exist fails, one that exists passes", () => {
+  bad(reuses("- Precedent: SPEC-09-1-gone.md", 3), "Reuses: precedent SPEC-09-1-gone.md does not exist");
+  ok(reuses("- Precedent: SPEC-03-2-gate-spec-rules.md, which added rules", 3));
+});
+
+// covers: chain/FRD-05/EX-8
+test("EX-8: a Reuses entry naming a file in the test folder passes", () => ok(reuses("- `test/helper.ts` `fixture`: shared", 3, { "test/helper.ts": "export const fixture = 1;\n" })));
+
+// covers: chain/FRD-05/EX-10
+test("EX-10: a format 2 project with no Reuses section passes and prints the format 3 warning", () => {
+  const r = reuses(undefined, 2);
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("WARN (format 3): ");
+  expect(r.out).toContain(NO_SECTION);
+});
+
+// covers: chain/FRD-05/EX-11
+test("EX-11: the same spec in a format 3 project fails with the same line, and a spec with Reuses passes", () => {
+  const r = reuses(undefined, 3);
+  bad(r, NO_SECTION);
+  expect(r.out).not.toContain("WARN (format 3)");
+  ok(reuses("Nothing to reuse: x", 3)); // mutant: with the section it passes
+});
+
+// Answerer rule: documents with Q-n lines, checked through the CLI so the project's pin decides fail or warn.
+function qroot(pin: number | undefined, docs: { prd?: string; frd?: string } = {}) {
+  const root = mkdtempSync(join(tmpdir(), "scriptorium-answerer-"));
+  mkdirSync(join(root, "docs", "inbox", "frd"), { recursive: true });
+  writeFileSync(join(root, "docs", "PRODUCT.md"), PRODUCT);
+  writeFileSync(join(root, "docs", "inbox", "PRD.md"), docs.prd ?? PRD);
+  writeFileSync(join(root, "docs", "inbox", "frd", "FRD-01-a.md"), docs.frd ?? FRD);
+  if (pin) {
+    mkdirSync(join(root, ".scriptorium"));
+    writeFileSync(join(root, ".scriptorium", "config.json"), JSON.stringify({ format: pin }));
+  }
+  return root;
+}
+const cliIn = (root: string, ...a: string[]) => {
+  const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), ...a], { cwd: root });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+};
+const withQ = (doc: string, q: string) => doc.replace(/## Open questions\n(None\.?\n)?/, "## Open questions\n" + q + "\n");
+const frdCheck = (q: string, pin = 3) => cliIn(qroot(pin, { frd: withQ(FRD, q) }), "frd", "docs/inbox", "INBOX");
+const prdCheck = (q: string, pin = 3) => cliIn(qroot(pin, { prd: withQ(PRD, q) }), "prd", "docs/inbox/PRD.md", "INBOX", "--product", "docs/PRODUCT.md");
+const OWNER_LINE = "Q-1: say who answers it: (Owner: <reason>), (Research) or (Lead)";
+
+// covers: chain/FRD-06/EX-1
+test("EX-1: an FRD question answered by Research passes", () => {
+  const r = frdCheck("- Q-1 (Research): where the 42-day limit comes from");
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("say who answers");
+});
+
+// covers: chain/FRD-06/EX-2
+test("EX-2: an FRD question with no answerer fails with the line", () => {
+  const r = frdCheck("- Q-1: where the limit comes from");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain(OWNER_LINE);
+});
+
+// covers: chain/FRD-06/EX-3
+test("EX-3: a PRD question for the owner with a reason passes", () => {
+  const r = prdCheck("- Q-2 (Owner: a product goal): the adoption target");
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("say who");
+});
+
+// covers: chain/FRD-06/EX-4
+test("EX-4: a PRD question for the owner with no reason fails", () => {
+  const r = prdCheck("- Q-2 (Owner): the adoption target");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("Q-2: say why only the owner can answer it");
+});
+
+// covers: chain/FRD-06/EX-5
+test("EX-5: a spec question answered by the lead passes, and one with no answerer fails", () => {
+  const spec = (q: string) => {
+    const p = specAt();
+    mkdirSync(join(p, ".."), { recursive: true });
+    writeFileSync(p, SPEC.replace("## Open questions\nNone\n", "## Open questions\n" + q + "\n"));
+    const root = join(p, "..", "..", "..", "..");
+    mkdirSync(join(root, ".scriptorium"), { recursive: true });
+    writeFileSync(join(root, ".scriptorium", "config.json"), '{"format": 3}');
+    return cliIn(root, "spec", p);
+  };
+  const good = spec("- Q-3 (Lead): which file holds the map");
+  expect(good.code).toBe(0);
+  expect(good.out).not.toContain("say who answers");
+  const bad = spec("- Q-3: which file holds the map"); // mutant: no answerer
+  expect(bad.code).toBe(1);
+  expect(bad.out).toContain("Q-3: say who answers it: (Owner: <reason>), (Research) or (Lead)");
+});
+
+// covers: chain/FRD-06/EX-6
+test("EX-6: an Open questions section that says None passes", () => {
+  for (const none of ["None.", "None"]) {
+    const r = frdCheck(none);
+    expect(r.code).toBe(0);
+    expect(r.out).not.toContain("say who");
+  }
+});
+
+// covers: chain/FRD-06/EX-9
+test("EX-9: under format 2 the missing answerer passes and prints the format 3 warning", () => {
+  const r = frdCheck("- Q-1: where the limit comes from", 2);
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("WARN (format 3): ");
+  expect(r.out).toContain(OWNER_LINE);
+});
+
+// covers: chain/FRD-06/EX-10
+test("EX-10: the same FRD under format 3 fails with the line and no warning", () => {
+  const r = frdCheck("- Q-1: where the limit comes from", 3);
+  expect(r.code).toBe(1);
+  expect(r.out).toContain(OWNER_LINE);
+  expect(r.out).not.toContain("WARN (format 3): ");
+});
+
+// covers: chain/FRD-06/EX-2
+test("EX-2: a bare question line with no bullet and no answerer fails too", () => {
+  const r = frdCheck("Q-1 who pays?", 3);
+  expect(r.code).toBe(1);
+  expect(r.out).toContain(OWNER_LINE);
+  expect(frdCheck("Q-1 (Lead): who pays?", 3).code).toBe(0); // mutant: with an answerer it passes
+});
+
+// covers: chain/FRD-05/EX-10
+test("EX-10: at pin 2 a Reuses entry naming a missing file passes with one format 3 warning tag on its line", () => {
+  const r = reuses("- `scripts/nope.ts` `run`: x", 2);
+  expect(r.code).toBe(0);
+  const line = r.out.split("\n").find((l) => l.includes("scripts/nope.ts does not exist"));
+  expect(line).toBeDefined();
+  expect(line?.split("WARN (format 3): ").length).toBe(2); // exactly one tag
+  expect(line?.trim().startsWith("WARN (format 3): ")).toBe(true); // the tag leads the line
+  expect(r.out).not.toContain("WARN (format 2)");
+  expect(r.out).not.toContain("[format");
+});
+
+// covers: chain/FRD-05/EX-3
+test("EX-3: a Reuses path that leaves the project fails even when the file exists there", () => {
+  const name = "outside-" + Math.random().toString(36).slice(2) + ".ts";
+  const outside = join(dirname(tmpdir()), name); // two folders above the project root, which sits in the temp folder
+  writeFileSync(outside, "export const x = 1;\n");
+  try {
+    bad(reuses("- `../../" + name + "` `x`: x", 3), "Reuses: ../../" + name + " does not exist");
+  } finally {
+    rmSync(outside, { force: true });
+  }
+});
+
+// covers: chain/FRD-05/EX-2
+test("EX-2: a Reuses entry with no bullet still says what to write", () => {
+  const r = reuses("`scripts/paths.ts` `typed`: reads a path", 3);
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("name the code and the precedent spec it builds on, or Nothing to reuse: <reason>");
+});
+
+function uxTpRoot(pin: number, q: string) {
+  const root = qroot(pin);
+  mkdirSync(join(root, "docs", "inbox", "ux"), { recursive: true });
+  mkdirSync(join(root, "docs", "inbox", "tp"), { recursive: true });
+  mkdirSync(join(root, "docs", "adr"), { recursive: true });
+  writeFileSync(join(root, "docs", "inbox", "ux", "UX-01-a.md"), withQ(UX, q));
+  writeFileSync(join(root, "docs", "inbox", "tp", "TP-01-a.md"), withQ(TP, q));
+  writeFileSync(join(root, "docs", "adr", "ADR-001-storage.md"), ADR);
+  return root;
+}
+const uxCheck = (q: string, pin = 3) => cliIn(uxTpRoot(pin, q), "ux", "docs/inbox");
+const tpCheck = (q: string, pin = 3) => cliIn(uxTpRoot(pin, q), "tp", "docs/inbox/tp/TP-01-a.md", "docs/adr", "--root", "docs");
+
+// covers: chain/FRD-06/EX-2
+test("EX-2: a UX question with no answerer fails with the line, naming the file", () => {
+  const r = uxCheck("- Q-1: where the limit comes from");
+  expect(r.code).toBe(1);
+  expect(r.out.split("\n").some((l) => l.includes("UX-01-a.md: " + OWNER_LINE))).toBe(true);
+  expect(uxCheck("- Q-1 (Lead): where the limit comes from").code).toBe(0); // mutant: with an answerer it passes
+});
+
+// covers: chain/FRD-06/EX-2
+test("EX-2: a TP question with no answerer fails with the line", () => {
+  const r = tpCheck("- Q-1: where the limit comes from");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain(OWNER_LINE);
+  expect(tpCheck("- Q-1 (Lead): where the limit comes from").code).toBe(0); // mutant: with an answerer it passes
+});
+
+// covers: chain/FRD-06/EX-2
+test("EX-2: in a folder check the line starts with the file name", () => {
+  const r = frdCheck("- Q-1: where the limit comes from");
+  expect(r.out.split("\n").some((l) => l.includes("FRD-01-a.md: " + OWNER_LINE))).toBe(true);
+});
+
+// covers: chain/FRD-06/EX-4
+test("EX-4: the literal (Owner: <reason>) is not a reason", () => {
+  const r = prdCheck("- Q-2 (Owner: <reason>): the adoption target");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("Q-2: say why only the owner can answer it");
+  expect(prdCheck("- Q-2 (Owner: a product goal): the adoption target").code).toBe(0); // mutant: a real reason passes
+});
+
+// covers: chain/FRD-06/EX-2
+test("EX-2: an answerer after other words, not right after the id, does not count", () => {
+  const r = frdCheck("- Q-1 who pays (Lead)", 3);
+  expect(r.code).toBe(1);
+  expect(r.out).toContain(OWNER_LINE);
+  expect(frdCheck("- Q-1 (Lead) who pays", 3).code).toBe(0); // mutant: right after the id it passes
+});
+
+// covers: chain/FRD-06/EX-6
+test("EX-6: a Q-n mentioned outside the Open questions section does not need an answerer", () => {
+  const frd = withQ(FRD, "None.").replace("## Why\nREQ-1", "## Why\nREQ-1, and Q-3 was answered in D-12");
+  expect(frd).toContain("Q-3 was answered");
+  const r = cliIn(qroot(3, { frd }), "frd", "docs/inbox", "INBOX");
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("say who answers");
+});
+
+// A TP in a project: its Rests on line, its parent document and the ADR files, checked through the CLI.
+const REQ6 = (decision: string) => "# REQ-6: x\n\nStatus: Accepted\n\n" + SUM + "\n## Decision\n" + decision + "\n";
+const REGISTRY = "# Checks\n\n| ID | Prevents | Command | Replay |\n|---|---|---|---|\n| CHECK-1 | x | `bun test` | `test/x.ts` |\n| CHECK-2 | y | `bun test` | `test/y.ts` |\n";
+function tpIn(opts: { rests?: string; cites: string; adr?: string; adrFile?: string; files?: Record<string, string> }) {
+  const root = qroot(undefined);
+  let tp = TP.replace("FR-INBOX-01-1", opts.cites);
+  if (opts.rests) tp = tp.replace("Status: Draft\n", "Status: Draft\nRests on: " + opts.rests + "\n");
+  if (opts.adr) tp = tp.replace("ADR: ADR-001", "ADR: " + opts.adr);
+  const all: Record<string, string> = { "docs/inbox/tp/TP-01-a.md": tp, ["docs/adr/" + (opts.adrFile ?? "ADR-001-storage.md")]: ADR, ...opts.files };
+  for (const [p, t] of Object.entries(all)) {
+    mkdirSync(join(root, p, ".."), { recursive: true });
+    writeFileSync(join(root, p), t);
+  }
+  return cliIn(root, "tp", "docs/inbox/tp/TP-01-a.md", "docs/adr", "--root", "docs");
+}
+const ON_REQ = "../../requests/REQ-6-ci.md";
+const req6 = (decision: string) => ({ "docs/requests/REQ-6-ci.md": REQ6(decision) });
+
+// covers: chain/FRD-07/EX-1
+test("EX-1: a TP resting on a request cites an id of its Decision and passes", () => {
+  const r = tpIn({ rests: ON_REQ, cites: "CI-1", files: req6("- CI-1: use a cache\n- CI-2: pin the tool") });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("cites no FR id");
+});
+
+// covers: chain/FRD-07/EX-2
+test("EX-2: a TP resting on a request that cites none of its ids fails", () => {
+  const r = tpIn({ rests: ON_REQ, cites: "nothing of the request", files: req6("- CI-1: use a cache\n- CI-2: pin the tool") });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("cites no id of REQ-6's Decision");
+});
+
+// covers: chain/FRD-07/EX-3
+test("EX-3: a TP citing an id the request's Decision does not define fails", () => {
+  const r = tpIn({ rests: ON_REQ, cites: "CI-1 and CI-9", files: req6("- CI-1: use a cache\n- CI-2: pin the tool") });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("cites CI-9, not in REQ-6's Decision");
+  expect(r.out).not.toContain("cites CI-1,"); // CI-1 is defined
+});
+
+// covers: chain/FRD-07/EX-4
+test("EX-4: a request whose Decision is prose with no ids fails, telling how to give ids", () => {
+  const r = tpIn({ rests: ON_REQ, cites: "CI-1", files: req6("We decided to use a cache and to pin the tool.") });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("REQ-6: give each decision an id (CI-1, CI-2) so the TP can cite it");
+});
+
+// covers: chain/FRD-07/EX-5
+test("EX-5: a TP resting on docs/CHECKS.md cites one of its rows and passes", () => {
+  const r = tpIn({ rests: "../../CHECKS.md", cites: "CHECK-2", files: { "docs/CHECKS.md": REGISTRY } });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("cites no");
+  expect(tpIn({ rests: "../../CHECKS.md", cites: "CHECK-9", files: { "docs/CHECKS.md": REGISTRY } }).code).toBe(1); // mutant: a row the registry lacks fails
+});
+
+// covers: chain/FRD-07/EX-6
+test("EX-6: a TP with no Rests on line is checked against FR ids as before", () => {
+  expect(tpIn({ cites: "FR-INBOX-01-1" }).code).toBe(0);
+  const bad = tpIn({ cites: "FR-INBOX-01-9" });
+  expect(bad.code).toBe(1);
+  expect(bad.out).toContain("cites FR-INBOX-01-9, defined in no FRD");
+});
+
+// covers: chain/FRD-07/EX-9
+test("EX-9: an ADR with four digits and its file passes", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0029", adrFile: "ADR-0029-ci.md" });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("has no file");
+});
+
+// covers: chain/FRD-07/EX-10
+test("EX-10: an ADR id with no file fails with the id whole", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0029" });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("ADR-0029 has no file");
+  expect(r.out).not.toContain("ADR-002 has no file");
+});
+
+// A TP resting on a request, approved through the CLI: approve records the request as the parent.
+function tpOnRequest(reqStatus: string) {
+  const root = mkdtempSync(join(tmpdir(), "scriptorium-approve-"));
+  mkdirSync(join(root, "docs", "requests"), { recursive: true });
+  mkdirSync(join(root, "docs", "inbox", "tp"), { recursive: true });
+  writeFileSync(join(root, "docs", "PRODUCT.md"), "# P\n\nStatus: Draft\n");
+  writeFileSync(join(root, "docs", "requests", "REQ-6-ci.md"), "# REQ-6: x\n\nStatus: " + reqStatus + "\n\n" + SUM + "\n## Decision\n- CI-1: use a cache\n");
+  writeFileSync(join(root, "docs", "inbox", "tp", "TP-01-a.md"), TP.replace("Status: Draft\n", "Status: Draft\nRests on: ../../requests/REQ-6-ci.md\n").replace("FR-INBOX-01-1", "CI-1"));
+  return root;
+}
+
+// covers: chain/FRD-07/EX-7
+test("EX-7: approve on a TP resting on an accepted request records the request as the parent and passes", () => {
+  const root = tpOnRequest("Accepted");
+  const r = cliIn(root, "approve", "docs/inbox/tp/TP-01-a.md", ".");
+  expect(r.code).toBe(0);
+  const text = readFileSync(join(root, "docs", "inbox", "tp", "TP-01-a.md"), "utf8");
+  expect(text).toContain("Status: Approved");
+  expect(text).toMatch(/Approval: content \S+; rests on \.\.\/\.\.\/requests\/REQ-6-ci\.md \S+/);
+});
+
+// covers: chain/FRD-07/EX-8
+test("EX-8: approve on a TP resting on a request that is still Open fails", () => {
+  const root = tpOnRequest("Open");
+  const r = cliIn(root, "approve", "docs/inbox/tp/TP-01-a.md", ".");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("REQ-6");
+  expect(r.out).toMatch(/accepted/i);
+  expect(readFileSync(join(root, "docs", "inbox", "tp", "TP-01-a.md"), "utf8")).not.toContain("Status: Approved"); // nothing was approved
 });

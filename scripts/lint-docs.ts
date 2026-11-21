@@ -43,7 +43,7 @@ function prose(text: string): { n: number; s: string }[] {
   return out;
 }
 
-const cells = (l: string) =>
+export const cells = (l: string) =>
   l
     .trim()
     .replace(/^\||\|$/g, "")

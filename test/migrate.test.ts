@@ -59,10 +59,10 @@ test("a spec to split keeps the pin, the mechanical rewrite stays", () => {
 // covers: chain/FRD-03/EX-13
 // covers: chain/FRD-03/ST-2
 test("at the newest format there is nothing to migrate and nothing changes", () => {
-  const root = project({}, '{"format": 2}');
-  for (const apply of [false, true]) expect(migrate(root, apply)).toEqual({ lines: ["nothing to migrate: format 2 is the newest"], code: 0 });
+  const root = project({}, '{"format": 3}');
+  for (const apply of [false, true]) expect(migrate(root, apply)).toEqual({ lines: ["nothing to migrate: format 3 is the newest"], code: 0 });
   expect(read(root, S1)).toBe(SPEC);
-  expect(read(root, ".scriptorium/config.json")).toBe('{"format": 2}');
+  expect(read(root, ".scriptorium/config.json")).toBe('{"format": 3}');
 });
 
 test("the CLI runs migrate with and without --apply", () => {

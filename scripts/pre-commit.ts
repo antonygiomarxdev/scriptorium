@@ -11,6 +11,7 @@ import { join, relative } from "node:path";
 import { isChainProject, runDocChecks, runStatus, runTrace, splitDocPath } from "./hook-doc-check.ts";
 import { CONFIG, gate, readFormat } from "./format.ts";
 import { gateFile } from "./gate.ts";
+import { reworkFails } from "./rework.ts";
 import { toPosix } from "./paths.ts";
 
 const sh = (args: string[], cwd?: string) => Bun.spawnSync(args, { cwd }).stdout.toString().trim();
@@ -65,6 +66,10 @@ if (import.meta.main) {
       if (now < was) fails.push(CONFIG + ": format " + was + " to " + now + ": migration is one-way, the pin only goes up");
     }
     if (isChainProject(top)) {
+      // a rework queue that fails blocks any commit
+      const rw = gate(reworkFails(top), readFormat(top));
+      fails.push(...rw.fails);
+      warnings.push(...rw.warnings);
       const staged = sh(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], top).split("\n").filter(Boolean);
       const g = gate(
         staged.filter((f) => !f.startsWith(".scriptorium/")).flatMap((f) => gateFile(top, toPosix(f)) ?? []),

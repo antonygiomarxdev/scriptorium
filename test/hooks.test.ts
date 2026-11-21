@@ -231,7 +231,7 @@ test("the stop hook in a project pinned to an unknown format passes with the upd
   const root = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 9}' });
   const r = hook("hook-stop.ts", { cwd: root });
   expect(r.code).toBe(0);
-  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 2: update Scriptorium");
+  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 3: update Scriptorium");
   const ok = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 2}' }); // mutant: a known pin gives no warning
   expect(hook("hook-stop.ts", { cwd: ok }).err).not.toContain("update Scriptorium");
 });
@@ -316,3 +316,55 @@ test("EX-18: the plugin's hook configuration runs the edit hook for every editin
   expect(entry).toBeDefined();
   expect(entry.matcher.split("|").sort()).toEqual(expect.arrayContaining(["Edit", "MultiEdit", "NotebookEdit", "Write"]));
 });
+
+// covers: metrics/FRD-01/EX-6
+test("EX-6: pre-commit blocks any commit while the rework log fails, with the same line", () => {
+  const causes = "| ID | Step | Cause | Open | Prevention | Since |\n|---|---|---|---|---|---|\n| C-1 | FRD | c | 0 | none | n/a |\n";
+  const findings = "| ID | Date | Change | Cause | Finding |\n|---|---|---|---|---|\n| R-1 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n| R-2 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n";
+  const log = "# Rework queue\n\nStatus: Draft\n\n## Causes\n\n" + causes + "\n## Open findings\n\n" + findings;
+  const run = (pin: string, text: string) => {
+    const root = project({ "docs/PRODUCT.md": PRODUCT, "docs/metrics/rework.md": text, "docs/keep.md": "x", ".scriptorium/config.json": pin });
+    git(root, "init");
+    git(root, "add", "docs/keep.md");
+    return hook("pre-commit.ts", { cwd: root });
+  };
+  const r = run('{"format":3}', log);
+  expect(r.code).toBe(1);
+  expect(r.err + r.out).toContain("C-1 (FRD) found 2 times with no prevention: R-1, R-2");
+  expect(run('{"format":3}', log.replace("| R-2 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n", "")).code).toBe(0); // mutant: one finding passes
+}, 60000);
+
+// covers: metrics/FRD-01/EX-6
+test("EX-6: the rework gate of pre-commit runs when only a non-document file is staged", () => {
+  const log = (findings: string) => "# Rework queue\n\nStatus: Draft\n\n## Causes\n\n| ID | Step | Cause | Open | Prevention | Since |\n|---|---|---|---|---|---|\n| C-1 | FRD | c | 0 | none | n/a |\n\n## Open findings\n\n| ID | Date | Change | Cause | Finding |\n|---|---|---|---|---|\n" + findings;
+  const R1 = "| R-1 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n";
+  const R2 = "| R-2 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n";
+  const run = (text: string) => {
+    const root = project({ "docs/PRODUCT.md": PRODUCT, "docs/metrics/rework.md": text, "test/keep.txt": "x", ".scriptorium/config.json": '{"format":3}' });
+    git(root, "init");
+    git(root, "add", "test/keep.txt"); // only this file is staged: no document, exempt from the edit gate
+    return hook("pre-commit.ts", { cwd: root });
+  };
+  const r = run(log(R1 + R2));
+  expect(r.code).toBe(1);
+  expect(r.err + r.out).toContain("C-1 (FRD) found 2 times with no prevention: R-1, R-2");
+  expect(run(log(R1)).code).toBe(0); // mutant: one finding passes
+}, 60000);
+
+// covers: metrics/FRD-01/EX-15
+test("EX-15: pre-commit at pin 2 passes with the failing rework log and prints the format 3 warning", () => {
+  const log =
+    "# Rework queue\n\nStatus: Draft\n\n## Causes\n\n| ID | Step | Cause | Open | Prevention | Since |\n|---|---|---|---|---|---|\n| C-1 | FRD | c | 0 | none | n/a |\n\n## Open findings\n\n| ID | Date | Change | Cause | Finding |\n|---|---|---|---|---|\n| R-1 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n| R-2 | 2026-11-20 | SPEC-01-1 | C-1 | f |\n";
+  const run = (pin: string) => {
+    const root = project({ "docs/PRODUCT.md": PRODUCT, "docs/metrics/rework.md": log, "docs/keep.md": "x", ".scriptorium/config.json": pin });
+    git(root, "init");
+    git(root, "add", "docs/keep.md");
+    return hook("pre-commit.ts", { cwd: root });
+  };
+  const r = run('{"format":2}');
+  expect(r.code).toBe(0);
+  const out = r.err + r.out;
+  expect(out).toContain("WARN (format 3): ");
+  expect(out).toContain("C-1 (FRD) found 2 times with no prevention: R-1, R-2");
+  expect(run('{"format":3}').code).toBe(1); // mutant: under format 3 the same log blocks
+}, 60000);

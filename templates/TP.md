@@ -38,4 +38,4 @@ Chosen: <option>, because <reason>. ADR: <ADR-NNN, or "none: not architecturally
 ## Risks
 
 ## Open questions
-<Q-n. Must be empty to approve.>
+<Q-n (Owner: <why only the owner can answer>), Q-n (Research) or Q-n (Lead). Research and Lead questions are answered by the team, as a D-n with its source or an L-n, before the owner is asked. Must be empty to approve.>

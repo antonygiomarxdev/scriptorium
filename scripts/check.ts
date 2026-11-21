@@ -15,11 +15,12 @@
 //   bun scripts/check.ts trace [root] [test dir]...  covers tags against the ids the FRDs define (default test dir: test)
 //   bun scripts/check.ts history <doc>             one line per commit, from git
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { fromDoc, toPosix } from "./paths.ts";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { fromDoc, toPosix, typed } from "./paths.ts";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
 import { history } from "./history.ts";
+import { reworkFails } from "./rework.ts";
 import { gate, pinProblem, readFormat } from "./format.ts";
 
 // A PRD or FRD says what, not how: these names belong in the Technical Proposal.
@@ -59,6 +60,19 @@ const rows = (body: string) =>
 const idsIn = (text: string, re: RegExp) => new Set([...text.matchAll(re)].map((m) => m[0]));
 const FR_ANY = /\bFR-[A-Z0-9]+-\d{2}-\d+\b/g;
 
+// Format 3: each Q-n line of Open questions says who answers it: (Owner: <reason>), (Research) or (Lead). prefix names the file in a folder check.
+export function answererFails(text: string, prefix = ""): string[] {
+  const out: string[] = [];
+  for (const l of (section(text, "Open questions") ?? "").split(/\r?\n/)) {
+    const q = /\b(Q-\d+)\b(.*)$/.exec(l); // any line with a Q-n id is a question, as the status rule reads it
+    if (!q) continue;
+    const who = /^\s*\(\s*(Owner|Research|Lead)\s*(?::([^)]*))?\)/.exec(q[2]!);
+    if (!who) out.push(q[1] + ": say who answers it: (Owner: <reason>), (Research) or (Lead)");
+    else if (who[1] === "Owner" && !who[2]?.trim().replace(/^<.*>$/, "")) out.push(q[1] + ": say why only the owner can answer it");
+  }
+  return out.map((m) => "[format 3] " + prefix + m);
+}
+
 export function checkPrd(text: string, slice: string, product: string): string[] {
   const fails = STATUS.test(text) ? [] : [NO_STATUS];
   fails.push(...missing(text, ["Summary", "Why", "Use cases", "Requirements", "Principles", "Non-goals", "Dependencies", "Success criteria", "Open questions"]));
@@ -78,7 +92,7 @@ export function checkPrd(text: string, slice: string, product: string): string[]
   if (!/\.\.\/PRODUCT\.md/.test(text)) fails.push("does not link ../PRODUCT.md");
   const t = text.match(TECH);
   if (t) fails.push('technology named in a PRD: "' + t[0] + '" (move to the TP)');
-  return fails;
+  return [...fails, ...answererFails(text)];
 }
 
 const EARS = /\b(WHEN|WHILE|IF|WHERE|always)\b/;
@@ -144,6 +158,7 @@ export function checkFrd(s: string, f: string, slice: string, nn: string, prdReq
   }
   const t = s.match(TECH);
   if (t) fail('technology named: "' + t[0] + '" (belongs in the TP)');
+  fails.push(...answererFails(s, f + ": "));
   return { fails, covered };
 }
 
@@ -182,6 +197,7 @@ export function checkUx(dir: string): { fails: string[]; files: number } {
     const s = readFileSync(join(uxDir, f), "utf8");
     if (!STATUS.test(s)) fails.push(f + ": " + NO_STATUS);
     fails.push(...missing(s, ["Summary", "Flows", "Screens", "States", "Design system", "Accessibility and language", "Open questions"]).map((x) => f + ": " + x));
+    fails.push(...answererFails(s, f + ": "));
     const nn = f.slice(3, 5);
     if (!nnFile(join(dir, "frd"), "FRD", nn)) fails.push(f + ": FRD-" + nn + " does not exist in " + join(dir, "frd"));
   }
@@ -198,25 +214,50 @@ export const frDefs = (frd: string) =>
 
 // A TP lists its decisions as "### TD-n: title", each with at least two options and a chosen one backed by an ADR or an explained "none".
 // knownFrs: every FR id defined in the project, so the TP can only cite real requirements.
-export function checkTp(text: string, adrDir: string, knownFrs: Set<string>): string[] {
+// Ids a TP may cite when it rests on a request or a registry: "- ID-n:" lines of the request's Decision, or the first cell of the registry's rows.
+const ID = /\b([A-Z][A-Z0-9]*)-(\d+)\b/g;
+function parentIds(parent: string): { name: string; ids: Set<string>; what: string } | undefined {
+  const base = basename(parent);
+  const text = readFileSync(parent, "utf8");
+  const req = /^(REQ-\d+)/.exec(base)?.[1];
+  if (req) return { name: req, what: req + "'s Decision", ids: new Set((section(text, "Decision") ?? "").split(/\r?\n/).flatMap((l) => /^\s*[-*]\s+([A-Z][A-Z0-9]*-\d+):/.exec(l)?.[1] ?? [])) };
+  if (REGISTRY.test(base)) return { name: base, what: base, ids: new Set(text.split(/\r?\n/).flatMap((l) => (/^\s*\|/.test(l) ? (/^\|?\s*([A-Z][A-Z0-9]*-\d+)\s*\|/.exec(l)?.[1] ?? []) : []))) };
+  return undefined;
+}
+
+// tpPath: with a Rests on line to a request or a registry, the TP cites that document's ids; without, FR ids as before.
+export function checkTp(text: string, adrDir: string, knownFrs: Set<string>, tpPath?: string): string[] {
   const fails = STATUS.test(text) ? [] : [NO_STATUS];
   fails.push(...missing(text, ["Summary", "Context", "Decisions", "Architecture", "Information", "Interfaces", "Threat model", "Testing", "Risks", "Open questions"]));
-  const cited = idsIn(text, FR_ANY);
-  if (!cited.size) fails.push("cites no FR id");
-  for (const fr of cited) if (!knownFrs.has(fr)) fails.push("cites " + fr + ", defined in no FRD");
-  const adrs = existsSync(adrDir) ? readdirSync(adrDir).filter((f) => /^ADR-\d{3}-[a-z0-9-]+\.md$/.test(f)) : [];
+  const on = restsOn(text);
+  const parent = on && tpPath ? fromDoc(tpPath, on) : undefined;
+  const from = parent && existsSync(parent) ? parentIds(parent) : undefined;
+  if (from) {
+    if (!from.ids.size) fails.push(from.name + ": give each decision an id (CI-1, CI-2) so the TP can cite it");
+    else {
+      const prefixes = new Set([...from.ids].map((i) => i.split("-")[0]));
+      const cited = [...new Set([...text.matchAll(ID)].filter((m) => prefixes.has(m[1]!)).map((m) => m[0]))];
+      if (!cited.length) fails.push("cites no id of " + from.what);
+      for (const c of cited) if (!from.ids.has(c)) fails.push("cites " + c + ", not in " + from.what);
+    }
+  } else {
+    const cited = idsIn(text, FR_ANY);
+    if (!cited.size) fails.push("cites no FR id");
+    for (const fr of cited) if (!knownFrs.has(fr)) fails.push("cites " + fr + ", defined in no FRD");
+  }
+  const adrs = existsSync(adrDir) ? readdirSync(adrDir).filter((f) => /^ADR-\d{3,}-[a-z0-9-]+\.md$/.test(f)) : [];
   const blocks = text.split(/^### (?=TD-\d+)/m).slice(1);
   if (!blocks.length) fails.push("no decisions written as ### TD-n: title");
   for (const b of blocks) {
     const id = b.match(/^TD-\d+/)![0];
     if ((b.match(/^\s*[-*]\s+\*\*Option\b/gim) ?? []).length < 2) fails.push(id + ": fewer than 2 options (- **Option A** ...)");
     if (!/^\**Chosen\b/im.test(b)) fails.push(id + ': no "Chosen:" line');
-    const adr = b.match(/\bADR:\s*(ADR-\d{3}|none:\s*\S)/);
+    const adr = b.match(/\bADR:\s*(ADR-\d{3,}|none:\s*\S)/);
     if (!adr) fails.push(id + ': no "ADR: ADR-NNN" or "ADR: none: <reason>"');
-    else if (adr[1].startsWith("ADR-") && !adrs.some((f) => f.startsWith(adr[1]))) fails.push(id + ": " + adr[1] + " has no file in " + adrDir);
+    else if (adr[1].startsWith("ADR-") && !adrs.some((f) => f.startsWith(adr[1] + "-"))) fails.push(id + ": " + adr[1] + " has no file in " + adrDir);
   }
   if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
-  return fails;
+  return [...fails, ...answererFails(text)];
 }
 
 const defsIn = (frd: string, head: string, re: RegExp) => [...idsIn(section(frd, head) ?? "", re)];
@@ -237,6 +278,38 @@ const rowLines = (body: string) =>
     .split(/\r?\n/)
     .map((l) => l.trimEnd())
     .filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l) && !/Quoted from:/.test(l));
+
+// Format 3: the Reuses section names the code a spec builds on (path and name, each found), a precedent spec, or why there is nothing to reuse.
+function reusesFails(text: string, specPath: string): string[] {
+  const body = section(text, "Reuses");
+  const lines = (body ?? "").split(/\r?\n/);
+  const root = resolve(specPath).split(sep).join("/").split("/docs/").slice(0, -1).join("/docs/");
+  const fails: string[] = [];
+  let entries = 0;
+  for (const l of lines) {
+    const code = /^\s*[-*]\s+`([^`]+)`\s+`([^`]+)`/.exec(l); // a bullet is part of an entry; a line without one gets the "what to write" failure
+    const nothing = /Nothing to reuse(?::\s*(.*))?/.exec(l);
+    const prec = /Precedent:\s*`?([\w.-]+\.md)/.exec(l);
+    if (code) {
+      entries++;
+      const file = typed(code[1]!);
+      const abs = resolve(root, file);
+      const inside = !relative(root, abs).startsWith("..") && !isAbsolute(file); // a path that leaves the project counts as not existing
+      if (!inside || !existsSync(abs)) fails.push("Reuses: " + file + " does not exist");
+      else if (!new RegExp("(?<![\\w$])" + code[2]!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w$])").test(readFileSync(abs, "utf8"))) fails.push("Reuses: " + code[2] + " is not in " + file);
+    } else if (nothing) {
+      entries++;
+      if (!nothing[1]?.trim().replace(/^[.\s]+$/, "")) fails.push("Reuses: say why there is nothing to reuse");
+    } else if (prec) {
+      entries++;
+      const dd = join(root, "docs");
+      const found = existsSync(dd) && readdirSync(dd, { withFileTypes: true }).some((e) => e.isDirectory() && existsSync(join(dd, e.name, "specs", prec[1]!)));
+      if (!found) fails.push("Reuses: precedent " + prec[1] + " does not exist");
+    }
+  }
+  if (!entries) return ["no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>"].map((f) => "[format 3] " + f);
+  return fails.map((f) => "[format 3] " + f);
+}
 
 export function checkSpec(text: string, specPath: string): string[] {
   const fails: string[] = [];
@@ -272,7 +345,7 @@ export function checkSpec(text: string, specPath: string): string[] {
   if (nFiles > 3) fails.push("Files lists " + nFiles + " rows; the cap is 3");
   const cmds = (section(text, "Done when") ?? "").match(/`[^`\n]+`/g) ?? [];
   if (cmds.length !== 1) fails.push("Done when must hold exactly one backticked command, found " + cmds.length);
-  return fails;
+  return [...fails, ...reusesFails(text, specPath), ...answererFails(text)];
 }
 
 // The format 1 spec check (0.3.0): one spec per FRD, its tasks covering every FRD id.
@@ -300,7 +373,7 @@ export function checkSpecV1(text: string, frd: string): string[] {
 // A spec's failures under a project's pin: the format 1 check counts under format 1, the small-spec check is tagged format 2.
 // shortcut: the FRD is the sibling FRD-NN-*.md of SPEC-NN-*.md (empty when absent), read only under format 1.
 export function specFails(text: string, specPath: string, pin: number): string[] {
-  const v2 = checkSpec(text, specPath).map((f) => "[format 2] " + f);
+  const v2 = checkSpec(text, specPath).map((f) => (f.startsWith("[format ") ? f : "[format 2] " + f));
   if (pin >= 2) return v2;
   const nn = basename(specPath).match(/^SPEC-(\d{2})-/)?.[1];
   const dir = join(dirname(specPath), "..", "frd");
@@ -420,7 +493,9 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     for (const f of ls(join(d, "frd"), /^FRD-\d{2}-.*\.md$/)) add(join(d, "frd", f), "FRD", prd);
     for (const f of ls(join(d, "ux"), /^UX-\d{2}-.*\.md$/)) add(join(d, "ux", f), "UX", sib("frd", "FRD", f.slice(3, 5)));
     for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) {
-      add(join(d, "tp", f), "TP", sib("frd", "FRD", f.slice(3, 5)), [crossTp]);
+      const tpPath = join(d, "tp", f);
+      const on = restsOn(readFileSync(tpPath, "utf8"));
+      add(tpPath, "TP", on ? fromDoc(tpPath, on) : sib("frd", "FRD", f.slice(3, 5)), [crossTp]); // a Rests on line wins over the FRD of its number
     }
     for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) {
       const sp = join(d, "specs", f),
@@ -430,7 +505,7 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     }
   }
   // An ADR has no parent: it may be Accepted while its TP is a draft. The TP is what waits for its ADRs (below).
-  for (const f of ls(join(dd, "adr"), /^ADR-\d{3}-.*\.md$/)) add(join(dd, "adr", f), "ADR");
+  for (const f of ls(join(dd, "adr"), /^ADR-\d{3,}-.*\.md$/)) add(join(dd, "adr", f), "ADR");
   const byPath = new Map(docs.map((x) => [x.path, x]));
   for (const x of docs) {
     if (x.kind === "ADR" && !["Proposed", "Accepted", "Superseded", "Rejected"].includes(x.status)) fails.push(x.path + ': ADR status "' + x.status + '" is not Proposed, Accepted, Superseded or Rejected');
@@ -445,7 +520,7 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     }
     // A TP is approved only when every ADR it cites ("ADR: ADR-NNN") is Accepted.
     if (x.kind === "TP")
-      for (const id of new Set([...readFileSync(x.path, "utf8").matchAll(/\bADR:\s*(ADR-\d{3})/g)].map((m) => m[1]))) {
+      for (const id of new Set([...readFileSync(x.path, "utf8").matchAll(/\bADR:\s*(ADR-\d{3,})/g)].map((m) => m[1]))) {
         const a = docs.find((y) => y.kind === "ADR" && y.path.split(/[\\/]/).pop()!.startsWith(id));
         if (a && !a.approved) fails.push(x.path + ": approved, but " + id + " is still " + a.status);
       }
@@ -488,8 +563,14 @@ if (import.meta.main) {
     console.error("usage:\n  " + USAGE.join("\n  "));
     process.exit(2);
   };
-  const finish = (fails: string[], ok: string, warnings: string[] = []): never => {
-    for (const w of warnings) console.log(toPosix(w));
+  const finish = (all: string[], ok: string, warned: string[] = []): never => {
+    let pin = 1;
+    try {
+      pin = readFormat(".");
+    } catch {} // a bad pin was reported above
+    const g = gate(all, pin); // a rule newer than the pin is a warning, not a failure
+    const fails = g.fails;
+    for (const w of [...warned, ...g.warnings]) console.log(toPosix(w));
     if (fails.length) {
       for (const f of fails) console.log("FAIL", toPosix(f));
       process.exit(1);
@@ -515,7 +596,7 @@ if (import.meta.main) {
     const { docs, fails: chainFails } = chainStatus(root);
     const rel = (p: string) => toPosix(relative(root, p));
     const drift = driftFails(root);
-    const g = gate([...chainFails, ...drift.fails], readFormat(root));
+    const g = gate([...chainFails, ...drift.fails, ...reworkFails(root)], readFormat(root));
     const fails = g.fails;
     console.log("| Document | Kind | Status |\n|---|---|---|");
     for (const d of docs) console.log("| " + rel(d.path) + " | " + d.kind + " | " + d.status + " |");
@@ -530,7 +611,11 @@ if (import.meta.main) {
       if (kind === "approve") {
         const date = opt("--date", new Date().toISOString().slice(0, 10));
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) usage();
-        approve(a, b && !b.startsWith("--") ? b : ".", date);
+        const root = b && !b.startsWith("--") ? b : ".";
+        const all = chainStatus(root).docs;
+        const par = all.find((x) => x.path === all.find((y) => resolve(y.path) === resolve(a))?.parent);
+        if (par?.kind === "REQUEST" && !par.approved) throw new Error(basename(par.path).replace(/^(REQ-\d+).*/, "$1") + " is " + par.status + ", not accepted: a document resting on a request needs it accepted");
+        approve(a, root, date);
       } else clear(a, b ?? ".");
     } catch (e) {
       console.log("FAIL", toPosix(a) + ": " + (e as Error).message);
@@ -586,8 +671,8 @@ if (import.meta.main) {
   if (kind === "tp") {
     if (!a || !b) usage();
     const text = read(a);
-    const adrFiles = existsSync(b) ? readdirSync(b).filter((f) => /^ADR-\d{3}-[a-z0-9-]+\.md$/.test(f)) : [];
-    const fails = [...checkTp(text, b, frIds(opt("--root", "docs"))), ...adrFiles.flatMap((f) => checkAdr(readFileSync(join(b, f), "utf8"), f))];
+    const adrFiles = existsSync(b) ? readdirSync(b).filter((f) => /^ADR-\d{3,}-[a-z0-9-]+\.md$/.test(f)) : [];
+    const fails = [...checkTp(text, b, frIds(opt("--root", "docs")), resolve(a)), ...adrFiles.flatMap((f) => checkAdr(readFileSync(join(b, f), "utf8"), f))];
     finish(fails, a + ": " + (text.split(/^### (?=TD-\d+)/m).length - 1) + " decisions, " + adrFiles.length + " ADRs");
   }
   if (kind === "spec") {

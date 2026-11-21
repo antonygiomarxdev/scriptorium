@@ -28,6 +28,10 @@ Read the diff against the spec. A changed file not in its Files table (test file
 
 Map every clause of the Files table's "Holds" column to a row. A clause with no row is a finding against the spec, Step: spec, not a defect in the code. Add every finding to the open findings of `docs/metrics/rework.md`, one row each, naming one cause from its list; a cause not on the list goes to the owner, never a new row of its own.
 
+New code that repeats code already in the project (a copy of a helper, a second map, a rule written twice) fails the change, citing FR-CHAIN-05-5, and is logged with cause C-13. Code that calls what the spec's Reuses section names is not a finding.
+
+In a session review, a question put to the owner that research or the lead could have answered is logged with cause C-14.
+
 Also fail anything beyond the spec (L-13): code, files or behavior no quoted row asks for. Warn when additions far exceed deletions with no stated reason.
 
 List all findings in round 1. Do not hold any back for later.

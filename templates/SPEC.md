@@ -20,6 +20,12 @@ Quoted from: <relative path; leave out when it is the Rests on document>
 | Path | Create or change | Holds |
 |---|---|---|
 
+## Reuses
+<What this spec builds on, found by searching the code first. One of:>
+- `<path>` `<name>`: <why it is used>
+- Precedent: <SPEC-NN-k-name.md>, <what it did that this one repeats>
+Nothing to reuse: <why nothing in the project does this job>
+
 ## Tests first
 <The ids of the Rows above, every one and no other, written as tests before the code, without the implementation in view.>
 
@@ -33,4 +39,4 @@ Quoted from: <relative path; leave out when it is the Rests on document>
 <What a reader might expect here and will not get, and the spec that has it.>
 
 ## Open questions
-<Q-n. Must be empty to approve.>
+<Q-n (Owner: <why only the owner can answer>), Q-n (Research) or Q-n (Lead). Research and Lead questions are answered by the team, as a D-n with its source or an L-n, before the owner is asked. Must be empty to approve.>

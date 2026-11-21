@@ -1,13 +1,13 @@
 # Chain PRD
 
-Status: Approved (2026-11-20)
-Approval: content weJ_tC_U7K43; rests on ../PRODUCT.md OHZ_OJ4Vuiy1
+Status: Approved (2026-11-21)
+Approval: content ZXf8DR0qTJHf; rests on ../PRODUCT.md OHZ_OJ4Vuiy1
 
 ## Summary
 
 The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
 
-Last change: 2026-11-20, pinned formats, migrate and the command-line tool (R-CHAIN-30 to 34, D-31, L-16)
+Last change: 2026-11-21, a TP for work that is not product rests on a request or registry (R-CHAIN-27)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -44,7 +44,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-24.** The history of a document is generated from git on request and never kept by hand in the document (D-28, L-14).
 - **R-CHAIN-25.** No document carries a version number; git and release tags are the history (D-28).
 - **R-CHAIN-26.** A spec is small enough for one agent run: it caps its lines and files, quotes the rows it builds verbatim from its parent, and has one done command, so a small model needs no other document (REQ-1, L-15).
-- **R-CHAIN-27.** Work that is not product, such as CI, configuration, dependencies or a fix, uses the same spec, resting on a TP, an ADR, a registry row or an accepted request (REQ-1, L-15).
+- **R-CHAIN-27.** Work that is not product, such as CI, configuration, dependencies or a fix, uses the same spec, resting on a TP, an ADR, a registry row or an accepted request. A TP for such work rests on an accepted request or a registry instead of an FRD, and cites the ids of that request's Decision rows or of the registry rows (REQ-1, L-15, issue #2).
 - **R-CHAIN-28.** A replaced document says what replaced it, and the checks stop demanding coverage and freshness from it; whether a spec is done is computed by running its done command, never written by hand (REQ-2, L-15).
 - **R-CHAIN-29.** In a project that uses Changesets, a commit that changes code without a changeset fails (D-22, L-15).
 - **R-CHAIN-30.** Each project pins the format of its rules in a folder of its own; a project with no pin keeps the oldest supported rules, and a pin newer than the tool is reported, never guessed (REQ-5, D-31, L-16).
@@ -52,6 +52,8 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-32.** One command migrates a project to the next format: a dry run first, mechanical rewrites only, and the pin moves only when the next format passes; a skill does what needs judgment (REQ-5, L-16).
 - **R-CHAIN-33.** The checks support the current and the previous format, and each released format has a frozen example that today's checks must pass under its own pin (REQ-5, D-31, L-16).
 - **R-CHAIN-34.** The checks run outside the agent as a command-line tool a project pins by version, and the git hook is installed from a folder the project commits (REQ-5, D-15, L-16).
+- **R-CHAIN-35.** Every spec names what it builds on: existing code by path and name, and a precedent spec, or why there is none; the check fails a name that does not exist, and review fails code that repeats existing code (REQ-7).
+- **R-CHAIN-36.** Every open question names who answers it: the owner, with the reason only the owner can; research; or the lead. The owner is asked only the owner's questions, together, each with a recommendation (REQ-10, D-36).
 
 ## Principles honored
 Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9, R-CHAIN-23 and R-CHAIN-24: drift is detected, coverage is scanned and history is read from git, none of it assumed.

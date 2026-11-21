@@ -131,6 +131,9 @@ The check only sees structure. A reviewer also looks for these, because the chec
 - **Numbers with no stated reason:** limits, timeouts, intervals, caps.
 - **Facts about tools that may be out of date.** Check the current docs before rejecting an option for lacking a feature.
 
+## Asking the owner (FRD-06)
+Every open question names who answers it: `(Owner: <reason>)` when only the owner can (product, priority, money, risk), `(Research)` when sources can answer it, `(Lead)` when the lead can decide and record it. Answer Research questions with a researcher and record them as a D-n with the source; decide Lead questions and record them as an L-n. Then ask the owner only the Owner questions, all in one message, each with a recommendation. Asking the owner what research could answer is rework cause C-14.
+
 ## Status and approval
 
 Every chain document carries one status line. PRODUCT, PRD, FRD, UX, TP and spec use `Status: Draft`, `Status: Approved (YYYY-MM-DD)` or `Status: Superseded by <relative path> (YYYY-MM-DD)`; a request uses `Open`, `Accepted`, `Rejected` or `Merged into REQ-m`. ADRs use `## Status` followed by `Proposed`, `Accepted`, `Superseded` or `Rejected`.

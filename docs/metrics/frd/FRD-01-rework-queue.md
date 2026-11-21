@@ -1,6 +1,7 @@
 # FRD-01: The rework queue
 
-Status: Draft
+Status: Approved (2026-11-20)
+Approval: content LeMG8yiTCSTC; rests on ../PRD.md riaA1KBFJvV8
 
 ## Summary
 
@@ -56,10 +57,10 @@ R-METRICS-1, R-METRICS-2, R-METRICS-3, R-METRICS-4, R-METRICS-5, R-METRICS-6, R-
 | EX-12 | RULE-4 | negative | Cause C-1 has prevention CHECK-4 dated 2026-11-21 and finding R-2 of C-1 is dated 2026-11-20 | status runs | it fails with "R-2: closed by CHECK-4, remove it from the log" |
 | EX-13 | RULE-4 | positive | A project has no docs/metrics/rework.md | status runs | it reports nothing about rework |
 | EX-14 | RULE-5 | positive | The log has C-1 with 2 open findings at step FRD and C-2 with 1 at step spec | the rework report runs | it prints "C-1 (FRD): 2", "C-2 (spec): 1", "FRD: 2", "spec: 1" and "open: 3" |
-| EX-15 | RULE-6 | positive | A format 1 project with the log of EX-5 | status runs | it passes and prints "WARN (format 2):" with the EX-5 line |
+| EX-15 | RULE-6 | positive | A format 2 project with the log of EX-5 | status runs | it passes and prints "WARN (format 3):" with the EX-5 line |
 | EX-16 | RULE-3 | positive | Cause C-1 has prevention CHECK-4 with a command and a replay, and no finding of C-1 is open | status runs | it passes |
 | EX-17 | RULE-5 | boundary | The log lists causes and no open findings | the rework report runs | it prints "open: 0" |
-| EX-18 | RULE-6 | negative | A format 2 project with the log of EX-5 | status runs | it fails with the EX-5 line |
+| EX-18 | RULE-6 | negative | A format 3 project with the log of EX-5 | status runs | it fails with the EX-5 line |
 
 ### Coverage waivers
 None.
@@ -122,10 +123,10 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-12** (EX-12): Given Cause C-1 has prevention CHECK-4 dated 2026-11-21 and finding R-2 of C-1 is dated 2026-11-20, when status runs, then it fails with "R-2: closed by CHECK-4, remove it from the log".
 - **AC-13** (EX-13): Given A project has no docs/metrics/rework.md, when status runs, then it reports nothing about rework.
 - **AC-14** (EX-14): Given The log has C-1 with 2 open findings at step FRD and C-2 with 1 at step spec, when the rework report runs, then it prints "C-1 (FRD): 2", "C-2 (spec): 1", "FRD: 2", "spec: 1" and "open: 3".
-- **AC-15** (EX-15): Given A format 1 project with the log of EX-5, when status runs, then it passes and prints "WARN (format 2):" with the EX-5 line.
+- **AC-15** (EX-15): Given A format 2 project with the log of EX-5, when status runs, then it passes and prints "WARN (format 3):" with the EX-5 line.
 - **AC-16** (EX-16): Given Cause C-1 has prevention CHECK-4 with a command and a replay, and no finding of C-1 is open, when status runs, then it passes.
 - **AC-17** (EX-17): Given The log lists causes and no open findings, when the rework report runs, then it prints "open: 0".
-- **AC-18** (EX-18): Given A format 2 project with the log of EX-5, when status runs, then it fails with the EX-5 line.
+- **AC-18** (EX-18): Given A format 3 project with the log of EX-5, when status runs, then it fails with the EX-5 line.
 - **AC-19** (DT-1): Given prevention: none, open findings dated on or after it: n/a, open findings in all: 0 or 1, when status runs, then the result is: pass.
 - **AC-20** (DT-2): Given prevention: none, open findings dated on or after it: n/a, open findings in all: 2 or more, when status runs, then the result is: fail: repeated with no prevention.
 - **AC-21** (DT-3): Given prevention: named but missing or with no replay, open findings dated on or after it: any, open findings in all: any, when status runs, then the result is: fail: unproven prevention.

@@ -67,7 +67,7 @@ Each row measurable (metric, threshold, how measured) or "n/a: <reason>". "Fast"
 <Fields the feature reads and keeps. No formats, no storage choice.>
 
 ## Open questions
-<Q-n. Must be empty to approve.>
+<Q-n (Owner: <why only the owner can answer>), Q-n (Research) or Q-n (Lead). Research and Lead questions are answered by the team, as a D-n with its source or an L-n, before the owner is asked. Must be empty to approve.>
 
 ## Acceptance criteria
 <Generated from the examples, decision table and states: AC-n, Given/When/Then, one per EX, DT row and ST cell. Never written by hand.>

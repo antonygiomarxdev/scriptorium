@@ -15,7 +15,7 @@ const install = (cwd: string) => {
 test("EX-5: install in a folder with no docs and no .scriptorium writes the newest format", () => {
   const root = tmp();
   expect(install(root).code).toBe(0);
-  expect(JSON.parse(readFileSync(join(root, ".scriptorium", "config.json"), "utf8"))).toEqual({ format: 2 });
+  expect(JSON.parse(readFileSync(join(root, ".scriptorium", "config.json"), "utf8"))).toEqual({ format: 3 });
   const withDocs = tmp();
   mkdirSync(join(withDocs, "docs"));
   install(withDocs);

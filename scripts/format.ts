@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const NEWEST = 2;
+export const NEWEST = 3;
 export const CONFIG = ".scriptorium/config.json";
 
 // The pin, or an Error naming the config file when it cannot be read or is not a positive whole number.
