@@ -1,8 +1,9 @@
 import { test, expect } from "bun:test";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readQueue, reworkFails } from "../scripts/rework.ts";
+import { readQueue, reworkFails, reworkHistory } from "../scripts/rework.ts";
 
 // A project with docs/metrics/rework.md built from cause rows and finding rows, and optionally a checks table.
 const cause = (id: string, step = "FRD", prevention = "none", since = "n/a") => "| " + id + " | " + step + " | some cause | 0 | " + prevention + " | " + since + " |";
@@ -163,4 +164,111 @@ test("EX-9: a CHECKS.md table with no Replay column says the prevention has no r
   const noColumn = "# Checks\n\n| ID | Prevents | Command |\n|---|---|---|\n| CHECK-4 | x | `bun test` |\n";
   expect(fails(rework(log, { "docs/CHECKS.md": noColumn }))).toContain("C-1: prevention CHECK-4 has no replay");
   expect(reworkFails(rework(log, { "docs/CHECKS.md": checks(PROVEN) }))).toEqual([]); // mutant: with the column and a replay it passes
+});
+
+// A git repository whose queue file has dated commits: each step is a date and the findings the queue holds then.
+const row = (id: string, change: string, cs: string, text = "what happened") => "| " + id + " | 2026-11-16 | " + change + " | " + cs + " | " + text + " |";
+function historyRepo(steps: [string, string[]][], causes = [cause("C-1"), cause("C-2"), cause("C-3")]) {
+  const dir = mkdtempSync(join(tmpdir(), "scriptorium-rework-history-"));
+  const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, encoding: "utf8" });
+  g("init", "-q");
+  g("config", "user.email", "t@example.com");
+  g("config", "user.name", "T");
+  g("config", "commit.gpgsign", "false");
+  mkdirSync(join(dir, "docs", "metrics"), { recursive: true });
+  writeFileSync(join(dir, "docs", "PRODUCT.md"), "# P\n\nStatus: Draft\n");
+  for (const [date, findings] of steps) {
+    writeFileSync(join(dir, "docs", "metrics", "rework.md"), queue(causes, findings));
+    g("add", "-A");
+    execFileSync("git", ["commit", "-q", "-m", "queue " + date], { cwd: dir, env: { ...process.env, GIT_AUTHOR_DATE: date + "T12:00:00", GIT_COMMITTER_DATE: date + "T12:00:00" } });
+  }
+  return dir;
+}
+const historyOf = (dir: string, id?: string) => reworkHistory(dir).filter((f) => !id || f.id === id);
+const histCli = (dir: string) => {
+  const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "cli.ts"), "rework", "history", dir], { cwd: tmpdir() });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+};
+const histLines = (dir: string) =>
+  histCli(dir)
+    .out.split("\n")
+    .map((l) => l.trim());
+
+// covers: metrics/FRD-02/EX-1
+test("EX-1: a finding is opened at the commit that adds its row and closed at the commit that removes it", () => {
+  const dir = historyRepo([
+    ["2026-11-17", [row("R-1", "SPEC-01-1", "C-1")]],
+    ["2026-11-23", []],
+  ]);
+  const r = historyOf(dir, "R-1");
+  expect(r).toHaveLength(1);
+  expect(r[0]?.opened).toBe("2026-11-17");
+  expect(r[0]?.closed).toBe("2026-11-23");
+  expect(r[0]?.change).toBe("SPEC-01-1");
+  expect(r[0]?.cause).toBe("C-1");
+  const still = historyRepo([["2026-11-17", [row("R-1", "SPEC-01-1", "C-1")]]]); // mutant: never removed, never closed
+  expect(historyOf(still, "R-1")[0]?.closed).toBeFalsy();
+});
+
+// covers: metrics/FRD-02/EX-2
+test("EX-2: editing the Finding text of a row keeps one finding, opened at the first commit", () => {
+  const dir = historyRepo([
+    ["2026-11-17", [row("R-1", "SPEC-01-1", "C-1", "first words")]],
+    ["2026-11-18", [row("R-1", "SPEC-01-1", "C-1", "other words")]],
+    ["2026-11-19", [row("R-1", "SPEC-01-1", "C-1", "more other words")]],
+  ]);
+  const r = historyOf(dir, "R-1");
+  expect(r).toHaveLength(1);
+  expect(r[0]?.opened).toBe("2026-11-17");
+  expect(r[0]?.closed).toBeFalsy();
+});
+
+// covers: metrics/FRD-02/EX-3
+test("EX-3: an id added, removed and added again is two findings, one closed and one open", () => {
+  const dir = historyRepo([
+    ["2026-11-17", [row("R-2", "SPEC-01-1", "C-1")]],
+    ["2026-11-18", []],
+    ["2026-11-19", [row("R-2", "SPEC-01-1", "C-1")]],
+  ]);
+  const r = historyOf(dir, "R-2");
+  expect(r).toHaveLength(2);
+  const closed = r.filter((f) => f.closed);
+  const open = r.filter((f) => !f.closed);
+  expect(closed).toHaveLength(1);
+  expect(open).toHaveLength(1);
+  expect(closed[0]?.opened).toBe("2026-11-17");
+  expect(closed[0]?.closed).toBe("2026-11-18");
+  expect(open[0]?.opened).toBe("2026-11-19");
+});
+
+// covers: metrics/FRD-02/EX-4
+test("EX-4: the history prints opened, closed and open counts per week, from its Monday", () => {
+  const dir = historyRepo([
+    ["2026-11-16", [row("R-1", "SPEC-01-1", "C-1")]],
+    ["2026-11-18", [row("R-1", "SPEC-01-1", "C-1"), row("R-2", "SPEC-01-1", "C-1")]],
+    ["2026-11-24", [row("R-2", "SPEC-01-1", "C-1")]],
+  ]);
+  const r = histCli(dir);
+  expect(r.code).toBe(0);
+  const lines = r.out.split("\n").map((l) => l.trim());
+  expect(lines).toContain("2026-11-16: opened 2, closed 0, open 2");
+  expect(lines).toContain("2026-11-23: opened 0, closed 1, open 1");
+});
+
+// covers: metrics/FRD-02/EX-5
+test("EX-5: the history counts findings per change and per cause", () => {
+  const dir = historyRepo([["2026-11-17", [row("R-1", "SPEC-01-1", "C-1"), row("R-2", "SPEC-01-1", "C-1"), row("R-3", "SPEC-01-2", "C-3")]]]);
+  const lines = histLines(dir);
+  for (const l of ["SPEC-01-1: 2", "SPEC-01-2: 1", "C-1: 2", "C-3: 1"]) expect(lines).toContain(l);
+  expect(lines).not.toContain("C-2: 1"); // a cause with no finding is not listed
+});
+
+// covers: metrics/FRD-02/EX-6
+test("EX-6: a project with no rework queue prints no rework queue and exits 0", () => {
+  const dir = mkdtempSync(join(tmpdir(), "scriptorium-norework-"));
+  mkdirSync(join(dir, "docs"));
+  writeFileSync(join(dir, "docs", "PRODUCT.md"), "# P\n\nStatus: Draft\n");
+  const r = histCli(dir);
+  expect(r.code).toBe(0);
+  expect(r.out.trim()).toBe("no rework queue");
 });

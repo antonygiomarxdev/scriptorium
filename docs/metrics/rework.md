@@ -102,3 +102,8 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-64 | 2026-11-21 | FRD-08 | C-5 | The cap waiver was designed from one report (lint) without replaying the TP check, which also holds legacy ADRs to the template; the waiver was replaced by a cutoff. |
 | R-65 | 2026-11-21 | SPEC-08-2 | C-12 | The bad-cutoff failure was tagged format 3 against the spec, and the EX-11 test used only pin 3, so the tag passed every test. |
 | R-66 | 2026-11-21 | SPEC-08-2 | C-13 | The ADR number pattern is written three times and the cited-file match twice, against "one pattern, written once per file". |
+| R-67 | 2026-11-21 | SPEC-01-5 of ops | C-6 | The larder rework queue was never written: the gate refused the write inside a longer script, the error was not read, and status passes with no queue, so the commit shipped without it. |
+| R-68 | 2026-11-21 | SPEC-09-1 | C-1 | approve run with a path from another folder records no parent fingerprint and passes, so status then fails the document as suspect; found while building the adopted fixture. |
+| R-69 | 2026-11-21 | SPEC-02-1 | C-1 | No example for a queue file deleted at a commit, for author and committer dates that differ, or for weeks whose events arrive out of order; each mutant survives. |
+| R-70 | 2026-11-21 | chain FRD-09 | C-1 | clear from another folder, a path with docs twice, and a path with no docs folder are untested for the project-root fix. |
+| R-71 | 2026-11-21 | chain FRD-09 | C-13 | "The project root above docs/" is written three times: projectOf, splitDocPath and reusesFails. |

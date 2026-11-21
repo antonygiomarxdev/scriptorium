@@ -114,3 +114,64 @@ test("the adopt skill keeps existing ADRs and sets legacyAdrsThrough to the high
   expect(step).toMatch(/new ADRs are written as `ADR-NNNN-name\.md` from the template/i);
   expect(step).toMatch(/at or below it/); // ADRs at or below the number are exempt, the others are not
 });
+
+const reworkSkill = () => readFileSync(join(import.meta.dir, "..", "skills", "rework", "SKILL.md"), "utf8");
+
+// covers: metrics/FRD-03/EX-1
+test("rework skill, EX-1: it plans the cause with the most open findings, read from the report and the history", () => {
+  const s = reworkSkill();
+  expect(s).toMatch(/most open findings/i);
+  expect(s).toContain("scriptorium rework");
+  expect(s).toContain("rework history");
+});
+
+// covers: metrics/FRD-03/EX-2
+test("rework skill, EX-2: on a tie the earliest step of the chain wins, FRD before spec", () => {
+  const s = reworkSkill();
+  expect(s).toMatch(/tie/i);
+  expect(s).toMatch(/earliest step/i);
+  expect(s).toMatch(/FRD[^\n]*before[^\n]*spec/i);
+});
+
+// covers: metrics/FRD-03/EX-3
+test("rework skill, EX-3: with no open finding it says there is nothing to plan and writes no request", () => {
+  const s = reworkSkill();
+  expect(s).toMatch(/nothing to plan/i);
+  expect(s).toMatch(/no open finding[^\n]*(write nothing|writes? no request|no request)|(write nothing|writes? no request)[^\n]*no open finding/i);
+});
+
+// covers: metrics/FRD-03/EX-4
+test("rework skill, EX-4: it writes docs/requests/REQ-n with its four parts", () => {
+  const s = reworkSkill();
+  expect(s).toContain("docs/requests/REQ-n");
+  for (const part of ["Evidence", "Step", "Prevention and replay", "How we will see it worked"]) expect(s).toContain(part);
+});
+
+// covers: metrics/FRD-03/EX-5
+test("rework skill, EX-5: a prevention that did not hold makes the request about why it did not hold", () => {
+  const s = reworkSkill();
+  expect(s).toMatch(/CHECK-n|CHECK-\d/);
+  expect(s).toMatch(/why[^\n]*(did not hold|failed|fails)/i);
+  expect(s).toMatch(/finding[^\n]*(dated )?after/i);
+});
+
+// covers: metrics/FRD-03/EX-6
+test("rework skill, EX-6: it never edits the checks, the templates, the queue or the cause list", () => {
+  const s = reworkSkill();
+  const line = s.split("\n").find((l) => /never edit/i.test(l)) as string;
+  expect(line).toBeDefined();
+  for (const what of ["checks", "templates", "queue", "cause list"]) expect(line.toLowerCase()).toContain(what);
+});
+
+// covers: chain/FRD-09/EX-6
+test("the adopt skill says where a verbatim export of another tool goes", () => {
+  const skill = readFileSync(join(import.meta.dir, "..", "skills", "adopt", "SKILL.md"), "utf8");
+  const para = skill.split("\n").find((l) => l.includes("archive/<tool>/")) as string;
+  expect(para).toBeDefined();
+  expect(para).toMatch(/verbatim/i);
+  expect(para).toMatch(/repo(sitory)? root/i);
+  expect(para).toMatch(/outside `?docs\/`?/i);
+  expect(para).toMatch(/Source:/);
+  expect(para).toMatch(/not linted/i);
+  expect(para).toMatch(/not read by agents by default/i);
+});

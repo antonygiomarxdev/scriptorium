@@ -44,6 +44,8 @@ Map every document to one chain step, using the templates as the target shape:
 
 Existing ADRs are kept as they are: do not rename or rewrite an accepted ADR. Both `ADR-NNNN-name.md` and `NNNN-name.md` are read. In `.scriptorium/config.json`, set `"legacyAdrsThrough"` to the highest existing ADR number. ADRs at or below it are not held to the ADR template or line cap (FRD-08). New ADRs are written as `ADR-NNNN-name.md` from the template.
 
+A verbatim export of another tool (a wiki, a ticket tracker) that must stay as it was goes to `archive/<tool>/` at the repo root, outside `docs/`: it is not linted, not read by agents by default, and never edited. The chain document that absorbed it links to it on a `Source:` line, so where its content came from stays one click away.
+
 Decide the slices with the owner. Each slice is a folder `docs/<slice>/`, whatever the code layout: in a monorepo, one slice per app or package that has its own users or behavior (`apps/`, `packages/`, backend, web, mobile). Propose a slice list with a short id each (the SLICE_ID in R-SLICE-n) and ask. Do not use reserved names: `requests`, `tp`, `adr`, `retro`, `decisions`, `research`.
 
 ## 3. Map from code, only if offered and accepted

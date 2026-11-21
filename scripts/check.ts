@@ -623,17 +623,23 @@ if (import.meta.main) {
   }
   if (kind === "approve" || kind === "clear") {
     if (!a) usage();
+    // the project is the folder holding the docs/ folder above the document, wherever the command runs from; the argument is the fallback
+    const projectOf = (doc: string, dflt: string) => {
+      const p = toPosix(resolve(doc));
+      const i = p.lastIndexOf("/docs/");
+      return i < 0 ? dflt : p.slice(0, i);
+    };
     try {
       if (kind === "approve") {
         const date = opt("--date", new Date().toISOString().slice(0, 10));
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) usage();
-        const root = b && !b.startsWith("--") ? b : ".";
+        const root = projectOf(a, b && !b.startsWith("--") ? b : ".");
         const all = chainStatus(root).docs;
         if (all.find((y) => resolve(y.path) === resolve(a))?.kind === "REQUEST") throw new Error("the owner accepts a request on its Status line; approve is for chain documents");
         const par = all.find((x) => x.path === all.find((y) => resolve(y.path) === resolve(a))?.parent);
         if (par?.kind === "REQUEST" && !par.approved) throw new Error(basename(par.path).replace(/^(REQ-\d+).*/, "$1") + " is " + par.status + ", not accepted: a document resting on a request needs it accepted");
         approve(a, root, date);
-      } else clear(a, b ?? ".");
+      } else clear(a, projectOf(a, b ?? "."));
     } catch (e) {
       console.log("FAIL", toPosix(a) + ": " + (e as Error).message);
       process.exit(1);
