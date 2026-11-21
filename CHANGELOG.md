@@ -1,5 +1,22 @@
 # scriptorium
 
+## 0.5.0
+
+### Minor Changes
+
+- 92ea292: An ADR file may be named NNNN-name.md as well as ADR-NNNN-name.md. A project that adopts the chain sets "legacyAdrsThrough" in .scriptorium/config.json: ADRs at or below it are not held to the ADR template or line cap, and a TP may cite one unless it says it is not accepted. The adopt skill sets it.
+- f57ca58: The /scriptorium:retro skill and templates/RETRO.md are removed: the rework queue (docs/metrics/rework.md) is the one place a failure becomes a proven prevention. Skills, README and the larder example point at the queue. A docs/retro folder is still not read as a slice.
+- a909ad5: Every spec names what it builds on in a Reuses section: existing code by path and name, a precedent spec, or "Nothing to reuse:" with a reason. The spec check fails a name that does not exist. A format 3 rule: format 2 projects get a warning.
+- 34a05d7: `scriptorium rework history` rebuilds every finding of the rework queue from git and prints it per week, change and cause. The `/scriptorium:rework` skill turns the heaviest cause into a request for the owner. The adopt skill says where a verbatim export of another tool goes (archive/<tool>/ at the repo root, linked on a Source line). approve and clear find the project from the document path, so they work from any folder. A fixture of an adopted project is checked in the tests.
+- a909ad5: The rework queue is checked: a finding needs a known cause, a cause found twice with no prevention blocks, and a prevention must hold. `scriptorium rework` prints the open findings per cause and per step. A format 3 rule.
+- a909ad5: Every open question says who answers it: (Owner: <reason>), (Research) or (Lead). The skills research and decide first and ask the owner only the owner's questions, together. A format 3 rule.
+
+### Patch Changes
+
+- 92ea292: The approval fingerprint ignores runs of spaces, blank lines and table separator padding, so a formatter run at commit no longer invalidates an approval. Fingerprints written before still match.
+- a909ad5: A TP that rests on an accepted request or a registry cites that parent's ids instead of FR ids, and approve records that parent. ADR ids with four or more digits are read whole.
+- b76ee60: Status no longer asks a TP that rests on a request or a registry for the cross-cutting TP. A Rests on path that does not exist fails the TP check, and approve on a request says that the owner accepts a request on its Status line.
+
 ## 0.4.0
 
 ### Minor Changes
