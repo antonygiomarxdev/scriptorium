@@ -1,13 +1,13 @@
 # FRD-08: Adopted documents checked as they are
 
 Status: Approved (2026-11-21)
-Approval: content aCtZe4cVXhD4; rests on ../PRD.md soSaFDiaVe3Y
+Approval: content rwGRMj9NyHJQ; rests on ../PRD.md _I099qjvgjrm
 
 ## Summary
 
 A project that adopts the chain keeps its existing ADR file names and its accepted ADRs as they are, and a formatter run at commit does not invalidate an approval. An ADR file may be named NNNN-name.md or ADR-NNNN-name.md, an ADR numbered at or below the cutoff set at adoption is not held to the ADR line cap or template, and the approval fingerprint ignores spacing, blank lines and table padding.
 
-Last change: 2026-11-21, a cutoff in the config replaces the cap waiver line (owner: option A)
+Last change: 2026-11-21, a Links header line stays out of the fingerprint and holds only https links (owner)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -26,6 +26,8 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | FR-CHAIN-08-3 | WHERE | WHERE an ADR's number is at or below the "legacyAdrsThrough" number in the project's Scriptorium config, the docs lint and the TP check shall not apply the ADR line cap or the ADR template to it. |
 | FR-CHAIN-08-4 | IF | IF a TP cites such an ADR and a status line in it says Proposed, Superseded or Rejected THEN the TP check shall fail and name its status; with no status line, it counts as accepted. |
 | FR-CHAIN-08-7 | IF | IF "legacyAdrsThrough" is set and is not a whole number THEN the checks shall fail and say what to write. |
+| FR-CHAIN-08-8 | WHEN | WHEN the fingerprint of a document is computed, it shall leave out a header line that starts with "Links:", as it leaves out the status, approval and last-change lines. |
+| FR-CHAIN-08-9 | IF | IF a "Links:" line holds anything but markdown links to https URLs, separated by commas or spaces, THEN the docs lint shall fail and name it. |
 | FR-CHAIN-08-5 | WHEN | WHEN the fingerprint of a document is computed, it shall ignore runs of spaces, blank lines and the dashes, colons and padding of a table separator row. |
 | FR-CHAIN-08-6 | WHEN | WHEN a document was approved with the earlier fingerprint, the checks shall accept that fingerprint until it is approved again. |
 
@@ -35,7 +37,7 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 |---|---|---|
 | RULE-1 | An ADR is found under either name. | FR-CHAIN-08-1, FR-CHAIN-08-2 |
 | RULE-2 | An ADR written before adoption is kept as it is, below a cutoff the project sets. | FR-CHAIN-08-3, FR-CHAIN-08-4, FR-CHAIN-08-7 |
-| RULE-3 | Formatting is not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6 |
+| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -47,6 +49,10 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | EX-6 | RULE-2 | negative | The same config and a TP cites ADR-0021, whose file has the line "Status: Superseded" | the TP check runs | it fails with "ADR-0021 is Superseded, not accepted" |
 | EX-7 | RULE-2 | boundary | The config has no legacyAdrsThrough and docs/adr/0021-baselines.md is 200 lines | the docs lint runs | it fails with "ADR is 200 lines, over its cap of 80", as today |
 | EX-11 | RULE-2 | negative | The config says "legacyAdrsThrough": "thirty" | the docs lint runs | it fails with "legacyAdrsThrough must be a whole number, the last ADR written before adoption" |
+| EX-12 | RULE-3 | positive | An approved PRODUCT gets the header line "Links: [Asana](https://app.asana.com/1/1/project/2/task/3)" | status runs | it reports no drift |
+| EX-13 | RULE-3 | positive | A Links line holds two links, the second to https://app.asana.com/0/2/3 | the docs lint runs | it reports nothing for that line |
+| EX-14 | RULE-3 | negative | A Links line says "[Asana](https://app.asana.com/0/2/3) and a slot holds 10 families" | the docs lint runs | it fails with "Links line holds text that is not a link" |
+| EX-15 | RULE-3 | negative | A Links line holds "[Asana](http://example.com/x)" | the docs lint runs | it fails with "Links line holds text that is not a link" |
 | EX-8 | RULE-3 | positive | An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row | status runs | it reports no drift |
 | EX-9 | RULE-3 | negative | An approved spec where one word of a row changes | status runs | it fails with "body changed since approval" |
 | EX-10 | RULE-3 | positive | A document approved before this change, with no change since | status runs | it reports no drift |
@@ -94,6 +100,10 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-6** (EX-6): Given The same config and a TP cites ADR-0021, whose file has the line "Status: Superseded", when the TP check runs, then it fails with "ADR-0021 is Superseded, not accepted".
 - **AC-7** (EX-7): Given The config has no legacyAdrsThrough and docs/adr/0021-baselines.md is 200 lines, when the docs lint runs, then it fails with "ADR is 200 lines, over its cap of 80", as today.
 - **AC-8** (EX-11): Given The config says "legacyAdrsThrough": "thirty", when the docs lint runs, then it fails with "legacyAdrsThrough must be a whole number, the last ADR written before adoption".
-- **AC-9** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
-- **AC-10** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
-- **AC-11** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.
+- **AC-9** (EX-12): Given An approved PRODUCT gets the header line "Links: [Asana](https://app.asana.com/1/1/project/2/task/3)", when status runs, then it reports no drift.
+- **AC-10** (EX-13): Given A Links line holds two links, the second to https://app.asana.com/0/2/3, when the docs lint runs, then it reports nothing for that line.
+- **AC-11** (EX-14): Given A Links line says "[Asana](https://app.asana.com/0/2/3) and a slot holds 10 families", when the docs lint runs, then it fails with "Links line holds text that is not a link".
+- **AC-12** (EX-15): Given A Links line holds "[Asana](http://example.com/x)", when the docs lint runs, then it fails with "Links line holds text that is not a link".
+- **AC-13** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
+- **AC-14** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
+- **AC-15** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.

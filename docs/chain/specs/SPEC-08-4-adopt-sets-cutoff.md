@@ -1,7 +1,7 @@
 # SPEC-08-4: Adoption sets the legacy ADR cutoff
 
 Status: Approved (2026-11-21)
-Approval: content ppOUBNjRkm0g; rests on ../frd/FRD-08-adopted-documents-as-they-are.md aCtZe4cVXhD4
+Approval: content ppOUBNjRkm0g; rests on ../frd/FRD-08-adopted-documents-as-they-are.md rwGRMj9NyHJQ
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

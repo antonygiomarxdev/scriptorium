@@ -220,3 +220,32 @@ test("FRD-08/EX-10: a document approved before the change, with no change since,
   writeFileSync(product, approvedText.replace("one | two", "one | three")); // mutant: a real change still fails
   expect(driftFails(root).fails.length).toBe(1);
 });
+
+const LINKS = "Links: [Asana](https://app.asana.com/1/1/project/2/task/3)";
+const withLinks = (text: string) => text.replace(/^(Approval:.*\n)/m, "$1" + LINKS + "\n");
+
+// covers: chain/FRD-08/EX-12
+test("FRD-08/EX-12: a Links header line added to an approved document is not drift", () => {
+  const { root, product } = approved();
+  expect(driftFails(root).fails).toEqual([]);
+  writeFileSync(product, withLinks(rd(product)));
+  expect(rd(product)).toContain(LINKS);
+  expect(driftFails(root).fails).toEqual([]);
+  edit(product, "R-1 the system shall work.", "R-1 the system should work."); // mutant: a real change beside the Links line is still drift
+  // the PRD resting on the PRODUCT is suspect too, so the check is for the PRODUCT line, not a count
+  expect(driftFails(root).fails.some((f) => f.includes("PRODUCT.md") && f.includes("body changed since approval"))).toBe(true);
+});
+
+// covers: chain/FRD-08/EX-12
+test("FRD-08/EX-12: a document approved before the Links line existed, with the earlier fingerprint, still matches after it is added", () => {
+  const OLD = "# Product\n\nStatus: Draft\n\n## Summary\n\nA.\n\nLast change: 2026-11-01, x\n\n| a | b |\n|---|---|\n| one | two |\n\nR-1 the system shall work.\n";
+  const stored = "BVN8Iy58CAc4"; // the earlier form of the fingerprint of OLD, frozen
+  const root = mkdtempSync(join(tmpdir(), "drift-links-"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  const product = join(root, "docs", "PRODUCT.md");
+  const approvedText = OLD.replace("Status: Draft", "Status: Approved (2026-11-01)\nApproval: content " + stored);
+  writeFileSync(product, approvedText);
+  expect(driftFails(root).fails).toEqual([]);
+  writeFileSync(product, withLinks(approvedText));
+  expect(driftFails(root).fails).toEqual([]);
+});

@@ -1,7 +1,7 @@
 # SPEC-08-3: The approval fingerprint ignores formatting
 
 Status: Approved (2026-11-21)
-Approval: content Cyhd4oSU3zz-; rests on ../frd/FRD-08-adopted-documents-as-they-are.md aCtZe4cVXhD4
+Approval: content Cyhd4oSU3zz-; rests on ../frd/FRD-08-adopted-documents-as-they-are.md rwGRMj9NyHJQ
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

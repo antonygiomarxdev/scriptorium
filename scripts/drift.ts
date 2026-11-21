@@ -8,7 +8,7 @@ import { toPosix } from "./paths.ts";
 
 const STATUS = /^\**Status:?\**\s*(Draft|Approved)/i;
 const APPROVAL = /^Approval: /;
-const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^Last change:/.test(l);
+const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^(Last change|Links):/.test(l); // header lines that may change after approval
 
 // The form fingerprints had before FRD-08: kept so a document approved then still matches until it is approved again.
 export function normalizeV1(text: string): string {

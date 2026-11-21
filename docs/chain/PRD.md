@@ -1,13 +1,13 @@
 # Chain PRD
 
 Status: Approved (2026-11-21)
-Approval: content soSaFDiaVe3Y; rests on ../PRODUCT.md F7LrvhspMBeq
+Approval: content _I099qjvgjrm; rests on ../PRODUCT.md F7LrvhspMBeq
 
 ## Summary
 
 The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
 
-Last change: 2026-11-21, adoption with history is tested (R-CHAIN-37)
+Last change: 2026-11-21, a Links header line holding only links stays out of the fingerprint (R-CHAIN-9)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -26,7 +26,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-6.** Every document type has a line cap, and a document over its cap fails its check, except an ADR written before the project adopted the chain, numbered at or below the cutoff the project sets when it adopts; such an ADR is also not held to the ADR template, and a TP may cite it unless it says it is not accepted (D-5, principle 6, D-2 of an adopting project: existing documents are migrated as they are).
 - **R-CHAIN-7.** Every chain document opens with a summary in its first 20 lines that ends with a "Last change" line carrying a date and what changed (D-24).
 - **R-CHAIN-8.** A change that alters the body of a document without altering its summary fails review, unless the change states a reason for that document (L-11).
-- **R-CHAIN-9.** An approval records a fingerprint of the document's own body and of each document it rests on, ignoring line endings, what a formatter changes (runs of spaces, blank lines, table padding) and the status, approval and last-change lines. A check fails an approved document whose body or whose parent no longer matches its record, until the owner approves it again or clears the parent change in a committed edit. Status lists each such document as drift (D-4, L-14, UC-7).
+- **R-CHAIN-9.** An approval records a fingerprint of the document's own body and of each document it rests on, ignoring line endings, what a formatter changes (runs of spaces, blank lines, table padding), and a header line "Links:" that holds only links and the status, approval and last-change lines. A check fails an approved document whose body or whose parent no longer matches its record, until the owner approves it again or clears the parent change in a committed edit. Status lists each such document as drift (D-4, L-14, UC-7).
 - **R-CHAIN-10.** Each document type has a check that passes good input and fails bad input, and a check states what it cannot see (principle 4).
 - **R-CHAIN-11.** A lint fails documents on banned phrases, filler sections, text copied from an upstream document, references to documents that do not exist, and words the glossary bans (D-25, L-13, L-9).
 - **R-CHAIN-12.** Glossary terms are used in code names and test names as the glossary spells them, and a banned synonym there fails a check (L-9).

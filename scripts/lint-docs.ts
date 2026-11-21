@@ -151,6 +151,9 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
     else if (/^(TBD|TODO|n\/a)\.?$/i.test(body)) f(h.n, "section holds only " + body + ": " + h.s);
   });
 
+  // A Links header line holds markdown links to https URLs, commas and spaces, nothing else (it is left out of the fingerprint).
+  for (const { n, s } of lines) if (/^Links:/.test(s) && /[^,\s]/.test(s.slice(6).replace(/\[[^\]]*\]\(https:\/\/[^)\s]+\)/g, ""))) f(n, "Links line holds text that is not a link");
+
   // An ADR written before adoption (its number at or below the config's legacyAdrsThrough) has no cap.
   let legacy = false;
   const adrNo = kind === "ADR" ? adrNumber(rel) : undefined;

@@ -1,7 +1,7 @@
 # SPEC-08-1: An ADR is found as NNNN-name.md too
 
 Status: Approved (2026-11-21)
-Approval: content exNwY9Ng_jKL; rests on ../frd/FRD-08-adopted-documents-as-they-are.md aCtZe4cVXhD4
+Approval: content exNwY9Ng_jKL; rests on ../frd/FRD-08-adopted-documents-as-they-are.md rwGRMj9NyHJQ
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

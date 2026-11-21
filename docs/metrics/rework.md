@@ -107,3 +107,5 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-69 | 2026-11-21 | SPEC-02-1 | C-1 | No example for a queue file deleted at a commit, for author and committer dates that differ, or for weeks whose events arrive out of order; each mutant survives. |
 | R-70 | 2026-11-21 | chain FRD-09 | C-1 | clear from another folder, a path with docs twice, and a path with no docs folder are untested for the project-root fix. |
 | R-71 | 2026-11-21 | chain FRD-09 | C-13 | "The project root above docs/" is written three times: projectOf, splitDocPath and reusesFails. |
+| R-72 | 2026-11-21 | SPEC-08-5 | C-1 | No example for a body line that holds "Links:" in the middle, for a link URL with spaces, or for an empty link text; each mutant survives. |
+| R-73 | 2026-11-21 | chain FRD-08 | C-1 | The Links line is left out of the fingerprint and any link text passes the lint, so a sentence written as link text can be added after approval with no drift. |

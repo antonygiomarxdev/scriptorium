@@ -265,3 +265,28 @@ test("EX-4: an ADR numbered exactly at the cutoff is exempt, and the next one is
   expect(lintAll(adrProject({ "adr/0030-x.md": big }, config)).filter((r) => r.includes("0030"))).toEqual([]);
   expect(lintAll(adrProject({ "adr/0031-x.md": big }, config)).some((r) => r.includes("over its cap of 80"))).toBe(true);
 });
+
+const linksDoc = (line: string) => "# P\n\nStatus: Draft\n" + line + "\n\n## A\nx\n";
+const linkReasons = (line: string) => reasons("a/PRD.md", linksDoc(line)).filter((r) => r.includes("Links"));
+
+// covers: chain/FRD-08/EX-13
+test("EX-13: a Links line of several https links, separated by commas or spaces, reports nothing", () => {
+  expect(linkReasons("Links: [Asana](https://app.asana.com/1/1), [Other](https://app.asana.com/0/2/3)")).toEqual([]);
+  expect(linkReasons("Links: [Asana](https://app.asana.com/1/1) [Other](https://app.asana.com/0/2/3)")).toEqual([]);
+  expect(linkReasons("Links: [Asana](https://app.asana.com/0/2/3)")).toEqual([]);
+});
+
+// covers: chain/FRD-08/EX-14
+test("EX-14: a Links line with text that is not a link fails", () => {
+  const r = linkReasons("Links: [Asana](https://app.asana.com/0/2/3) and a slot holds 10 families");
+  expect(r).toHaveLength(1);
+  expect(r[0]).toContain("Links line holds text that is not a link");
+  expect(r[0]).toMatch(/^4: /); // it names the line
+});
+
+// covers: chain/FRD-08/EX-15
+test("EX-15: a Links line with an http link fails", () => {
+  const r = linkReasons("Links: [Asana](http://example.com/x)");
+  expect(r).toHaveLength(1);
+  expect(r[0]).toContain("Links line holds text that is not a link");
+});
