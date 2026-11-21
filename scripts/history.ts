@@ -4,7 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
-import { fingerprint } from "./drift.ts";
+import { same } from "./drift.ts";
 
 export type Commit = { date: string; sha: string; subject: string; path: string };
 
@@ -37,7 +37,7 @@ export function approvalCommit(doc: string, cs: Commit[], hash: string): Commit 
   const hits = [...cs]
     .reverse()
     .map((c) => ({ c, t: git(cwd, "show", c.sha + ":" + c.path) }))
-    .filter((x) => fingerprint(x.t) === hash);
+    .filter((x) => same(hash, x.t));
   return (hits.find((x) => x.t.includes("Approval: content " + hash)) ?? hits[0])?.c;
 }
 

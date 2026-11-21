@@ -199,3 +199,69 @@ test("EX-9: a Version line only warns under format 1 and fails under format 2", 
   writeFileSync(join(root, ".scriptorium", "config.json"), '{"format":2}');
   expect(lintDocs(root, []).map((f) => f.reason)).toEqual(["version number in a document"]);
 });
+
+// covers: chain/FRD-08/EX-3
+test("EX-3: an ADR named NNNN-name.md has the ADR kind and its cap", () => {
+  expect(docKind("adr/0021-baselines.md")).toBe("ADR");
+  expect(docKind("docs/adr/0021-baselines.md")).toBe("ADR");
+  expect(docKind("notes/0021-baselines.md")).toBeUndefined(); // mutant: only under adr/
+  expect(has(reasons("adr/0021-baselines.md", "## A\n" + "x\n".repeat(89)), "ADR is 90 lines, over its cap of 80")).toBe(true);
+  expect(has(reasons("adr/0021-baselines.md", "## A\n" + "x\n".repeat(79)), "over its cap")).toBe(false); // 80 lines is within the cap
+});
+
+// A project whose docs folder holds the given files and whose config sits beside docs/.
+function adrProject(files: Record<string, string>, config?: string) {
+  const root = tree(files);
+  if (config !== undefined) {
+    mkdirSync(join(root, ".scriptorium"), { recursive: true });
+    writeFileSync(join(root, ".scriptorium", "config.json"), config);
+  }
+  return root;
+}
+const big = "# ADR 21\n" + "just a long note\n".repeat(199); // 200 lines
+const lintAll = (root: string) => lintDocs(root, []).map((f) => f.file + ":" + f.line + " " + f.reason);
+
+// covers: chain/FRD-08/EX-4
+test("EX-4: the docs lint reports nothing for an ADR at or below the cutoff, however long and bare", () => {
+  const root = adrProject({ "adr/0021-baselines.md": big }, '{"format":3,"legacyAdrsThrough":30}');
+  expect(lintAll(root).filter((r) => r.includes("0021"))).toEqual([]);
+  const above = adrProject({ "adr/0031-x.md": big }, '{"format":3,"legacyAdrsThrough":30}'); // mutant: above the cutoff the cap applies
+  expect(lintAll(above).some((r) => r.includes("over its cap of 80"))).toBe(true);
+});
+
+// covers: chain/FRD-08/EX-7
+test("EX-7: with no cutoff in the config a 200-line ADR fails its cap", () => {
+  for (const config of [undefined, '{"format":3}']) {
+    const root = adrProject({ "adr/0021-baselines.md": big }, config);
+    expect(lintAll(root).some((r) => r.includes("ADR is 200 lines, over its cap of 80"))).toBe(true);
+  }
+});
+
+// covers: chain/FRD-08/EX-11
+test("EX-11: a cutoff that is not a whole number fails and says what to write", () => {
+  for (const bad of ['"thirty"', "30.5", "-1"]) {
+    const root = adrProject({ "adr/0021-baselines.md": "# ADR\n## A\nx\n" }, '{"format":3,"legacyAdrsThrough":' + bad + "}");
+    expect(lintAll(root).some((r) => r.includes("legacyAdrsThrough must be a whole number, the last ADR written before adoption"))).toBe(true);
+  }
+  const ok = adrProject({ "adr/0021-baselines.md": "# ADR\n## A\nx\n" }, '{"format":3,"legacyAdrsThrough":30}');
+  expect(lintAll(ok).some((r) => r.includes("legacyAdrsThrough"))).toBe(false); // mutant: a whole number is fine
+});
+
+// covers: chain/FRD-08/EX-11
+test("EX-11: a cutoff that is not a whole number is a failure under every format, never a warning", () => {
+  for (const config of ['{"format":2,"legacyAdrsThrough":"thirty"}', '{"legacyAdrsThrough":"thirty"}', '{"format":3,"legacyAdrsThrough":"thirty"}']) {
+    const root = adrProject({ "adr/0021-baselines.md": "# ADR\n## A\nx\n" }, config);
+    const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "lint-docs.ts"), "."], { cwd: root });
+    const out = r.stdout.toString() + r.stderr.toString();
+    expect(r.exitCode).toBe(1);
+    expect(out).toContain("legacyAdrsThrough must be a whole number, the last ADR written before adoption");
+    expect(out).not.toMatch(/WARN[^\n]*legacyAdrsThrough/);
+  }
+});
+
+// covers: chain/FRD-08/EX-4
+test("EX-4: an ADR numbered exactly at the cutoff is exempt, and the next one is not", () => {
+  const config = '{"format":3,"legacyAdrsThrough":30}';
+  expect(lintAll(adrProject({ "adr/0030-x.md": big }, config)).filter((r) => r.includes("0030"))).toEqual([]);
+  expect(lintAll(adrProject({ "adr/0031-x.md": big }, config)).some((r) => r.includes("over its cap of 80"))).toBe(true);
+});

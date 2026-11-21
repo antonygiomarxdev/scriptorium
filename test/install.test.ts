@@ -100,3 +100,17 @@ test("EX-25: the hook runs the tool install wrote or SCRIPTORIUM_CLI, never a pa
   expect(none.out).toContain("run scriptorium install");
   expect(none.out).not.toContain("commit blocked"); // it failed for the missing tool, not a document
 });
+
+// covers: chain/FRD-08/EX-4
+// covers: chain/FRD-08/EX-7
+test("the adopt skill keeps existing ADRs and sets legacyAdrsThrough to the highest existing ADR number", () => {
+  const skill = readFileSync(join(import.meta.dir, "..", "skills", "adopt", "SKILL.md"), "utf8");
+  const step = skill.split("\n").find((l) => l.includes("legacyAdrsThrough")) as string;
+  expect(step).toBeDefined();
+  expect(step).toContain(".scriptorium/config.json");
+  expect(step).toMatch(/highest existing ADR number/);
+  expect(step).toMatch(/do not rename or rewrite an accepted ADR/i);
+  expect(step).toContain("NNNN-name.md"); // an old file name is read as it is
+  expect(step).toMatch(/new ADRs are written as `ADR-NNNN-name\.md` from the template/i);
+  expect(step).toMatch(/at or below it/); // ADRs at or below the number are exempt, the others are not
+});

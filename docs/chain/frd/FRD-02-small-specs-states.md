@@ -1,7 +1,7 @@
 # FRD-02: Small specs, superseded documents and required changesets
 
 Status: Approved (2026-11-20)
-Approval: content P51qy6LO9pYx; rests on ../PRD.md ZXf8DR0qTJHf
+Approval: content P51qy6LO9pYx; rests on ../PRD.md zIdfkERDCIVu
 
 ## Summary
 

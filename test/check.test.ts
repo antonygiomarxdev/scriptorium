@@ -949,3 +949,100 @@ test("EX-17: approve on a request fails, says the owner accepts it on its Status
   expect(r.out).toContain("the owner accepts a request on its Status line; approve is for chain documents");
   expect(readFileSync(path, "utf8")).toBe(before);
 });
+
+// covers: chain/FRD-08/EX-1
+test("EX-1: an ADR file named NNNN-name.md is found for ADR-NNNN", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0021", adrFile: "0021-baselines.md" });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("has no file");
+});
+
+// covers: chain/FRD-08/EX-2
+test("EX-2: a file whose number only starts with the cited number is not the ADR", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0021", adrFile: "00210-x.md" });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("ADR-0021 has no file");
+});
+
+const CUTOFF = '{"format":3,"legacyAdrsThrough":30}';
+const legacyAdr = (extra: string) => "# ADR-0021: baselines\n\n" + extra + "just a long note\n".repeat(200);
+
+// covers: chain/FRD-08/EX-4
+test("EX-4: the TP check reports nothing for a cited ADR at or below the cutoff with no ADR sections", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0021", files: { "docs/adr/0021-baselines.md": legacyAdr(""), ".scriptorium/config.json": CUTOFF } });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("0021");
+});
+
+// covers: chain/FRD-08/EX-5
+test("EX-5: an ADR above the cutoff still needs its template sections", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0031", adrFile: "ADR-0031-x.md", files: { ".scriptorium/config.json": CUTOFF } });
+  const noSummary = ADR.replace("## Summary\ns\n", "");
+  const bad = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0031", adrFile: "ADR-0031-x.md", files: { "docs/adr/ADR-0031-x.md": noSummary, ".scriptorium/config.json": CUTOFF } });
+  expect(r.code).toBe(0); // mutant: with its Summary the ADR passes
+  expect(bad.code).toBe(1);
+  expect(bad.out).toContain("ADR-0031");
+  expect(bad.out).toContain("missing section: ## Summary");
+});
+
+// covers: chain/FRD-08/EX-6
+test("EX-6: a cited legacy ADR whose status line says it is not accepted fails with its status", () => {
+  const cite = (text: string) => tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0021", files: { "docs/adr/0021-baselines.md": text, ".scriptorium/config.json": CUTOFF } });
+  const sup = cite(legacyAdr("Status: Superseded\n\n"));
+  expect(sup.code).toBe(1);
+  expect(sup.out).toContain("ADR-0021 is Superseded, not accepted");
+  const prop = cite(legacyAdr("## Status\nProposed\n\n"));
+  expect(prop.out).toContain("ADR-0021 is Proposed, not accepted");
+  expect(cite(legacyAdr("Status: Accepted\n\n")).code).toBe(0); // mutant: accepted passes
+  expect(cite(legacyAdr("")).code).toBe(0); // no status line counts as accepted
+});
+
+// covers: chain/FRD-08/EX-4
+test("EX-4: a cited ADR numbered exactly at the cutoff is exempt from the template", () => {
+  const r = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0030", files: { "docs/adr/0030-x.md": legacyAdr(""), ".scriptorium/config.json": CUTOFF } });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("0030");
+});
+
+// covers: chain/FRD-08/EX-6
+test("EX-6: the not accepted line is only for a legacy ADR, and only for the cited file", () => {
+  // above the cutoff: the template rules apply as today, with no "not accepted" line
+  const above = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0031", adrFile: "ADR-0031-x.md", files: { "docs/adr/ADR-0031-x.md": ADR.replace("## Status\nAccepted", "## Status\nSuperseded"), ".scriptorium/config.json": CUTOFF } });
+  expect(above.out).not.toContain("not accepted");
+  // ADR-0021 is cited and only 00210-x.md exists: that file is not ADR-0021, so its status counts for nothing
+  const other = tpIn({ cites: "FR-INBOX-01-1", adr: "ADR-0021", files: { "docs/adr/00210-x.md": legacyAdr("Status: Superseded\n\n"), ".scriptorium/config.json": CUTOFF } });
+  expect(other.code).toBe(1);
+  expect(other.out).toContain("ADR-0021 has no file");
+  expect(other.out).not.toContain("not accepted");
+});
+
+// covers: chain/FRD-08/EX-4
+test("EX-4: the TP check reads the cutoff from the project of the TP, not from the folder it runs in", () => {
+  const build = (config?: string) => {
+    const root = qroot(undefined);
+    const files: Record<string, string> = {
+      "docs/inbox/tp/TP-01-a.md": TP.replace("ADR: ADR-001", "ADR: ADR-0021"),
+      "docs/adr/0021-x.md": legacyAdr(""),
+      ...(config ? { ".scriptorium/config.json": config } : {}),
+    };
+    for (const [p, t] of Object.entries(files)) {
+      mkdirSync(join(root, p, ".."), { recursive: true });
+      writeFileSync(join(root, p), t);
+    }
+    return root;
+  };
+  const run = (root: string, cwd: string) => {
+    const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), "tp", join(root, "docs", "inbox", "tp", "TP-01-a.md"), join(root, "docs", "adr"), "--root", join(root, "docs")], { cwd });
+    return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+  };
+  const repoRoot = join(import.meta.dir, "..");
+  const elsewhere = mkdtempSync(join(tmpdir(), "scriptorium-elsewhere-"));
+  for (const cwd of [repoRoot, elsewhere]) {
+    const ok = run(build(CUTOFF), cwd);
+    expect(ok.code).toBe(0);
+    expect(ok.out).not.toContain("0021");
+  }
+  const noCutoff = run(build(), repoRoot); // mutant: with no cutoff in the project the bare ADR fails
+  expect(noCutoff.code).toBe(1);
+  expect(noCutoff.out).toContain("0021");
+});

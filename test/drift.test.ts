@@ -176,3 +176,47 @@ test("the CLI exits 0 on pass, 1 on drift, 2 on bad usage", () => {
   expect(run("check", prd, root)).toBe(1);
   expect(run("bogus")).toBe(2);
 });
+
+const TABLE = "\n| ID | Text |\n|---|---|\n| EX-1 | the first row |\n| EX-2 | the second row |\n";
+function approvedWithTable() {
+  const p = project();
+  writeFileSync(p.prd, PRD + TABLE);
+  approve(p.product, p.root, "2026-11-21");
+  approve(p.prd, p.root, "2026-11-21");
+  return p;
+}
+
+// covers: chain/FRD-08/EX-8
+test("FRD-08/EX-8: padded tables, extra blank lines and runs of spaces are not drift", () => {
+  const { root, prd } = approvedWithTable();
+  expect(driftFails(root).fails).toEqual([]);
+  edit(prd, "|---|---|", "| --- | --- |");
+  edit(prd, "| EX-1 | the first row |", "|  EX-1  |  the first   row  |");
+  edit(prd, "The system shall do RULE-1.", "\n\nThe  system shall   do RULE-1.\n\n");
+  expect(driftFails(root).fails).toEqual([]);
+});
+
+// covers: chain/FRD-08/EX-9
+test("FRD-08/EX-9: one changed word of a row is still drift", () => {
+  const { root, prd } = approvedWithTable();
+  edit(prd, "|---|---|", "| --- | --- |"); // formatting alone passes, as above
+  edit(prd, "the second row", "the third row");
+  const r = driftFails(root).fails;
+  expect(r.length).toBe(1);
+  expect(r[0]).toContain("body changed since approval");
+});
+
+// covers: chain/FRD-08/EX-10
+test("FRD-08/EX-10: a document approved before the change, with no change since, is not drift", () => {
+  // OLD is a document and the stored fingerprint its text had before the formatting rule; nothing in it changed since.
+  const OLD = "# Product\n\nStatus: Draft\n\n## Summary\n\nA.\n\nLast change: 2026-11-01, x\n\n| a | b |\n|---|---|\n| one | two |\n\nR-1 the system shall work.\n";
+  const stored = "BVN8Iy58CAc4";
+  const root = mkdtempSync(join(tmpdir(), "drift-old-"));
+  mkdirSync(join(root, "docs"), { recursive: true });
+  const product = join(root, "docs", "PRODUCT.md");
+  const approvedText = OLD.replace("Status: Draft", "Status: Approved (2026-11-01)\nApproval: content " + stored);
+  writeFileSync(product, approvedText);
+  expect(driftFails(root).fails).toEqual([]);
+  writeFileSync(product, approvedText.replace("one | two", "one | three")); // mutant: a real change still fails
+  expect(driftFails(root).fails.length).toBe(1);
+});

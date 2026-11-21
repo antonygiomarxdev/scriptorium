@@ -98,3 +98,7 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-60 | 2026-11-21 | metrics SPEC-01-2 | C-12 | The rework report test checks only that C-9 is absent, so an extra "?: 1" line for an unknown cause passes. |
 | R-61 | 2026-11-21 | SPEC-07-3 | C-1 | Status with a TP resting on a registry was not tested: removing the registry half of the parent test in chainStatus fails nothing, since EX-15 uses a request. |
 | R-62 | 2026-11-21 | SPEC-07-3 | C-13 | "Is this parent a request or a registry" is written twice in scripts/check.ts, in parentIds and in chainStatus. |
+| R-63 | 2026-11-21 | SPEC-08-3 | C-2 | scripts/history.ts compares fingerprints too, but the Files row named only drift.ts; the builder found it. |
+| R-64 | 2026-11-21 | FRD-08 | C-5 | The cap waiver was designed from one report (lint) without replaying the TP check, which also holds legacy ADRs to the template; the waiver was replaced by a cutoff. |
+| R-65 | 2026-11-21 | SPEC-08-2 | C-12 | The bad-cutoff failure was tagged format 3 against the spec, and the EX-11 test used only pin 3, so the tag passed every test. |
+| R-66 | 2026-11-21 | SPEC-08-2 | C-13 | The ADR number pattern is written three times and the cited-file match twice, against "one pattern, written once per file". |

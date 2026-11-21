@@ -21,7 +21,7 @@ import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
 import { history } from "./history.ts";
 import { reworkFails } from "./rework.ts";
-import { gate, pinProblem, readFormat } from "./format.ts";
+import { gate, legacyAdrsThrough, pinProblem, readFormat } from "./format.ts";
 
 // A PRD or FRD says what, not how: these names belong in the Technical Proposal.
 // shortcut: fixed list, make it configurable per project when a project needs other words.
@@ -214,6 +214,18 @@ export const frDefs = (frd: string) =>
 
 // A TP lists its decisions as "### TD-n: title", each with at least two options and a chosen one backed by an ADR or an explained "none".
 // knownFrs: every FR id defined in the project, so the TP can only cite real requirements.
+// An ADR file is ADR-<id>-name.md or <id>-name.md (legacy), the dash after the id kept.
+const ADR_FILE = /^(ADR-)?\d{3,}-[a-z0-9-]+\.md$/;
+
+// The number of an ADR file or path (ADR-0021-x.md and 0021-x.md both give 21).
+export function adrNumber(file: string): number | undefined {
+  const n = /^(?:ADR-)?(\d+)-/.exec(file.split(/[\\/]/).pop()!)?.[1];
+  return n === undefined ? undefined : Number(n);
+}
+
+// The file of a cited ADR-<id>, the dash after the id kept: ADR-<id>-*.md or <id>-*.md.
+const adrFileFor = (files: string[], id: string): string | undefined => files.find((f) => f.startsWith(id + "-") || f.startsWith(id.slice(4) + "-"));
+
 // Ids a TP may cite when it rests on a request or a registry: "- ID-n:" lines of the request's Decision, or the first cell of the registry's rows.
 const ID = /\b([A-Z][A-Z0-9]*)-(\d+)\b/g;
 function parentIds(parent: string): { name: string; ids: Set<string>; what: string } | undefined {
@@ -246,7 +258,7 @@ export function checkTp(text: string, adrDir: string, knownFrs: Set<string>, tpP
     if (!cited.size) fails.push("cites no FR id");
     for (const fr of cited) if (!knownFrs.has(fr)) fails.push("cites " + fr + ", defined in no FRD");
   }
-  const adrs = existsSync(adrDir) ? readdirSync(adrDir).filter((f) => /^ADR-\d{3,}-[a-z0-9-]+\.md$/.test(f)) : [];
+  const adrs = existsSync(adrDir) ? readdirSync(adrDir).filter((f) => ADR_FILE.test(f)) : [];
   const blocks = text.split(/^### (?=TD-\d+)/m).slice(1);
   if (!blocks.length) fails.push("no decisions written as ### TD-n: title");
   for (const b of blocks) {
@@ -255,7 +267,7 @@ export function checkTp(text: string, adrDir: string, knownFrs: Set<string>, tpP
     if (!/^\**Chosen\b/im.test(b)) fails.push(id + ': no "Chosen:" line');
     const adr = b.match(/\bADR:\s*(ADR-\d{3,}|none:\s*\S)/);
     if (!adr) fails.push(id + ': no "ADR: ADR-NNN" or "ADR: none: <reason>"');
-    else if (adr[1].startsWith("ADR-") && !adrs.some((f) => f.startsWith(adr[1] + "-"))) fails.push(id + ": " + adr[1] + " has no file in " + adrDir);
+    else if (adr[1].startsWith("ADR-") && !adrFileFor(adrs, adr[1])) fails.push(id + ": " + adr[1] + " has no file in " + adrDir);
   }
   if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
   return [...fails, ...answererFails(text)];
@@ -676,8 +688,21 @@ if (import.meta.main) {
   if (kind === "tp") {
     if (!a || !b) usage();
     const text = read(a);
-    const adrFiles = existsSync(b) ? readdirSync(b).filter((f) => /^ADR-\d{3,}-[a-z0-9-]+\.md$/.test(f)) : [];
-    const fails = [...checkTp(text, b, frIds(opt("--root", "docs")), resolve(a)), ...adrFiles.flatMap((f) => checkAdr(readFileSync(join(b, f), "utf8"), f))];
+    const adrFiles = existsSync(b) ? readdirSync(b).filter((f) => ADR_FILE.test(f)) : [];
+    // ADRs at or below legacyAdrsThrough were written before adoption: no template rules, but a cited one must still be accepted.
+    let through: number | undefined;
+    try {
+      // the project that holds the docs folder: beside --root, or two levels above the ADR dir (docs/adr -> docs -> project)
+      through = legacyAdrsThrough(args.includes("--root") ? dirname(resolve(opt("--root", "docs"))) : resolve(b, "..", ".."));
+    } catch {} // lint-docs reports a bad value
+    const legacy = (f: string) => through !== undefined && (adrNumber(f) ?? Infinity) <= through;
+    const notAccepted = [...new Set([...text.matchAll(/\bADR:\s*(ADR-(\d{3,}))/g)].map((m) => m[1]!))].flatMap((id) => {
+      const f = adrFileFor(adrFiles, id);
+      const st = f && legacy(f) ? /^Status:\s*(\w+)|^## Status\s*\n+\s*(\w+)/m.exec(readFileSync(join(b, f), "utf8")) : null;
+      const status = st?.[1] ?? st?.[2];
+      return status && /^(Proposed|Superseded|Rejected)$/.test(status) ? [id + " is " + status + ", not accepted"] : [];
+    });
+    const fails = [...checkTp(text, b, frIds(opt("--root", "docs")), resolve(a)), ...adrFiles.filter((f) => !legacy(f)).flatMap((f) => checkAdr(readFileSync(join(b, f), "utf8"), f)), ...notAccepted];
     finish(fails, a + ": " + (text.split(/^### (?=TD-\d+)/m).length - 1) + " decisions, " + adrFiles.length + " ADRs");
   }
   if (kind === "spec") {

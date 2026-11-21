@@ -102,3 +102,21 @@ test("usage: no argument or a missing file exits 2", () => {
   expect(spawnSync("bun", [s], { encoding: "utf8" }).status).toBe(2);
   expect(spawnSync("bun", [s, "nope.md"], { encoding: "utf8" }).status).toBe(2);
 });
+
+// covers: chain/FRD-08/EX-10
+test("FRD-08/EX-10: a document approved with a fingerprint of the earlier form is found with its approval commit", () => {
+  const r = repo();
+  const v1 = body("");
+  const EARLIER = "FN7UdKhCMyCq"; // the fingerprint of v1 before the formatting rule, frozen from the earlier fingerprint()
+  const approvedEarlier = (b: string) => "Status: Approved (2026-11-20)\nApproval: content " + EARLIER + "\n" + b;
+  writeFileSync(r.doc, "Status: Draft\n" + v1);
+  r.commit("2026-11-18", "docs: draft");
+  writeFileSync(r.doc, approvedEarlier(v1));
+  r.commit("2026-11-20", "docs: approve");
+  writeFileSync(r.doc, approvedEarlier(v1.replace("shall work", "should work")));
+  r.commit("2026-11-22", "docs: edit");
+  const out = history(r.doc);
+  expect(out.join("\n")).toMatch(/approved at [0-9a-f]+ \(2026-11-20\)/);
+  expect(out.join("\n")).not.toContain("approval commit not found");
+  expect(out.slice(out.indexOf("changed since approval:") + 1)).toEqual(["  R-CHAIN-1: changed"]);
+});

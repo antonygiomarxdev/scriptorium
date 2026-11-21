@@ -3,7 +3,8 @@
 //   bun scripts/lint-docs.ts [root]     exit 0 pass, 1 fail ("FAIL <file>:<line>: <reason>")
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
-import { gate, readFormat } from "./format.ts";
+import { adrNumber } from "./check.ts";
+import { gate, legacyAdrsThrough, readFormat } from "./format.ts";
 import { toPosix } from "./paths.ts";
 
 // Line cap per document type.
@@ -20,7 +21,7 @@ export function docKind(rel: string): string | undefined {
   const top = rel.split("/").length === 1;
   if (top && /^(PRODUCT|DECISIONS|INVARIANTS|CHECKS|CROSS-CUTTING)\.md$/.test(base)) return base.slice(0, -3);
   if (/^requests\/REQ-/.test(rel)) return "REQUEST";
-  if (/^adr\/ADR-/.test(rel)) return "ADR";
+  if (/(^|\/)adr\/(ADR-|\d+-)/.test(rel)) return "ADR";
   if (rel === "tp/TP.md" || /\/tp\/TP-\d+/.test(rel)) return "TP";
   if (/^[^/]+\/PRD\.md$/.test(rel)) return "PRD";
   if (/\/frd\/FRD-/.test(rel)) return "FRD";
@@ -150,8 +151,18 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
     else if (/^(TBD|TODO|n\/a)\.?$/i.test(body)) f(h.n, "section holds only " + body + ": " + h.s);
   });
 
+  // An ADR written before adoption (its number at or below the config's legacyAdrsThrough) has no cap.
+  let legacy = false;
+  const adrNo = kind === "ADR" ? adrNumber(rel) : undefined;
+  if (adrNo !== undefined && projectRoot) {
+    try {
+      const through = legacyAdrsThrough(projectRoot);
+      legacy = through !== undefined && adrNo <= through;
+    } catch {} // a bad value is reported once by lintDocs
+  }
+
   const total = text.replace(/\r?\n$/, "").split(/\r?\n/).length;
-  if (kind && CAPS[kind] && total > CAPS[kind]) f(total, kind + " is " + total + " lines, over its cap of " + CAPS[kind]);
+  if (kind && CAPS[kind] && !legacy && total > CAPS[kind]) f(total, kind + " is " + total + " lines, over its cap of " + CAPS[kind]);
 
   const col = kind && REGISTRY[kind];
   if (col) {
@@ -212,6 +223,11 @@ export function lintDocs(root: string, phrases: string[], warnings: string[] = [
   const fails: Fail[] = [];
   const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : e.name.endsWith(".md") ? [join(d, e.name)] : []));
   if (!existsSync(docs)) return fails;
+  try {
+    legacyAdrsThrough(root);
+  } catch (e) {
+    fails.push({ file: "../.scriptorium/config.json", line: 1, reason: (e as Error).message });
+  }
   const read = (p: string) => (existsSync(p) ? readFileSync(p, "utf8") : undefined);
   const product = read(join(docs, "PRODUCT.md"));
   const avoid = avoidWords(read(join(docs, "GLOSSARY.md")) ?? "");

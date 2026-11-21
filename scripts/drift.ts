@@ -10,8 +10,8 @@ const STATUS = /^\**Status:?\**\s*(Draft|Approved)/i;
 const APPROVAL = /^Approval: /;
 const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^Last change:/.test(l);
 
-// LF endings, no trailing spaces, Status, Approval and Last change lines left out.
-export function normalize(text: string): string {
+// The form fingerprints had before FRD-08: kept so a document approved then still matches until it is approved again.
+export function normalizeV1(text: string): string {
   return text
     .split(/\r?\n/)
     .map((l) => l.replace(/\s+$/, ""))
@@ -20,7 +20,32 @@ export function normalize(text: string): string {
     .trim();
 }
 
-export const fingerprint = (text: string): string => createHash("sha256").update(normalize(text)).digest("base64url").slice(0, 12);
+// Formatting is not drift: runs of spaces collapse, blank lines drop and a table separator row has one form, besides the V1 rules.
+export function normalize(text: string): string {
+  return normalizeV1(text)
+    .split("\n")
+    .map((l) => l.replace(/ {2,}/g, " "))
+    .filter((l) => l.trim() !== "")
+    .map((l) =>
+      /^\s*\|[\s:|-]*-[\s:|-]*\|\s*$/.test(l)
+        ? "|" +
+          l
+            .trim()
+            .slice(1, -1)
+            .split("|")
+            .map(() => "---")
+            .join("|") +
+          "|"
+        : l,
+    )
+    .join("\n");
+}
+
+const hash = (s: string): string => createHash("sha256").update(s).digest("base64url").slice(0, 12);
+export const fingerprint = (text: string): string => hash(normalize(text));
+export const fingerprintV1 = (text: string): string => hash(normalizeV1(text));
+// A stored fingerprint matches the text under either normalizer.
+export const same = (stored: string | undefined, text: string): boolean => stored === fingerprint(text) || stored === fingerprintV1(text);
 
 const read = (p: string) => readFileSync(p, "utf8");
 const rel = (from: string, to: string) => toPosix(relative(dirname(from), to));
@@ -73,7 +98,7 @@ export function clear(docPath: string, root: string): void {
   if (i < 0 || !/Approved/i.test(ls[i])) throw new Error("not approved: nothing to clear");
   const rec = parseApproval(ls[i + 1]);
   if (!rec) throw new Error("approval record missing: approve it");
-  if (rec.content !== fingerprint(text)) throw new Error("body changed since approval: approve it again");
+  if (!same(rec.content, text)) throw new Error("body changed since approval: approve it again");
   ls[i + 1] = record(rec.content, parentHashes(docPath, root));
   writeFileSync(docPath, ls.join(eol));
 }
@@ -92,12 +117,12 @@ export function driftReport(root: string): Drift[] {
       out.push({ path: d.path, cause: "missing" });
       continue;
     }
-    if (rec.content !== fingerprint(text)) {
+    if (!same(rec.content, text)) {
       out.push({ path: d.path, cause: "body" });
       continue;
     }
-    const bad = parentHashes(d.path, root).find(([p, h]) => rec.parents.get(p) !== h);
-    if (bad) out.push({ path: d.path, cause: "parent", parent: bad[0] });
+    const bad = parents(d.path, root).find((p) => !same(rec.parents.get(rel(d.path, p)), read(p)));
+    if (bad) out.push({ path: d.path, cause: "parent", parent: rel(d.path, bad) });
   }
   return out;
 }

@@ -20,6 +20,22 @@ export function readFormat(root: string): number {
   return v;
 }
 
+// The number of the last ADR written before adoption (format 3 config key legacyAdrsThrough); undefined when absent.
+// A value that is not a whole number throws the message to show. Same file and reading as the pin.
+export function legacyAdrsThrough(root: string): number | undefined {
+  const p = join(root, CONFIG);
+  if (!existsSync(p)) return undefined;
+  let v: unknown;
+  try {
+    v = JSON.parse(readFileSync(p, "utf8")).legacyAdrsThrough;
+  } catch {
+    return undefined; // an unreadable file is reported by readFormat
+  }
+  if (v === undefined) return undefined;
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0) throw new Error("legacyAdrsThrough must be a whole number, the last ADR written before adoption");
+  return v;
+}
+
 // The problem with the pin, if any: a bad file or a format this Scriptorium does not know.
 export function pinProblem(root: string): string | undefined {
   try {
