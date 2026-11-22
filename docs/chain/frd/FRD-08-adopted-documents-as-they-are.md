@@ -1,13 +1,13 @@
 # FRD-08: Adopted documents checked as they are
 
-Status: Approved (2026-11-21)
-Approval: content YzEJUOZeq0Sq; rests on ../PRD.md _I099qjvgjrm
+Status: Approved (2026-11-22)
+Approval: content WYJ57q40FnTn; rests on ../PRD.md _I099qjvgjrm
 
 ## Summary
 
 A project that adopts the chain keeps its existing ADR file names and its accepted ADRs as they are, and a formatter run at commit does not invalidate an approval. An ADR file may be named NNNN-name.md or ADR-NNNN-name.md, an ADR numbered at or below the cutoff set at adoption is not held to the ADR line cap or template, and the approval fingerprint ignores spacing, blank lines and table padding.
 
-Last change: 2026-11-21, a quoted row is compared cell by cell with the cells trimmed (owner)
+Last change: 2026-11-22, the line cap leaves out the Approval line (owner)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -31,6 +31,7 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | FR-CHAIN-08-10 | always | The line cap of a document shall always leave out the same one Links line the fingerprint leaves out, and count every other line. |
 | FR-CHAIN-08-11 | WHERE | WHERE an ADR's number is at or below the cutoff, status shall list it with the status "legacy" and shall not fail it for its status line. |
 | FR-CHAIN-08-12 | WHEN | WHEN the spec check looks for a quoted row in the parent, it shall compare the row cell by cell with the spaces around each cell trimmed, and the text inside each cell exactly. |
+| FR-CHAIN-08-13 | always | The line cap of a document shall always leave out its first "Approval:" line above the first "## " heading, which approve writes, so approving never takes a document over its cap. |
 | FR-CHAIN-08-5 | WHEN | WHEN the fingerprint of a document is computed, it shall ignore runs of spaces, blank lines and the dashes, colons and padding of a table separator row. |
 | FR-CHAIN-08-6 | WHEN | WHEN a document was approved with the earlier fingerprint, the checks shall accept that fingerprint until it is approved again. |
 
@@ -40,7 +41,7 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 |---|---|---|
 | RULE-1 | An ADR is found under either name. | FR-CHAIN-08-1, FR-CHAIN-08-2 |
 | RULE-2 | An ADR written before adoption is kept as it is, below a cutoff the project sets. | FR-CHAIN-08-3, FR-CHAIN-08-4, FR-CHAIN-08-7, FR-CHAIN-08-11 |
-| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9, FR-CHAIN-08-10, FR-CHAIN-08-12 |
+| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9, FR-CHAIN-08-10, FR-CHAIN-08-12, FR-CHAIN-08-13 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -64,6 +65,8 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | EX-21 | RULE-2 | boundary | The same config and docs/adr/ADR-0029-x.md has no Status section | status runs | it fails with "ADR status \"missing\" is not Proposed, Accepted, Superseded or Rejected" for ADR-0029, as today |
 | EX-22 | RULE-3 | positive | A spec quotes a row of its FRD, and a formatter has padded the cells of the FRD table, so the spaces around the cells differ | the spec check runs | it finds the quoted row |
 | EX-23 | RULE-3 | negative | A spec quotes a row of its FRD with one word changed inside a cell | the spec check runs | it fails with "quoted row not found verbatim" |
+| EX-24 | RULE-3 | boundary | A draft spec of 80 lines, its cap, is approved, and approve adds its "Approval:" line, so it has 81 lines | the docs lint runs | it reports no cap failure |
+| EX-25 | RULE-3 | negative | An approved spec of 81 lines with its "Approval:" line gets one more content line | the docs lint runs | it fails "SPEC is 81 lines, over its cap of 80" |
 | EX-8 | RULE-3 | positive | An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row | status runs | it reports no drift |
 | EX-9 | RULE-3 | negative | An approved spec where one word of a row changes | status runs | it fails with "body changed since approval" |
 | EX-10 | RULE-3 | positive | A document approved before this change, with no change since | status runs | it reports no drift |
@@ -123,6 +126,8 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-18** (EX-21): Given The same config and docs/adr/ADR-0029-x.md has no Status section, when status runs, then it fails with "ADR status \"missing\" is not Proposed, Accepted, Superseded or Rejected" for ADR-0029, as today.
 - **AC-19** (EX-22): Given A spec quotes a row of its FRD, and a formatter has padded the cells of the FRD table, so the spaces around the cells differ, when the spec check runs, then it finds the quoted row.
 - **AC-20** (EX-23): Given A spec quotes a row of its FRD with one word changed inside a cell, when the spec check runs, then it fails with "quoted row not found verbatim".
-- **AC-21** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
-- **AC-22** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
-- **AC-23** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.
+- **AC-21** (EX-24): Given A draft spec of 80 lines, its cap, is approved, and approve adds its "Approval:" line, so it has 81 lines, when the docs lint runs, then it reports no cap failure.
+- **AC-22** (EX-25): Given An approved spec of 81 lines with its "Approval:" line gets one more content line, when the docs lint runs, then it fails "SPEC is 81 lines, over its cap of 80".
+- **AC-23** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
+- **AC-24** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
+- **AC-25** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.

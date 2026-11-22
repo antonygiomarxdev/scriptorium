@@ -337,3 +337,41 @@ test("EX-18: lines that only look like a Links line are counted", () => {
     expect(r[0]).toContain("UX is 151 lines, over its cap of 150");
   }
 });
+
+// A spec of a given number of counted lines: a 3-line header, an optional Approval line and Links line in it, then "## A" and content lines.
+const APPROVAL_LINE = "Approval: content abcdefghijkl; rests on ../frd/FRD-01-a.md abcdefghijkl\n";
+const specCap = (counted: number, o: { approval?: boolean; links?: boolean; bodyApproval?: boolean; secondApproval?: boolean } = {}) => {
+  const header = "# T\n\nStatus: Approved (2026-11-21)\n" + (o.approval ? APPROVAL_LINE : "") + (o.secondApproval ? APPROVAL_LINE : "") + (o.links ? LINKS_LINE : "");
+  const fixed = 4 + (o.secondApproval ? 1 : 0); // the counted header lines and "## A"
+  const content = counted - fixed - (o.bodyApproval ? 1 : 0);
+  return header + "## A\n" + (o.bodyApproval ? APPROVAL_LINE : "") + "x\n".repeat(content);
+};
+const specCapReasons = (text: string) => reasons("a/specs/SPEC-01-a.md", text).filter((r) => r.includes("cap"));
+
+// covers: chain/FRD-08/EX-24
+test("EX-24: the Approval line approve writes is not counted toward the cap", () => {
+  expect(CAPS.SPEC).toBe(80);
+  expect(specCapReasons(specCap(80))).toEqual([]);
+  expect(specCapReasons(specCap(80, { approval: true }))).toEqual([]); // 81 lines in the file
+  expect(specCapReasons(specCap(80, { approval: true, links: true }))).toEqual([]); // 82 in the file: both header lines left out
+  expect(specCapReasons(specCap(81))[0]).toContain("SPEC is 81 lines, over its cap of 80"); // mutant: a plain 81 still fails
+});
+
+// covers: chain/FRD-08/EX-24
+test("EX-24: an Approval line in the body, or a second one in the header, counts", () => {
+  expect(specCapReasons(specCap(80, { approval: true, bodyApproval: true }))).toEqual([]); // 80 counted including the body one: within the cap
+  const body = specCapReasons(specCap(81, { approval: true, bodyApproval: true }));
+  expect(body).toHaveLength(1);
+  expect(body[0]).toContain("SPEC is 81 lines, over its cap of 80");
+  const second = specCapReasons(specCap(81, { approval: true, secondApproval: true }));
+  expect(second).toHaveLength(1);
+  expect(second[0]).toContain("SPEC is 81 lines, over its cap of 80");
+});
+
+// covers: chain/FRD-08/EX-25
+test("EX-25: an approved spec of 81 lines with its Approval line gets one more content line and fails", () => {
+  const r = specCapReasons(specCap(81, { approval: true }));
+  expect(r).toHaveLength(1);
+  expect(r[0]).toContain("SPEC is 81 lines, over its cap of 80");
+  expect(specCapReasons(specCap(80, { approval: true }))).toEqual([]); // one fewer content line is within the cap
+});

@@ -4,7 +4,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
 import { adrNumber } from "./check.ts";
-import { linksLine } from "./drift.ts"; // the one rule for which Links line is left out
+import { headerLine } from "./drift.ts"; // the one rule for which header line is left out
 import { gate, legacyAdrsThrough, readFormat } from "./format.ts";
 import { toPosix } from "./paths.ts";
 
@@ -166,7 +166,7 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
   }
 
   const all = text.replace(/\r?\n$/, "").split(/\r?\n/);
-  const total = all.length - (linksLine(all) >= 0 ? 1 : 0); // the one Links header line is not counted toward the cap
+  const total = all.length - ["Links", "Approval"].filter((k) => headerLine(all, k) >= 0).length; // the Links and Approval header lines are not counted toward the cap
   if (kind && CAPS[kind] && !legacy && total > CAPS[kind]) f(total, kind + " is " + total + " lines, over its cap of " + CAPS[kind]);
 
   const col = kind && REGISTRY[kind];

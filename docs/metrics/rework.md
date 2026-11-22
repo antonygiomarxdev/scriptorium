@@ -115,3 +115,4 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-77 | 2026-11-21 | SPEC-08-8 | C-1 | "legacy" was added to the status list for every ADR, so an ADR above the cutoff passes status by writing "legacy" by hand; no example had a hand-written legacy status. |
 | R-78 | 2026-11-22 | SPEC-08-9 | C-1 | No example changes only the case of a word in a quoted row, or pins that a bullet row is compared as written; both mutants survive. |
 | R-79 | 2026-11-22 | a909ad5 | C-1 | CI on main was red for eight pushes: a test wrote to the parent of the temp folder, which is / on Linux, and the lead pushed without reading the CI result of any push. |
+| R-80 | 2026-11-22 | chain FRD-01 | C-1 | The fingerprint leaves out every line starting with "Approval: " or "Status: ", not only the header ones, so body text on such a line is not covered by the approval; no example puts one in the body. |

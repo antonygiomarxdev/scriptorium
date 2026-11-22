@@ -10,13 +10,15 @@ const STATUS = /^\**Status:?\**\s*(Draft|Approved)/i;
 const APPROVAL = /^Approval: /;
 const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^Last change:/.test(l); // header lines that may change after approval
 
-// Index of the one Links line left out of the fingerprint and the line cap: the first line starting "Links:" above the first "## " heading.
-// A Links line in the body, or a second one in the header, is counted like any line.
-export function linksLine(lines: string[]): number {
-  const i = lines.findIndex((l) => /^Links:/.test(l));
+// Index of the first line starting "<key>:" above the first "## " heading, or -1. A line with that key in the body, or a second one in the header, is not it.
+export function headerLine(lines: string[], key: string): number {
+  const i = lines.findIndex((l) => l.startsWith(key + ":"));
   const h = lines.findIndex((l) => /^## /.test(l));
   return i >= 0 && (h < 0 || i < h) ? i : -1;
 }
+
+// The one Links line left out of the fingerprint and the line cap.
+export const linksLine = (lines: string[]): number => headerLine(lines, "Links");
 
 // The form fingerprints had before FRD-08: kept so a document approved then still matches until it is approved again.
 export function normalizeV1(text: string): string {

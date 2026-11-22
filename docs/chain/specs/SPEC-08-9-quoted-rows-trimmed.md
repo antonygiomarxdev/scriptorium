@@ -1,7 +1,7 @@
 # SPEC-08-9: A quoted row is compared with its cells trimmed
 
 Status: Approved (2026-11-21)
-Approval: content x5RPGZBqdlip; rests on ../frd/FRD-08-adopted-documents-as-they-are.md YzEJUOZeq0Sq
+Approval: content x5RPGZBqdlip; rests on ../frd/FRD-08-adopted-documents-as-they-are.md WYJ57q40FnTn
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary
