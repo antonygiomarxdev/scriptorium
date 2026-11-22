@@ -14,6 +14,7 @@
 //   bun scripts/check.ts drift [root]              fail an approved document whose body or parent changed since approval
 //   bun scripts/check.ts trace [root] [test dir]...  covers tags against the ids the FRDs define (default test dir: test)
 //   bun scripts/check.ts history <doc>             one line per commit, from git
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fromDoc, toPosix, typed } from "./paths.ts";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -60,6 +61,12 @@ const rows = (body: string) =>
 
 const idsIn = (text: string, re: RegExp) => new Set([...text.matchAll(re)].map((m) => m[0]));
 const FR_ANY = /\bFR-[A-Z0-9]+-\d{2}-\d+\b/g;
+
+// Format 4: a section that carries a diagram holds a fenced Mermaid block. prefix names the file in a folder check.
+function diagramFails(text: string, head: string, prefix = ""): string[] {
+  const body = section(text, head);
+  return body !== undefined && !/^\s*```mermaid\b/m.test(body) ? ["[format 4] " + prefix + head + " has no Mermaid block"] : [];
+}
 
 // Format 3: each Q-n line of Open questions says who answers it: (Owner: <reason>), (Research) or (Lead). prefix names the file in a folder check.
 export function answererFails(text: string, prefix = ""): string[] {
@@ -160,6 +167,8 @@ export function checkFrd(s: string, f: string, slice: string, nn: string, prdReq
   const t = s.match(TECH);
   if (t) fail('technology named: "' + t[0] + '" (belongs in the TP)');
   fails.push(...answererFails(s, f + ": "));
+  const states = section(s, "States") ?? "";
+  if (!/n\/a:\s*[^<\s]/i.test(states)) fails.push(...diagramFails(s, "States", f + ": ")); // an explained n/a needs no diagram
   return { fails, covered };
 }
 
@@ -186,7 +195,8 @@ export function checkFrds(dir: string, slice: string): { fails: string[]; files:
 
 const nnFile = (d: string, prefix: string, nn: string) => (existsSync(d) ? readdirSync(d).find((f) => f.startsWith(prefix + "-" + nn + "-") && f.endsWith(".md")) : undefined);
 
-export function checkUx(dir: string): { fails: string[]; files: number } {
+// diagrams: also hold the Flows section to a Mermaid block (format 4).
+export function checkUx(dir: string, diagrams = true): { fails: string[]; files: number } {
   const uxDir = join(dir, "ux");
   const files = existsSync(uxDir)
     ? readdirSync(uxDir)
@@ -198,7 +208,7 @@ export function checkUx(dir: string): { fails: string[]; files: number } {
     const s = readFileSync(join(uxDir, f), "utf8");
     if (!STATUS.test(s)) fails.push(f + ": " + NO_STATUS);
     fails.push(...missing(s, ["Summary", "Flows", "Screens", "States", "Design system", "Accessibility and language", "Open questions"]).map((x) => f + ": " + x));
-    fails.push(...answererFails(s, f + ": "));
+    fails.push(...answererFails(s, f + ": "), ...(diagrams ? diagramFails(s, "Flows", f + ": ") : []));
     const nn = f.slice(3, 5);
     if (!nnFile(join(dir, "frd"), "FRD", nn)) fails.push(f + ": FRD-" + nn + " does not exist in " + join(dir, "frd"));
   }
@@ -271,7 +281,7 @@ export function checkTp(text: string, adrDir: string, knownFrs: Set<string>, tpP
     else if (adr[1].startsWith("ADR-") && !adrFileFor(adrs, adr[1])) fails.push(id + ": " + adr[1] + " has no file in " + adrDir);
   }
   if (text.match(/\b(TBD|TODO)\b/)) fails.push("contains TBD or TODO");
-  return [...fails, ...answererFails(text)];
+  return [...fails, ...answererFails(text), ...diagramFails(text, "Architecture")];
 }
 
 const defsIn = (frd: string, head: string, re: RegExp) => [...idsIn(section(frd, head) ?? "", re)];
@@ -293,11 +303,21 @@ const rowLines = (body: string) =>
     .map((l) => l.trimEnd())
     .filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l) && !/Quoted from:/.test(l));
 
+// The project of a document: the folder holding the docs/ folder above it, wherever the command runs from; undefined when the path has none.
+function projectRoot(doc: string): string | undefined {
+  const p = toPosix(resolve(doc));
+  const i = p.lastIndexOf("/docs/");
+  return i < 0 ? undefined : p.slice(0, i);
+}
+
+// The rows of a spec's Files section: table rows and bullets, minus the separator.
+const filesLines = (text: string): string[] => (section(text, "Files") ?? "").split(/\r?\n/).filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l));
+
 // Format 3: the Reuses section names the code a spec builds on (path and name, each found), a precedent spec, or why there is nothing to reuse.
 function reusesFails(text: string, specPath: string): string[] {
   const body = section(text, "Reuses");
   const lines = (body ?? "").split(/\r?\n/);
-  const root = resolve(specPath).split(sep).join("/").split("/docs/").slice(0, -1).join("/docs/");
+  const root = projectRoot(specPath) ?? "";
   const fails: string[] = [];
   let entries = 0;
   for (const l of lines) {
@@ -323,6 +343,125 @@ function reusesFails(text: string, specPath: string): string[] {
   }
   if (!entries) return ["no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>"].map((f) => "[format 3] " + f);
   return fails.map((f) => "[format 3] " + f);
+}
+
+// Format 4: a path named in Files, Tests first or Done when must be a file git tracks, unless a Files row marks it Create.
+// A path ending in a slash is a folder: it counts when git tracks a file under it. Outside a git repository nothing can be told, so nothing fails.
+function trackedFails(text: string, specPath: string): string[] {
+  const root = projectRoot(specPath) ?? "";
+  let tracked: string[];
+  try {
+    tracked = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+      .split(/\r?\n/)
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+  const created = new Set<string>();
+  const named = new Set<string>();
+  const placeholder = (p: string) => /[<>]/.test(p);
+  for (const l of filesLines(text).filter((x) => x.trim().startsWith("|"))) {
+    const c = cells(l);
+    const p = typed(c[0]!.replace(/`/g, ""));
+    if (!/[\w]\/|\w\.\w/.test(p) || p === "Path" || placeholder(p)) continue;
+    named.add(p);
+    if (/^Create\b/i.test(c[1] ?? "")) created.add(p);
+  }
+  for (const body of [section(text, "Tests first") ?? "", section(text, "Done when") ?? ""])
+    for (const m of body.matchAll(/(?:^|[\s`(,])((?:[\w.-]+\/)+[\w.-]*)(?=$|[\s`),:;])/g)) {
+      // prose is read for files and folders only: a name with an extension or a trailing slash; "EX-n." and the like are not paths
+      const p = typed(m[1]!).replace(/\.+$/, (d) => (m[1]!.endsWith("/") ? d : ""));
+      if (/\.\w+$/.test(p) || p.endsWith("/")) named.add(p);
+    }
+  return [...named].filter((p) => !created.has(p) && !(p.endsWith("/") ? tracked.some((t) => t.startsWith(p)) : tracked.includes(p) || tracked.some((t) => t.startsWith(p + "/")))).map((p) => "[format 4] " + p + " is not a tracked file");
+}
+
+// Format 4: the code blocks of a Build section declare functions, methods and constructors and call them. A call whose argument count
+// differs from the declaration of the same name in a sibling spec of the folder fails. Arguments are counted at the top level.
+type Sig = { key: string; min: number; max: number; decl: boolean }; // a call has min = max; a declaration has a range (optional and rest parameters)
+const KEYWORDS = new Set(["if", "for", "while", "switch", "catch", "function", "return", "super", "typeof", "await"]);
+
+// The argument count of the parenthesis opened at `open`, and where it closes; undefined when it never closes.
+function args(code: string, open: number): { count: number; end: number } | undefined {
+  let depth = 0;
+  let commas = 0;
+  let any = false;
+  let quote = "";
+  for (let i = open + 1; i < code.length; i++) {
+    const c = code[i]!;
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = "";
+    } else if (c === '"' || c === "'" || c === "`") (quote = c), (any = true);
+    else if ("([{".includes(c)) depth++, (any = true);
+    else if (")]}".includes(c)) {
+      if (depth === 0) return { count: any ? commas + 1 : 0, end: i };
+      depth--;
+    } else if (c === "," && depth === 0) commas++;
+    else if (!/\s/.test(c)) any = true;
+  }
+  return undefined;
+}
+
+// The parameters of a declaration, split at the top-level commas; "<" and ">" nest, so "Map<string, number>" is one parameter.
+function params(inner: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let quote = "";
+  let cur = "";
+  for (let i = 0; i < inner.length; i++) {
+    const c = inner[i]!;
+    if (quote) {
+      if (c === "\\") cur += inner[i++] ?? "";
+      else if (c === quote) quote = "";
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if ("([{<".includes(c)) depth++;
+    else if (")]}>".includes(c) && !(c === ">" && inner[i - 1] === "=")) depth = Math.max(0, depth - 1); // "=>" is an arrow, not a closing bracket
+    if (c === "," && depth === 0 && !quote) {
+      out.push(cur);
+      cur = "";
+    } else cur += c;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map((p) => p.trim()).filter(Boolean);
+}
+
+function signatures(code: string): Sig[] {
+  const classes = [...code.matchAll(/\bclass\s+([A-Za-z_$][\w$]*)/g)].map((m) => ({ name: m[1]!, at: m.index! }));
+  const out: Sig[] = [];
+  for (const m of code.matchAll(/(\bnew\s+)?([A-Za-z_$][\w$]*)\s*\(/g)) {
+    const name = m[2]!;
+    const a = args(code, m.index! + m[0].length - 1);
+    if (!a || KEYWORDS.has(name)) continue;
+    const before = code.slice(0, m.index!);
+    // a declaration: "function f(", or a method or constructor at the start of a line followed by a body
+    const decl = /\bfunction\s+$/.test(before) || (!m[1] && /^\s*(:\s*[^{;\n]+)?\{/.test(code.slice(a.end + 1)) && /(^|\n)[ \t]*((async|static|public|private)\s+)*$/.test(before));
+    const owner = [...classes].reverse().find((c) => c.at < m.index!);
+    const ps = decl ? params(code.slice(m.index! + m[0].length, a.end)) : [];
+    const optional = (p: string) => /^\.\.\./.test(p) || /^[\w$]+\s*\?/.test(p) || /^[\w$]+(\s*:[^=]*)?\s*=(?![=>])/.test(p); // rest, "name?" and "name = default"
+    const min = decl ? ps.filter((p) => !optional(p)).length : a.count;
+    const max = decl ? (ps.some((p) => p.startsWith("...")) ? Infinity : ps.length) : a.count;
+    out.push({ key: name === "constructor" ? "new " + (owner?.name ?? "") : (m[1] ? "new " : "") + name, min, max, decl });
+  }
+  return out;
+}
+
+function siblingFails(text: string, specPath: string): string[] {
+  const code = (t: string) => [...(section(t, "Build") ?? "").matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1]).join("\n");
+  const id = (f: string) => /^SPEC-\d+-\d+/.exec(f)?.[0] ?? f;
+  const dir = dirname(specPath);
+  const me = basename(specPath);
+  const mine = signatures(code(text)).filter((s) => !s.decl);
+  const fails: string[] = [];
+  for (const f of (existsSync(dir) ? readdirSync(dir) : []).filter((x) => /^SPEC-\d+-\d+.*\.md$/.test(x) && x !== me)) {
+    const theirs = signatures(code(readFileSync(join(dir, f), "utf8"))).filter((s) => s.decl);
+    for (const c of mine) {
+      const same = theirs.filter((s) => s.key === c.key);
+      if (same.length && !same.some((s) => c.min >= s.min && c.min <= s.max))
+        fails.push("[format 4] " + c.key.replace(/^new /, "") + " takes " + (same[0]!.min === same[0]!.max ? same[0]!.min : same[0]!.min + " to " + (same[0]!.max === Infinity ? "any number of" : same[0]!.max)) + " arguments in " + id(f) + " and is called with " + c.min + " in " + id(me));
+    }
+  }
+  return [...new Set(fails)];
 }
 
 export function checkSpec(text: string, specPath: string): string[] {
@@ -352,12 +491,12 @@ export function checkSpec(text: string, specPath: string): string[] {
   const tested = new Set((section(text, "Tests first")?.match(SPEC_ID) ?? []).filter((i) => !DOC_ID.test(i)));
   for (const id of rowIds) if (!tested.has(id)) fails.push(id + " is in Rows but Tests first does not cite it");
   for (const id of tested) if (!rowIds.has(id)) fails.push(id + " is in Tests first but not in Rows");
-  const files = (section(text, "Files") ?? "").split(/\r?\n/).filter((l) => /^\s*(\||[-*]\s)/.test(l) && !isSep(l));
+  const files = filesLines(text);
   const nFiles = files.filter((l) => !l.trim().startsWith("|")).length + Math.max(0, files.filter((l) => l.trim().startsWith("|")).length - 1);
   if (nFiles > 3) fails.push("Files lists " + nFiles + " rows; the cap is 3");
   const cmds = (section(text, "Done when") ?? "").match(/`[^`\n]+`/g) ?? [];
   if (cmds.length !== 1) fails.push("Done when must hold exactly one backticked command, found " + cmds.length);
-  return [...fails, ...reusesFails(text, specPath), ...answererFails(text)];
+  return [...fails, ...reusesFails(text, specPath), ...answererFails(text), ...trackedFails(text, specPath), ...siblingFails(text, specPath)];
 }
 
 // The format 1 spec check (0.3.0): one spec per FRD, its tasks covering every FRD id.
@@ -634,11 +773,7 @@ if (import.meta.main) {
   if (kind === "approve" || kind === "clear") {
     if (!a) usage();
     // the project is the folder holding the docs/ folder above the document, wherever the command runs from; the argument is the fallback
-    const projectOf = (doc: string, dflt: string) => {
-      const p = toPosix(resolve(doc));
-      const i = p.lastIndexOf("/docs/");
-      return i < 0 ? dflt : p.slice(0, i);
-    };
+    const projectOf = (doc: string, dflt: string) => projectRoot(doc) ?? dflt;
     try {
       if (kind === "approve") {
         const date = opt("--date", new Date().toISOString().slice(0, 10));

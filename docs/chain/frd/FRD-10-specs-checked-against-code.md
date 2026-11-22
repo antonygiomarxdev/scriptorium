@@ -1,6 +1,7 @@
 # FRD-10: Specs checked against the code
 
-Status: Draft
+Status: Approved (2026-11-22)
+Approval: content _9JVArVmxyzY; rests on ../PRD.md ASR_OGQqlGDj
 
 ## Summary
 

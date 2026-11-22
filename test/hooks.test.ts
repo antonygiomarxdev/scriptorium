@@ -231,7 +231,7 @@ test("the stop hook in a project pinned to an unknown format passes with the upd
   const root = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 9}' });
   const r = hook("hook-stop.ts", { cwd: root });
   expect(r.code).toBe(0);
-  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 3: update Scriptorium");
+  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 4: update Scriptorium");
   const ok = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 2}' }); // mutant: a known pin gives no warning
   expect(hook("hook-stop.ts", { cwd: ok }).err).not.toContain("update Scriptorium");
 });

@@ -38,7 +38,7 @@ test("EX-24: a document of a project pinned to an unknown format fails with the 
   const elsewhere = mkdtempSync(join(tmpdir(), "scriptorium-elsewhere-"));
   const r = run("cli.ts", elsewhere, "spec", pinned(9));
   expect(r.code).toBe(1);
-  expect(r.out).toContain("this project uses format 9; this Scriptorium knows up to 3: update Scriptorium");
+  expect(r.out).toContain("this project uses format 9; this Scriptorium knows up to 4: update Scriptorium");
   expect(run("cli.ts", elsewhere, "spec", pinned(2)).out).not.toContain("update Scriptorium"); // mutant: a known pin gives no update message
 });
 
@@ -55,7 +55,7 @@ test("EX-24: the status command given a project folder reads that project's pin,
   const elsewhere = mkdtempSync(join(tmpdir(), "scriptorium-elsewhere-"));
   const r = run("cli.ts", elsewhere, "status", project(9));
   expect(r.code).toBe(1);
-  expect(r.out).toContain("this project uses format 9; this Scriptorium knows up to 3: update Scriptorium");
+  expect(r.out).toContain("this project uses format 9; this Scriptorium knows up to 4: update Scriptorium");
   expect(run("cli.ts", elsewhere, "status", project(2)).out).not.toContain("update Scriptorium"); // mutant: a known pin gives no update message
 });
 

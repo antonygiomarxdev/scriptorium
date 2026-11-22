@@ -124,3 +124,4 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-86 | 2026-11-22 | SPEC-08-8 | C-1 | Status marks every legacy ADR approved before it reads its status line, so a spec resting on a superseded legacy ADR passes; no example had one. |
 | R-87 | 2026-11-22 | SPEC-01-6 | C-1 | Eleven of twelve workflow mutants survive: the tests read for words, and RL-2 accepts any "exit 0". A failed tag after the version commit leaves that version untagged forever. |
 | R-88 | 2026-11-22 | SPEC-11-1 | C-1 | The build let a Mermaid block replace the ST rows in States, which no row says; a test pinned the loosening. |
+| R-89 | 2026-11-22 | SPEC-11-2 | C-14 | The lead committed an approved FRD whose other specs were not built yet; the trace check in CI failed on its uncovered rows. The lead ran the lint tests, not the CI gate set (trace). |

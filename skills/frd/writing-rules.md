@@ -46,7 +46,7 @@ Write "n/a: only one condition decides" when it does not apply.
 
 ## States: when the thing has a lifecycle
 
-Use a state table or a Mermaid stateDiagram when an object changes state over time (booking: requested, confirmed, collected, cancelled). Name the transitions that must not happen (collected back to confirmed) as their own ST rows. Ids: ST-n.
+Draw a Mermaid stateDiagram-v2 ([diagrams](../scriptorium/diagrams.md)) when an object changes state over time (booking: requested, confirmed, collected, cancelled). Name the transitions that must not happen (collected back to confirmed) as their own ST rows. Ids: ST-n.
 
 ## Invariants
 

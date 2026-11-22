@@ -17,7 +17,7 @@ Arguments: slice $0, FRD number $1 (two digits). Ask for them if missing.
 
 ## How to write each section
 
-- **Flows**: one Mermaid flowchart per flow. Every step that is a system response cites its FR id; every branch the owner's examples cover cites its EX id. Bad: a flow with no ids, which no check can trace. Good: "Book slot (FR-PICKUPS-01-1) -> full? yes -> waitlist (EX-4)".
+- **Flows**: one Mermaid flowchart per flow ([diagrams](../scriptorium/diagrams.md)). Every step that is a system response cites its FR id; every branch the owner's examples cover cites its EX id. Bad: a flow with no ids, which no check can trace. Good: "Book slot (FR-PICKUPS-01-1) -> full? yes -> waitlist (EX-4)".
 - **Screens**: a table, one row per screen: its purpose and the FR ids it shows. A screen no FR needs is scope creep; an FR with no screen and no "n/a" is a gap.
 - **States**: for each screen, empty, loading, error, partial and success, each with what the user sees. Bad: "shows an error". Good: "Error: the text 'We could not load the slots. Try again.' and a Retry button; the list keeps the last slots it had."
 - **Design system**: a table of components and tokens: reused, changed or new, and where. Prefer reuse; every "new" needs a reason. Use token names, not raw colors or pixel values.

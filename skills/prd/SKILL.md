@@ -47,3 +47,5 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/lint-docs.ts" .
 ```
 
 Then go on with `/scriptorium:frd`, one feature at a time.
+
+Diagrams: when one shows faster than text, follow [diagrams](../scriptorium/diagrams.md); in this document it is optional.

@@ -15,7 +15,7 @@ const install = (cwd: string) => {
 test("EX-5: install in a folder with no docs and no .scriptorium writes the newest format", () => {
   const root = tmp();
   expect(install(root).code).toBe(0);
-  expect(JSON.parse(readFileSync(join(root, ".scriptorium", "config.json"), "utf8"))).toEqual({ format: 3 });
+  expect(JSON.parse(readFileSync(join(root, ".scriptorium", "config.json"), "utf8"))).toEqual({ format: 4 });
   const withDocs = tmp();
   mkdirSync(join(withDocs, "docs"));
   install(withDocs);
@@ -174,4 +174,54 @@ test("the adopt skill says where a verbatim export of another tool goes", () => 
   expect(para).toMatch(/Source:/);
   expect(para).toMatch(/not linted/i);
   expect(para).toMatch(/not read by agents by default/i);
+});
+
+// The rules of the diagrams page, each with the section it belongs in and the words that state it.
+const TYPES = ["flowchart", "sequenceDiagram", "stateDiagram-v2", "erDiagram", "classDiagram"];
+const sectionOf = (text: string, heading: string) => (text.split(/^## /m).find((s) => s.startsWith(heading)) ?? "").split("\n").slice(1).join("\n");
+const PAGE_RULES: [string, string, RegExp][] = [
+  ["a diagram is optional in PRODUCT and PRD", "Where a diagram is required", /PRODUCT and PRD[^\n]*optional|optional[^\n]*PRODUCT and PRD/i],
+  ["the limit of 15 nodes", "Keep it small", /15 nodes or fewer|at most 15|no more than 15/i],
+  ["quote a label with punctuation", "Keep it renderable", /quote a label[^\n]*(punctuation|\( \))/i],
+  ["no HTML in a label, not even <br>", "Keep it renderable", /no html[^\n]*<br>/i],
+  ["never a lowercase end node", "Keep it renderable", /never name a node end in lowercase/i],
+  ["no styling", "Keep it renderable", /no styling/i],
+  ["never install a renderer or download a browser", "Keep it renderable", /never install a renderer[^\n]*download a browser/i],
+  ["cite FR ids", "Cite the rows", /\bFR id/],
+  ["cite EX ids", "Cite the rows", /\bEX id/],
+  ["cite ST ids", "Cite the rows", /\bST id/],
+  ...TYPES.map((type): [string, string, RegExp] => ["the type " + type + " is in the question-to-type table", "Which diagram answers which question", new RegExp("^\\|[^\\n]*\\|\\s*" + type + "\\s*\\|\\s*$", "m")]),
+];
+const pageProblems = (text: string) => PAGE_RULES.filter(([, heading, re]) => !re.test(sectionOf(text, heading))).map(([name]) => name);
+
+// covers: chain/FRD-11/FR-CHAIN-11-5
+test("the diagram practices page exists with every rule in its place, and the five skills link it", () => {
+  const root = join(import.meta.dir, "..", "skills");
+  const page = join(root, "scriptorium", "diagrams.md");
+  expect(existsSync(page)).toBe(true);
+  const text = readFileSync(page, "utf8");
+  expect(pageProblems(text)).toEqual([]);
+  expect(text).toContain("PRODUCT");
+  expect(text).toContain("PRD");
+  for (const type of TYPES) expect([type, text.includes(type)]).toEqual([type, true]);
+  // the skills of PRODUCT (the scriptorium skill), PRD, FRD (its writing rules), UX and TP
+  for (const file of ["scriptorium/SKILL.md", "prd/SKILL.md", "frd/writing-rules.md", "ux/SKILL.md", "tp/SKILL.md"]) {
+    expect([file, readFileSync(join(root, file), "utf8").includes("diagrams.md")]).toEqual([file, true]);
+  }
+});
+
+// covers: chain/FRD-11/FR-CHAIN-11-5
+test("each rule of the diagrams page is pinned: removing it from a copy of the page is caught", () => {
+  const text = readFileSync(join(import.meta.dir, "..", "skills", "scriptorium", "diagrams.md"), "utf8");
+  for (const [name, heading, re] of PAGE_RULES) {
+    const lines = text.split("\n");
+    const from = lines.findIndex((l) => l.startsWith("## " + heading));
+    const at = lines.findIndex((l, i) => i > from && re.test(l) && !lines.slice(from + 1, i).some((x) => x.startsWith("## "))); // the line inside its own section
+    expect([name, at >= 0]).toEqual([name, true]); // the rule sits on one line
+    const copy = lines.filter((_, i) => i !== at).join("\n");
+    expect([name, pageProblems(copy).includes(name)]).toEqual([name, true]);
+  }
+  // a type that is only in the prose, not in the table, is caught
+  const proseOnly = text.replace(/^\|[^\n]*\|\s*classDiagram\s*\|\s*$/m, "");
+  expect(pageProblems(proseOnly)).toEqual(["the type classDiagram is in the question-to-type table"]);
 });

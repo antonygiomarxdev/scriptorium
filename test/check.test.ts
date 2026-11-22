@@ -118,7 +118,9 @@ test("an FRD missing a section or the PRD link fails", () => {
   expect(fr(FRD.replace("../PRD.md", "x.md"))).toContain("FRD-01-a.md: does not link ../PRD.md");
 });
 
-const UX = "# UX-01: a\n\nStatus: Draft\n\n" + SUM + "\n[FRD-01](../frd/FRD-01-a.md)\n## Flows\n## Screens\n## States\n## Design system\n## Accessibility and language\n## Open questions\n";
+const DIAGRAM = '```mermaid\nflowchart LR\n  A["start"] --> B["finish"]\n```\n';
+const UX_BARE = "# UX-01: a\n\nStatus: Draft\n\n" + SUM + "\n[FRD-01](../frd/FRD-01-a.md)\n## Flows\n## Screens\n## States\n## Design system\n## Accessibility and language\n## Open questions\n";
+const UX = UX_BARE.replace("## Flows\n", "## Flows\n" + DIAGRAM); // a UX document with its diagram: it passes the diagram rule
 
 test("a UX document with its sections and its FRD passes", () => expect(checkUx(slice(FRD, UX))).toEqual({ fails: [], files: 1 }));
 
@@ -129,8 +131,9 @@ test("a UX document missing a section or its FRD fails", () => {
   expect(checkUx(dir).fails.some((f) => f.startsWith("UX-02-b.md: FRD-02 does not exist"))).toBe(true);
 });
 
-const TP =
+const TP_BARE =
   "# TP\n\nStatus: Draft\n\n" + SUM + "\n## Context\nFR-INBOX-01-1\n## Decisions\n### TD-1: storage\n- **Option A** files.\n- **Option B** a database.\n\nChosen: B, because x. ADR: ADR-001\n" + "## Architecture\n## Information\n## Interfaces and contracts\n## Threat model\n## Testing\n## Risks\n## Open questions\n";
+const TP = TP_BARE.replace("## Architecture\n", "## Architecture\n" + DIAGRAM); // a TP with its diagram
 const ADR = "# ADR-001: x\n\n## Status\nAccepted\n\n## Summary\ns\n## Context\n## Options considered\n## Decision\n## Consequences\n";
 
 function adrDir(withFile: boolean) {
@@ -1101,4 +1104,318 @@ test("EX-23: a quoted row whose cell text differs inside still fails, even by on
     const fails = sp(quoted(cell), parent);
     expect([cell, fails.some((f) => f.includes("not found verbatim") && f.includes("EX-2"))]).toEqual([cell, true]);
   }
+});
+
+// A spec in a git repository: the files git tracks, the spec's Files table, its Tests first line and its Done command are the cases.
+function trackedSpec(opts: { files: string; testsFirst?: string; done?: string; tracked: string[]; pin?: number }) {
+  const p = specAt(undefined, { "scripts/paths.ts": "export const typed = 1;\n" });
+  const root = join(p, "..", "..", "..", "..");
+  let text = SPEC.replace("| File | Change |\n|---|---|\n| a.ts | new |", "| Path | Create or change | Holds |\n|---|---|---|\n" + opts.files);
+  if (opts.testsFirst) text = text.replace("EX-1, EX-2\n\n## Build", "EX-1, EX-2, " + opts.testsFirst + "\n\n## Build");
+  if (opts.done) text = text.replace("`bun test`", opts.done);
+  mkdirSync(join(p, ".."), { recursive: true });
+  writeFileSync(p, text);
+  for (const f of opts.tracked) {
+    mkdirSync(join(root, f, ".."), { recursive: true });
+    writeFileSync(join(root, f), "x\n");
+  }
+  if (opts.pin) {
+    mkdirSync(join(root, ".scriptorium"), { recursive: true });
+    writeFileSync(join(root, ".scriptorium", "config.json"), JSON.stringify({ format: opts.pin }));
+  }
+  const g = (...a: string[]) => Bun.spawnSync(["git", ...a], { cwd: root });
+  g("init", "-q");
+  g("add", "-A"); // everything written so far is tracked, except the files this call leaves untracked below
+  const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), "spec", p], { cwd: root });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+}
+
+// covers: chain/FRD-10/EX-1
+test("EX-1: a Files row naming a path that is not tracked fails, even when a file with a similar name is", () => {
+  const r = trackedSpec({ files: "| `test/restore-record.test.ts` | Change | x |", tracked: ["test/withdraw-restore-record.test.ts"], pin: 4 });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("test/restore-record.test.ts is not a tracked file");
+  expect(trackedSpec({ files: "| `test/withdraw-restore-record.test.ts` | Change | x |", tracked: ["test/withdraw-restore-record.test.ts"], pin: 4 }).code).toBe(0); // mutant: a tracked path passes
+});
+
+// covers: chain/FRD-10/EX-2
+test("EX-2: a path named in Tests first with a Create row in Files reports nothing", () => {
+  const r = trackedSpec({ files: "| `test/new-thing.test.ts` | Create | x |", testsFirst: "test/new-thing.test.ts", tracked: [], pin: 4 });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("test/new-thing.test.ts");
+  const noCreate = trackedSpec({ files: "| `test/new-thing.test.ts` | Change | x |", testsFirst: "test/new-thing.test.ts", tracked: [], pin: 4 }); // mutant: Change is not Create
+  expect(noCreate.code).toBe(1);
+  expect(noCreate.out).toContain("test/new-thing.test.ts is not a tracked file");
+});
+
+// covers: chain/FRD-10/EX-3
+test("EX-3: a path named only in the Done command that is not tracked fails", () => {
+  const r = trackedSpec({ files: "| `scripts/paths.ts` | Change | x |", done: "`bun test test/old.test.ts`", tracked: ["scripts/paths.ts"], pin: 4 });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("test/old.test.ts is not a tracked file");
+});
+
+// covers: chain/FRD-10/EX-6
+test("EX-6: under format 3 an untracked path is a warning, not a failure", () => {
+  const r = trackedSpec({ files: "| `test/restore-record.test.ts` | Change | x |", tracked: [], pin: 3 });
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("WARN (format 4): ");
+  expect(r.out).toContain("test/restore-record.test.ts is not a tracked file");
+});
+
+// covers: chain/FRD-10/EX-7
+test("EX-7: under format 4, a spec whose paths are all tracked or created passes with no warning", () => {
+  const r = trackedSpec({ files: "| `scripts/paths.ts` | Change | x |\n| `test/made.test.ts` | Create | x |", testsFirst: "test/made.test.ts", done: "`bun test test/made.test.ts scripts/paths.ts`", tracked: ["scripts/paths.ts"], pin: 4 });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("WARN");
+  expect(r.out).not.toContain("not a tracked file");
+});
+
+// Two sibling specs in one folder, each with a code block in its Build section; the check runs on the second one.
+function siblings(declaring: string, calling: string, pin = 4) {
+  const first = specAt(undefined, { "a.ts": "export {};\n" });
+  const root = join(first, "..", "..", "..", "..");
+  const dir = join(first, "..");
+  mkdirSync(dir, { recursive: true });
+  const build = (code: string) => SPEC.replace("## Build\nb\n", "## Build\n```ts\n" + code + "\n```\n");
+  writeFileSync(join(dir, "SPEC-01-48-reader.md"), build(declaring));
+  const second = join(dir, "SPEC-01-35-user.md");
+  writeFileSync(second, build(calling));
+  mkdirSync(join(root, ".scriptorium"), { recursive: true });
+  writeFileSync(join(root, ".scriptorium", "config.json"), JSON.stringify({ format: pin }));
+  const g = (...a: string[]) => Bun.spawnSync(["git", ...a], { cwd: root });
+  g("init", "-q");
+  g("add", "-A"); // a.ts and the specs are tracked, so the tracked-path rule has nothing to say
+  const r = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), "spec", second], { cwd: root });
+  return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() };
+}
+const DECLARES = "class RecordsReader {\n  constructor(a, b, c, d) {}\n}";
+
+// covers: chain/FRD-10/EX-4
+test("EX-4: a call whose argument count differs from the sibling's declaration fails, naming both specs and both counts", () => {
+  const r = siblings(DECLARES, "const reader = new RecordsReader(x, y);");
+  expect(r.code).toBe(1);
+  const line = r.out.split("\n").find((l) => l.includes("RecordsReader")) as string;
+  expect(line).toBeDefined();
+  expect(line).toContain("SPEC-01-48");
+  expect(line).toContain("SPEC-01-35");
+  expect(line).toMatch(/\b4\b/);
+  expect(line).toMatch(/\b2\b/);
+});
+
+// covers: chain/FRD-10/EX-5
+test("EX-5: both specs use the same argument count: nothing is reported for it", () => {
+  const r = siblings(DECLARES, "const reader = new RecordsReader(w, x, y, z);");
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("RecordsReader");
+  const nested = siblings(DECLARES, "const reader = new RecordsReader(f(1, 2), [3, 4], { k: 5, j: 6 }, z);"); // arguments are counted at the top level
+  expect(nested.code).toBe(0);
+  expect(nested.out).not.toContain("RecordsReader");
+});
+
+// Diagram rule: a TP, UX or FRD whose Architecture, Flows or States has no Mermaid block, through the CLI with a pin file.
+const MERMAID = '```mermaid\nflowchart LR\n  A["quoted label"] --> B["next step"]\n```\n';
+const TP_PATH = "docs/inbox/tp/TP-01-a.md";
+const tpWith = (architecture: string, pin: number) => tpIn({ cites: "FR-INBOX-01-1", files: { [TP_PATH]: TP_BARE.replace("## Architecture\n", "## Architecture\n" + architecture), ".scriptorium/config.json": JSON.stringify({ format: pin }) } });
+const PROSE = "The reader sits in front of the store.\n\nThe store keeps the records.\n";
+
+// covers: chain/FRD-11/EX-1
+test("EX-1: a TP whose Architecture is prose fails with no Mermaid block", () => {
+  const r = tpWith(PROSE, 4);
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("Architecture has no Mermaid block");
+});
+
+// covers: chain/FRD-11/EX-8
+test("EX-8: under format 3 a TP with no Mermaid block passes and prints the failure as a warning", () => {
+  const r = tpWith(PROSE, 3);
+  expect(r.code).toBe(0);
+  expect(r.out).toContain("WARN (format 4): ");
+  expect(r.out).toContain("Architecture has no Mermaid block");
+});
+
+// covers: chain/FRD-11/EX-10
+test("EX-10: under format 4 a TP whose Architecture holds a quoted flowchart passes with no warning", () => {
+  const r = tpWith(MERMAID, 4);
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("WARN");
+  expect(r.out).not.toContain("Mermaid");
+});
+
+// covers: chain/FRD-11/EX-2
+test("EX-2: an FRD whose States says n/a reports nothing for States; prose in States fails", () => {
+  const frd = (states: string) => cliIn(qroot(4, { frd: FRD.replace("## States\nn/a: no lifecycle\n", "## States\n" + states) }), "frd", "docs/inbox", "INBOX");
+  const ok = frd("n/a: nothing here keeps state.\n");
+  expect(ok.code).toBe(0);
+  expect(ok.out).not.toContain("States");
+  const prose = frd("The record is open, then closed.\n"); // mutant: a States section of prose needs a diagram
+  expect(prose.code).toBe(1);
+  expect(prose.out).toContain("States has no Mermaid block");
+  // a diagram does not replace the ST rows: States still needs an ST-n row or n/a
+  const onlyDiagram = frd(MERMAID);
+  expect(onlyDiagram.code).toBe(1);
+  expect(onlyDiagram.out).toContain('States holds no ST-n row and no "n/a: <reason>"');
+  expect(onlyDiagram.out).not.toContain("Mermaid block"); // the block is there, it is the row that is missing
+  expect(frd("ST-1 open to closed\n" + MERMAID).code).toBe(0); // a row and a block pass
+});
+
+// covers: chain/FRD-11/EX-3
+test("EX-3: a UX document whose Flows lists steps as bullets fails with no Mermaid block", () => {
+  const ux = (flows: string) => {
+    const root = uxTpRoot(4, "None.");
+    writeFileSync(join(root, "docs", "inbox", "ux", "UX-01-a.md"), UX_BARE.replace("## Flows\n", "## Flows\n" + flows));
+    return cliIn(root, "ux", "docs/inbox");
+  };
+  const r = ux("- the reader opens the page\n- the reader picks a slot\n");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("UX-01-a.md: Flows has no Mermaid block"); // the failure names the file
+  expect(ux(MERMAID).code).toBe(0); // mutant: a Mermaid block passes
+});
+
+// covers: chain/FRD-10/EX-1
+test("EX-1: a path named only in Tests first that is not tracked fails", () => {
+  const r = trackedSpec({ files: "| `scripts/paths.ts` | Change | x |", testsFirst: "test/only-here.test.ts", tracked: ["scripts/paths.ts"], pin: 4 });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("test/only-here.test.ts is not a tracked file");
+  const ok = trackedSpec({ files: "| `scripts/paths.ts` | Change | x |", testsFirst: "test/only-here.test.ts", tracked: ["scripts/paths.ts", "test/only-here.test.ts"], pin: 4 }); // mutant: tracked, it passes
+  expect(ok.code).toBe(0);
+});
+
+// covers: chain/FRD-10/EX-1
+test("EX-1: a path that is only the start of a tracked file's name fails", () => {
+  const r = trackedSpec({ files: "| `test/a` | Change | x |", tracked: ["test/ab.test.ts"], pin: 4 });
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("test/a is not a tracked file");
+});
+
+// covers: chain/FRD-10/EX-2
+test("EX-2: a folder written without a trailing slash passes when git tracks a file under it", () => {
+  const r = trackedSpec({ files: "| `examples/larder` | Change | x |", tracked: ["examples/larder/docs/PRODUCT.md"], pin: 4 });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("not a tracked file");
+  const none = trackedSpec({ files: "| `examples/pantry` | Change | x |", tracked: ["examples/larder/docs/PRODUCT.md"], pin: 4 }); // mutant: a folder with nothing tracked fails
+  expect(none.code).toBe(1);
+  expect(none.out).toContain("examples/pantry is not a tracked file");
+});
+
+// covers: chain/FRD-10/EX-1
+test("EX-1: placeholders such as chain/FRD-08/EX-n. and docs/<slice>/specs/ are not read as paths", () => {
+  const r = trackedSpec({ files: "| `scripts/paths.ts` | Change | reads docs/<slice>/specs/ and writes tags like chain/FRD-08/EX-n. |", testsFirst: "tags chain/FRD-08/EX-n. in tests", tracked: ["scripts/paths.ts"], pin: 4 });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("not a tracked file");
+  expect(r.out).not.toContain("EX-n");
+  expect(r.out).not.toContain("<slice>");
+});
+
+const quiet = (name: string, r: { code: number | null; out: string }) => {
+  expect([name, r.code]).toEqual([name, 0]);
+  expect([name, new RegExp("\\b" + name + "\\b").test(r.out)]).toEqual([name, false]);
+};
+
+// covers: chain/FRD-10/EX-5
+test("EX-5: optional, default, rest and generic parameters do not make a call a mismatch", () => {
+  quiet("load", siblings("function load(a, b = 1) {}", "load(x);")); // a default parameter may be left out
+  quiet("load", siblings("function load(a, b?: number) {}", "load(x);")); // so may an optional one
+  quiet("load", siblings("function load(...xs) {}", "load(a, b, c);")); // a rest parameter takes any count
+  quiet("load", siblings("function load(m: Map<string, number>) {}", "load(m);")); // the comma in a type is not a separator
+  quiet("load", siblings("function load(a, b = 1) {}", "load(x, y);")); // and the full count still passes
+});
+
+// covers: chain/FRD-10/EX-4
+test("EX-4: a plain function called with fewer arguments fails, and no arguments count as zero", () => {
+  const few = siblings("function f(a, b) {}", "f(x);");
+  expect(few.code).toBe(1);
+  const line = few.out.split("\n").find((l) => /\bf\b/.test(l)) as string;
+  expect(line).toBeDefined();
+  expect(line).toMatch(/\b2\b/);
+  expect(line).toMatch(/\b1\b/);
+  const none = siblings("function f(a) {}", "f();");
+  expect(none.code).toBe(1);
+  const noneLine = none.out.split("\n").find((l) => /\bf\b/.test(l)) as string;
+  expect(noneLine).toMatch(/\b1\b/);
+  expect(noneLine).toMatch(/\b0\b/);
+  quiet("f", siblings("function f() {}", "f();")); // mutant: zero and zero agree
+});
+
+// covers: chain/FRD-10/EX-5
+test("EX-5: a comma inside a string is not a separator", () => {
+  // one spec run holds both quote styles; one more run holds the mutant side, so the test spawns twice
+  quiet("g", siblings("function g(a) {}", "g(\"one, two\");\ng('one, two');"));
+  const two = siblings("function g(a, b) {}", 'g("one, two");'); // mutant: the string is one argument, so 2 against 1 still fails
+  expect(two.code).toBe(1);
+  expect(two.out).toMatch(/\bg\b/);
+});
+
+// covers: chain/FRD-10/EX-5
+test("EX-5: a spec is not compared with itself", () => {
+  quiet("f", siblings("const unrelated = 1;", "function f(a, b) {}\nf(x);"));
+});
+
+// covers: chain/FRD-10/EX-4
+test("EX-4: under format 3 the mismatch is a warning and the check passes", () => {
+  const r = siblings(DECLARES, "const reader = new RecordsReader(x, y);", 3);
+  expect(r.code).toBe(0);
+  const line = r.out.split("\n").find((l) => l.includes("RecordsReader")) as string;
+  expect(line).toContain("WARN (format 4): ");
+  expect(line).toContain("SPEC-01-48");
+  expect(line).toContain("SPEC-01-35");
+});
+
+// covers: chain/FRD-11/EX-1
+test("EX-1: a mermaid fence that is not at the start of a line, or is a longer word, is not a Mermaid block", () => {
+  const flow = "\n  flowchart LR\n  A --> B\n```\n";
+  const inline = tpWith("Text before ```mermaid" + flow, 4);
+  expect(inline.code).toBe(1);
+  expect(inline.out).toContain("Architecture has no Mermaid block");
+  const longer = tpWith("```mermaidx" + flow, 4);
+  expect(longer.code).toBe(1);
+  expect(longer.out).toContain("Architecture has no Mermaid block");
+  const indented = tpWith("  ```mermaid" + flow, 4); // a fence a few spaces in is still a fence
+  expect(indented.out).not.toContain("Architecture has no Mermaid block");
+});
+
+// covers: chain/FRD-11/EX-3
+test("EX-3: a document with no Flows section gets the missing-section failure only, not also no Mermaid block", () => {
+  const root = uxTpRoot(4, "None.");
+  writeFileSync(join(root, "docs", "inbox", "ux", "UX-01-a.md"), UX_BARE.replace("## Flows\n", ""));
+  const r = cliIn(root, "ux", "docs/inbox");
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("missing section: ## Flows");
+  expect(r.out).not.toContain("Mermaid");
+  const tp = tpIn({ cites: "FR-INBOX-01-1", files: { [TP_PATH]: TP_BARE.replace("## Architecture\n", ""), ".scriptorium/config.json": '{"format":4}' } });
+  expect(tp.code).toBe(1);
+  expect(tp.out).toContain("missing section: ## Architecture");
+  expect(tp.out).not.toContain("Mermaid");
+});
+
+// covers: chain/FRD-11/EX-3
+test("EX-3: checkUx called on a folder, and checkTp called on a text, apply the diagram rule", () => {
+  const ux = checkUx(slice(FRD, UX_BARE)).fails;
+  expect(ux.some((f) => f.includes("Flows has no Mermaid block"))).toBe(true);
+  const withBlock = checkUx(slice(FRD, UX_BARE.replace("## Flows\n", "## Flows\n" + MERMAID))).fails;
+  expect(withBlock.some((f) => f.includes("Mermaid"))).toBe(false);
+  const tp = checkTp(TP_BARE, adrDir(true), FRS);
+  expect(tp.some((f) => f.includes("Architecture has no Mermaid block"))).toBe(true);
+  expect(checkTp(TP_BARE.replace("## Architecture\n", "## Architecture\n" + MERMAID), adrDir(true), FRS).some((f) => f.includes("Mermaid"))).toBe(false);
+});
+
+// covers: chain/FRD-10/EX-2
+test("EX-2: a folder written with a trailing slash passes when git tracks a file under it", () => {
+  const r = trackedSpec({ files: "| `examples/larder/` | Change | x |", tracked: ["examples/larder/docs/PRODUCT.md"], pin: 4 });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("not a tracked file");
+  const none = trackedSpec({ files: "| `examples/pantry/` | Change | x |", tracked: ["examples/larder/docs/PRODUCT.md"], pin: 4 }); // mutant: a folder with nothing tracked under it fails
+  expect(none.code).toBe(1);
+  expect(none.out).toContain("examples/pantry/ is not a tracked file");
+});
+
+// covers: chain/FRD-10/EX-1
+test("EX-1: a Files row whose path cell holds a placeholder with < or > is not read as a path", () => {
+  const r = trackedSpec({ files: "| `docs/<slice>/specs/` | Change | x |\n| `scripts/paths.ts` | Change | x |", tracked: ["scripts/paths.ts"], pin: 4 });
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("not a tracked file");
+  expect(r.out).not.toContain("<slice>");
+  const real = trackedSpec({ files: "| `docs/other/specs/` | Change | x |\n| `scripts/paths.ts` | Change | x |", tracked: ["scripts/paths.ts"], pin: 4 }); // mutant: a real untracked folder still fails
+  expect(real.code).toBe(1);
+  expect(real.out).toContain("docs/other/specs/ is not a tracked file");
 });

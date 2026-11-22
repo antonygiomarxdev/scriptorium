@@ -22,7 +22,7 @@ Status checks a TP only against its FRD. It does not yet check that the cross-cu
 - **Context**: what exists, which FR ids the FRD asks for, constraints, and facts with sources. Cite ids; never copy FRD text.
 - **Decisions**: one `### TD-n: <question>` each, at least two options, each with cost and risk as a number or a failure case. Bad: "Option B is complex." Good: "Option B needs a second process, so a crash loses up to 30 s of bookings." Then `Chosen: <option>, because <reason>. ADR: ADR-NNN` or `ADR: none: <reason>`.
 - **ADR only when architecturally significant** (D-13): hard to reverse, shared by several slices, or it changes a quality attribute. Choosing a date library is `none: not architecturally significant`. Choosing where bookings are stored is an ADR: copy `${CLAUDE_PLUGIN_ROOT}/templates/ADR.md` to `docs/adr/ADR-NNN-name.md` (three digits), and the TP names it.
-- **Architecture**: a Mermaid diagram and the parts.
+- **Architecture**: a Mermaid diagram and the parts; see [diagrams](../scriptorium/diagrams.md).
 - **Information**: what is stored, where, in what shape.
 - **Interfaces and contracts**: what each part offers the others, and the contract test for each changed interface.
 - **Threat model**: assets, who could attack, how, what stops it, what is accepted.
