@@ -114,3 +114,4 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-76 | 2026-11-21 | chain FRD-08 | C-1 | FR-CHAIN-08-3 exempted legacy ADRs in the docs lint and the TP check but not in status, so renaming them to ADR-NNNN made status fail all 26 of another project. |
 | R-77 | 2026-11-21 | SPEC-08-8 | C-1 | "legacy" was added to the status list for every ADR, so an ADR above the cutoff passes status by writing "legacy" by hand; no example had a hand-written legacy status. |
 | R-78 | 2026-11-22 | SPEC-08-9 | C-1 | No example changes only the case of a word in a quoted row, or pins that a bullet row is compared as written; both mutants survive. |
+| R-79 | 2026-11-22 | a909ad5 | C-1 | CI on main was red for eight pushes: a test wrote to the parent of the temp folder, which is / on Linux, and the lead pushed without reading the CI result of any push. |

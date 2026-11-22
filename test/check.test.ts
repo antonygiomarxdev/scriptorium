@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { runDocChecks } from "../scripts/hook-doc-check.ts";
 import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus, excerpt } from "../scripts/check.ts";
 
@@ -174,8 +174,8 @@ const SPEC =
   "\n## Files\n| File | Change |\n|---|---|\n| a.ts | new |\n\n## Reuses\nNothing to reuse: the fixture builds on nothing\n\n## Tests first\nEX-1, EX-2\n\n## Build\nb\n\n## Done when\n`bun test`\n\n## Out of scope\nn\n\n## Open questions\nNone\n";
 
 // A project with the FRD rows on disk; returns the spec path.
-function specAt(parent = FRD_ROWS + "other | row\n", files: Record<string, string> = {}) {
-  const root = project("Status: Draft\n", parent, files);
+function specAt(parent = FRD_ROWS + "other | row\n", files: Record<string, string> = {}, base = tmpdir()) {
+  const root = project("Status: Draft\n", parent, files, base);
   return join(root, "docs", "inbox", "specs", "SPEC-01-1-a.md");
 }
 const sp = (text: string, parent?: string) => {
@@ -314,8 +314,8 @@ test("summary: ## Summary in the first 20 lines with a Last change line inside i
   expect(checkSummary("# T\n" + "x\n".repeat(25) + SUM)).toEqual(["no ## Summary within the first 20 lines"]);
 });
 
-function project(prd: string, frd: string, extra: Record<string, string> = {}) {
-  const root = mkdtempSync(join(tmpdir(), "scriptorium-status-"));
+function project(prd: string, frd: string, extra: Record<string, string> = {}, base = tmpdir()) {
+  const root = mkdtempSync(join(base, "scriptorium-status-"));
   mkdirSync(join(root, "docs", "inbox", "frd"), { recursive: true });
   mkdirSync(join(root, "docs", "research"), { recursive: true });
   writeFileSync(join(root, "docs", "PRODUCT.md"), "Status: Approved (2026-11-17)\n");
@@ -526,8 +526,8 @@ test("EX-19: a small spec with no Tasks section passes under format 2; format 1 
 });
 
 // Reuses section: the spec check through the CLI, so the project's pin decides how a failure counts.
-function reuses(body: string | undefined, pin?: number, files: Record<string, string> = {}) {
-  const p = specAt(undefined, { "scripts/paths.ts": "export const typed = (p: string) => p;\n", "docs/inbox/specs/SPEC-03-2-gate-spec-rules.md": "Status: Draft\n", ...files });
+function reuses(body: string | undefined, pin?: number, files: Record<string, string> = {}, base = tmpdir()) {
+  const p = specAt(undefined, { "scripts/paths.ts": "export const typed = (p: string) => p;\n", "docs/inbox/specs/SPEC-03-2-gate-spec-rules.md": "Status: Draft\n", ...files }, base);
   const root = join(p, "..", "..", "..", "..");
   const text = body === undefined ? SPEC.replace("## Reuses\nNothing to reuse: the fixture builds on nothing\n\n", "") : SPEC.replace("Nothing to reuse: the fixture builds on nothing\n", body + "\n");
   writeFileSync(p, text);
@@ -711,12 +711,17 @@ test("EX-10: at pin 2 a Reuses entry naming a missing file passes with one forma
 // covers: chain/FRD-05/EX-3
 test("EX-3: a Reuses path that leaves the project fails even when the file exists there", () => {
   const name = "outside-" + Math.random().toString(36).slice(2) + ".ts";
-  const outside = join(dirname(tmpdir()), name); // two folders above the project root, which sits in the temp folder
+  // the project root sits one folder inside the fresh folder "outer", so two folders above it is "outer": writable on every system
+  const outer = mkdtempSync(join(tmpdir(), "scriptorium-outer-"));
+  const inner = join(outer, "inner");
+  mkdirSync(inner);
+  const outside = join(outer, name);
   writeFileSync(outside, "export const x = 1;\n");
   try {
-    bad(reuses("- `../../" + name + "` `x`: x", 3), "Reuses: ../../" + name + " does not exist");
+    expect(existsSync(outside)).toBe(true);
+    bad(reuses("- `../../" + name + "` `x`: x", 3, {}, inner), "Reuses: ../../" + name + " does not exist");
   } finally {
-    rmSync(outside, { force: true });
+    rmSync(outer, { recursive: true, force: true });
   }
 });
 
