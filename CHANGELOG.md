@@ -1,5 +1,12 @@
 # scriptorium
 
+## 0.5.1
+
+### Patch Changes
+
+- ac9e456: The line cap leaves out the header Approval line, which approve writes, so approving a document at its cap no longer takes it over the cap.
+- cde7b62: The approval fingerprint leaves out only the header Status and Approval lines. A body line that starts with "Status:" or "Approval:" is now covered by the approval, so text on it can no longer change unseen. Documents with those lines only in the header keep their fingerprints.
+
 ## 0.5.0
 
 ### Minor Changes
