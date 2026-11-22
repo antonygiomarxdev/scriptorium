@@ -111,3 +111,6 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-73 | 2026-11-21 | chain FRD-08 | C-1 | The Links line is left out of the fingerprint and any link text passes the lint, so a sentence written as link text can be added after approval with no drift. |
 | R-74 | 2026-11-21 | SPEC-08-5 | C-1 | The rows say a header line, but the fingerprint and the cap leave out every line starting with "Links:" anywhere; 400 body Links lines pass the cap, and no example puts a Links line in the body. |
 | R-75 | 2026-11-21 | SPEC-08-7 | C-1 | No example for a document with no "## " heading, or for a "##x" line, around the Links rule; each mutant survives. |
+| R-76 | 2026-11-21 | chain FRD-08 | C-1 | FR-CHAIN-08-3 exempted legacy ADRs in the docs lint and the TP check but not in status, so renaming them to ADR-NNNN made status fail all 26 of another project. |
+| R-77 | 2026-11-21 | SPEC-08-8 | C-1 | "legacy" was added to the status list for every ADR, so an ADR above the cutoff passes status by writing "legacy" by hand; no example had a hand-written legacy status. |
+| R-78 | 2026-11-22 | SPEC-08-9 | C-1 | No example changes only the case of a word in a quoted row, or pins that a bullet row is compared as written; both mutants survive. |

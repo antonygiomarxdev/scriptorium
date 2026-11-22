@@ -1046,3 +1046,54 @@ test("EX-4: the TP check reads the cutoff from the project of the TP, not from t
   expect(noCutoff.code).toBe(1);
   expect(noCutoff.out).toContain("0021");
 });
+
+// covers: chain/FRD-08/EX-20
+test("EX-20: status lists an ADR at or below the cutoff as legacy and does not fail it for its status line", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const adr12 = "# ADR 12\n\n- **Estado:** Aceptada\n";
+  const run = (config?: string) => chainStatus(project(ok, ok, { "docs/adr/ADR-0012-x.md": adr12, ...(config ? { ".scriptorium/config.json": config } : {}) }));
+  const { docs, fails } = run('{"format":3,"legacyAdrsThrough":28}');
+  expect(docs.find((d) => d.path.includes("ADR-0012"))?.status).toBe("legacy");
+  expect(fails.filter((f) => f.includes("ADR-0012"))).toEqual([]);
+  const none = run('{"format":3}'); // mutant: with no cutoff it still fails, as today
+  expect(none.fails.some((f) => f.includes("ADR-0012") && f.includes('ADR status "missing" is not Proposed, Accepted, Superseded or Rejected'))).toBe(true);
+  expect(none.docs.find((d) => d.path.includes("ADR-0012"))?.status).toBe("missing");
+});
+
+// covers: chain/FRD-08/EX-21
+test("EX-21: an ADR above the cutoff with no Status section still fails as today, and at the cutoff it is legacy", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const config = '{"format":3,"legacyAdrsThrough":28}';
+  const { docs, fails } = chainStatus(project(ok, ok, { "docs/adr/ADR-0029-x.md": "# ADR 29\n", "docs/adr/ADR-0028-x.md": "# ADR 28\n", ".scriptorium/config.json": config }));
+  expect(fails.some((f) => f.includes("ADR-0029") && f.includes('ADR status "missing" is not Proposed, Accepted, Superseded or Rejected'))).toBe(true);
+  expect(docs.find((d) => d.path.includes("ADR-0029"))?.status).toBe("missing");
+  expect(docs.find((d) => d.path.includes("ADR-0028"))?.status).toBe("legacy"); // the cutoff itself is legacy
+  expect(fails.filter((f) => f.includes("ADR-0028"))).toEqual([]);
+  expect(docs.find((d) => d.path.includes("ADR-0028"))?.approved).toBe(true); // a legacy ADR counts as accepted for what rests on it
+  // a hand-written "legacy" status is not a way around the cutoff: above it, it fails
+  const hand = (n: string) => "# ADR " + n + "\n\n## Status\nlegacy\n";
+  const typed = chainStatus(project(ok, ok, { "docs/adr/ADR-0029-x.md": hand("29"), "docs/adr/ADR-0028-x.md": hand("28"), ".scriptorium/config.json": config }));
+  expect(typed.fails.some((f) => f.includes("ADR-0029") && f.includes("ADR status") && f.includes("legacy"))).toBe(true);
+  expect(typed.docs.find((d) => d.path.includes("ADR-0028"))?.status).toBe("legacy");
+  expect(typed.fails.filter((f) => f.includes("ADR-0028"))).toEqual([]);
+});
+
+// covers: chain/FRD-08/EX-22
+test("EX-22: a quoted row is found when only the spaces around its cells differ, in either direction", () => {
+  expect(sp(SPEC, "|  EX-1  |   a |b  |\n| EX-2   | c |  d |\n")).toEqual([]); // the parent is padded, the spec is not
+  const padded = SPEC.replace("| EX-1 | a | b |", "|  EX-1 |   a   | b  |").replace("| EX-2 | c | d |", "|EX-2|c|d|");
+  expect(padded).not.toBe(SPEC);
+  expect(sp(padded)).toEqual([]); // the spec is padded or tight, the parent is not
+  expect(sp(SPEC, "| EX-1 | a | b |\n| EX-2 | c | d |\n")).toEqual([]); // mutant: identical rows still pass
+});
+
+// covers: chain/FRD-08/EX-23
+test("EX-23: a quoted row whose cell text differs inside still fails, even by one extra space between words", () => {
+  const parent = "| EX-1 | a | b |\n| EX-2 | c d | e |\n";
+  const quoted = (cell: string) => SPEC.replace("| EX-2 | c | d |", "| EX-2 | " + cell + " | e |");
+  expect(sp(quoted("c d"), parent)).toEqual([]); // the same text passes
+  for (const cell of ["c  d", "c x", "d c", "cd"]) {
+    const fails = sp(quoted(cell), parent);
+    expect([cell, fails.some((f) => f.includes("not found verbatim") && f.includes("EX-2"))]).toEqual([cell, true]);
+  }
+});

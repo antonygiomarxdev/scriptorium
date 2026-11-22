@@ -1,13 +1,13 @@
 # FRD-08: Adopted documents checked as they are
 
 Status: Approved (2026-11-21)
-Approval: content aNNKSmp8IORy; rests on ../PRD.md _I099qjvgjrm
+Approval: content YzEJUOZeq0Sq; rests on ../PRD.md _I099qjvgjrm
 
 ## Summary
 
 A project that adopts the chain keeps its existing ADR file names and its accepted ADRs as they are, and a formatter run at commit does not invalidate an approval. An ADR file may be named NNNN-name.md or ADR-NNNN-name.md, an ADR numbered at or below the cutoff set at adoption is not held to the ADR line cap or template, and the approval fingerprint ignores spacing, blank lines and table padding.
 
-Last change: 2026-11-21, only the first Links line of the header is left out (owner)
+Last change: 2026-11-21, a quoted row is compared cell by cell with the cells trimmed (owner)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -23,12 +23,14 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 |---|---|---|
 | FR-CHAIN-08-1 | WHEN | WHEN a document cites ADR-NNNN, the checks shall find its file as ADR-NNNN-name.md or NNNN-name.md in the ADR folder. |
 | FR-CHAIN-08-2 | WHEN | WHEN an ADR file is named NNNN-name.md, the docs lint shall check it as an ADR. |
-| FR-CHAIN-08-3 | WHERE | WHERE an ADR's number is at or below the "legacyAdrsThrough" number in the project's Scriptorium config, the docs lint and the TP check shall not apply the ADR line cap or the ADR template to it. |
+| FR-CHAIN-08-3 | WHERE | WHERE an ADR's number is at or below the "legacyAdrsThrough" number in the project's Scriptorium config, the docs lint, the TP check and status shall not apply the ADR line cap or the ADR template to it. |
 | FR-CHAIN-08-4 | IF | IF a TP cites such an ADR and a status line in it says Proposed, Superseded or Rejected THEN the TP check shall fail and name its status; with no status line, it counts as accepted. |
 | FR-CHAIN-08-7 | IF | IF "legacyAdrsThrough" is set and is not a whole number THEN the checks shall fail and say what to write. |
 | FR-CHAIN-08-8 | WHEN | WHEN the fingerprint of a document is computed, it shall leave out the first line that starts with "Links:" above the first "## " heading, and only that one, as it leaves out the status, approval and last-change lines. |
 | FR-CHAIN-08-9 | IF | IF a "Links:" line holds anything but markdown links to https URLs, separated by commas or spaces, THEN the docs lint shall fail and name it. |
 | FR-CHAIN-08-10 | always | The line cap of a document shall always leave out the same one Links line the fingerprint leaves out, and count every other line. |
+| FR-CHAIN-08-11 | WHERE | WHERE an ADR's number is at or below the cutoff, status shall list it with the status "legacy" and shall not fail it for its status line. |
+| FR-CHAIN-08-12 | WHEN | WHEN the spec check looks for a quoted row in the parent, it shall compare the row cell by cell with the spaces around each cell trimmed, and the text inside each cell exactly. |
 | FR-CHAIN-08-5 | WHEN | WHEN the fingerprint of a document is computed, it shall ignore runs of spaces, blank lines and the dashes, colons and padding of a table separator row. |
 | FR-CHAIN-08-6 | WHEN | WHEN a document was approved with the earlier fingerprint, the checks shall accept that fingerprint until it is approved again. |
 
@@ -37,8 +39,8 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | Rule | Text | Covers |
 |---|---|---|
 | RULE-1 | An ADR is found under either name. | FR-CHAIN-08-1, FR-CHAIN-08-2 |
-| RULE-2 | An ADR written before adoption is kept as it is, below a cutoff the project sets. | FR-CHAIN-08-3, FR-CHAIN-08-4, FR-CHAIN-08-7 |
-| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9, FR-CHAIN-08-10 |
+| RULE-2 | An ADR written before adoption is kept as it is, below a cutoff the project sets. | FR-CHAIN-08-3, FR-CHAIN-08-4, FR-CHAIN-08-7, FR-CHAIN-08-11 |
+| RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9, FR-CHAIN-08-10, FR-CHAIN-08-12 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -58,6 +60,10 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | EX-17 | RULE-3 | negative | A UX document of 150 lines with a "Links:" header line gets one more content line, so it has 152 lines | the docs lint runs | it fails "UX is 151 lines, over its cap of 150" |
 | EX-18 | RULE-3 | negative | An approved PRODUCT gets "Links: [Asana](https://app.asana.com/0/2/3)" as a line below its first "## " heading | status runs, and the docs lint runs on a copy at its cap | status reports "body changed since approval", and the line counts toward the cap |
 | EX-19 | RULE-3 | negative | An approved PRODUCT has one Links line in its header and gets a second one there | status runs | it reports "body changed since approval" |
+| EX-20 | RULE-2 | positive | The config says "legacyAdrsThrough": 28 and docs/adr/ADR-0012-x.md has no Status section, only the line "- **Estado:** Aceptada" | status runs | it lists ADR-0012 as legacy and reports no failure for it |
+| EX-21 | RULE-2 | boundary | The same config and docs/adr/ADR-0029-x.md has no Status section | status runs | it fails with "ADR status \"missing\" is not Proposed, Accepted, Superseded or Rejected" for ADR-0029, as today |
+| EX-22 | RULE-3 | positive | A spec quotes a row of its FRD, and a formatter has padded the cells of the FRD table, so the spaces around the cells differ | the spec check runs | it finds the quoted row |
+| EX-23 | RULE-3 | negative | A spec quotes a row of its FRD with one word changed inside a cell | the spec check runs | it fails with "quoted row not found verbatim" |
 | EX-8 | RULE-3 | positive | An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row | status runs | it reports no drift |
 | EX-9 | RULE-3 | negative | An approved spec where one word of a row changes | status runs | it fails with "body changed since approval" |
 | EX-10 | RULE-3 | positive | A document approved before this change, with no change since | status runs | it reports no drift |
@@ -113,6 +119,10 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-14** (EX-17): Given A UX document of 150 lines with a "Links:" header line gets one more content line, so it has 152 lines, when the docs lint runs, then it fails "UX is 151 lines, over its cap of 150".
 - **AC-15** (EX-18): Given An approved PRODUCT gets "Links: [Asana](https://app.asana.com/0/2/3)" as a line below its first "## " heading, when status runs, and the docs lint runs on a copy at its cap, then status reports "body changed since approval", and the line counts toward the cap.
 - **AC-16** (EX-19): Given An approved PRODUCT has one Links line in its header and gets a second one there, when status runs, then it reports "body changed since approval".
-- **AC-17** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
-- **AC-18** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
-- **AC-19** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.
+- **AC-17** (EX-20): Given The config says "legacyAdrsThrough": 28 and docs/adr/ADR-0012-x.md has no Status section, only the line "- **Estado:** Aceptada", when status runs, then it lists ADR-0012 as legacy and reports no failure for it.
+- **AC-18** (EX-21): Given The same config and docs/adr/ADR-0029-x.md has no Status section, when status runs, then it fails with "ADR status \"missing\" is not Proposed, Accepted, Superseded or Rejected" for ADR-0029, as today.
+- **AC-19** (EX-22): Given A spec quotes a row of its FRD, and a formatter has padded the cells of the FRD table, so the spaces around the cells differ, when the spec check runs, then it finds the quoted row.
+- **AC-20** (EX-23): Given A spec quotes a row of its FRD with one word changed inside a cell, when the spec check runs, then it fails with "quoted row not found verbatim".
+- **AC-21** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
+- **AC-22** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
+- **AC-23** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.

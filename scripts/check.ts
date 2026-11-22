@@ -20,6 +20,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
 import { history } from "./history.ts";
+import { cells } from "./lint-docs.ts";
 import { reworkFails } from "./rework.ts";
 import { gate, legacyAdrsThrough, pinProblem, readFormat } from "./format.ts";
 
@@ -341,12 +342,10 @@ export function checkSpec(text: string, specPath: string): string[] {
   const rows = rowLines(rowsBody);
   if (!rows.length) fails.push("Rows holds no quoted row lines");
   if (quoted && existsSync(quoted)) {
-    const have = new Set(
-      readFileSync(quoted, "utf8")
-        .split(/\r?\n/)
-        .map((l) => l.trimEnd()),
-    );
-    for (const r of rows) if (!have.has(r)) fails.push("quoted row not found verbatim in " + (from ?? on) + ": " + r.trim().slice(0, 60));
+    // A table row is compared cell by cell, each cell trimmed (a formatter pads cells); any other line as written.
+    const key = (l: string) => (/^\s*\|/.test(l) ? "|" + cells(l).join("|") : l.trimEnd());
+    const have = new Set(readFileSync(quoted, "utf8").split(/\r?\n/).map(key));
+    for (const r of rows) if (!have.has(key(r))) fails.push("quoted row not found verbatim in " + (from ?? on) + ": " + r.trim().slice(0, 60));
   } else if (from || on) fails.push("Quoted from " + (from ?? on) + ", which does not exist");
   // Document ids (SPEC-, FRD-, R-<SLICE>-n ...) name other documents; they are never row ids.
   const rowIds = new Set(rows.flatMap((r) => (r.trim().startsWith("|") ? r.trim().slice(1).split("|")[0]! : r).match(SPEC_ID)?.slice(0, 1) ?? []).filter((i) => !DOC_ID.test(i)));
@@ -522,9 +521,20 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
   }
   // An ADR has no parent: it may be Accepted while its TP is a draft. The TP is what waits for its ADRs (below).
   for (const f of ls(join(dd, "adr"), /^ADR-\d{3,}-.*\.md$/)) add(join(dd, "adr", f), "ADR");
+  // An ADR numbered at or below legacyAdrsThrough was written before adoption: listed as "legacy", counted as accepted, never failed for its status line.
+  let through: number | undefined;
+  try {
+    through = legacyAdrsThrough(root);
+  } catch {} // lint-docs reports a bad value
+  const legacy = new Set<string>();
+  for (const x of docs)
+    if (x.kind === "ADR" && through !== undefined && (adrNumber(x.path) ?? Infinity) <= through) {
+      Object.assign(x, { status: "legacy", approved: true });
+      legacy.add(x.path);
+    }
   const byPath = new Map(docs.map((x) => [x.path, x]));
   for (const x of docs) {
-    if (x.kind === "ADR" && !["Proposed", "Accepted", "Superseded", "Rejected"].includes(x.status)) fails.push(x.path + ': ADR status "' + x.status + '" is not Proposed, Accepted, Superseded or Rejected');
+    if (x.kind === "ADR" && !legacy.has(x.path) && !["Proposed", "Accepted", "Superseded", "Rejected"].includes(x.status)) fails.push(x.path + ': ADR status "' + x.status + '" is not Proposed, Accepted, Superseded or Rejected');
     if (!x.approved || x.kind === "REQUEST") continue;
     for (const par of [x.parent, ...(x.also ?? [])]) {
       if (!par) continue;
