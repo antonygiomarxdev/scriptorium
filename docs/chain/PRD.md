@@ -1,13 +1,13 @@
 # Chain PRD
 
-Status: Approved (2026-11-21)
-Approval: content _I099qjvgjrm; rests on ../PRODUCT.md F7LrvhspMBeq
+Status: Approved (2026-11-22)
+Approval: content ASR_OGQqlGDj; rests on ../PRODUCT.md F7LrvhspMBeq
 
 ## Summary
 
 The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
 
-Last change: 2026-11-21, a Links header line holding only links stays out of the fingerprint (R-CHAIN-9)
+Last change: 2026-11-22, R-CHAIN-38 diagrams and R-CHAIN-39 specs checked against code (owner)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -55,6 +55,8 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-35.** Every spec names what it builds on: existing code by path and name, and a precedent spec, or why there is none; the check fails a name that does not exist, and review fails code that repeats existing code (REQ-7).
 - **R-CHAIN-36.** Every open question names who answers it: the owner, with the reason only the owner can; research; or the lead. The owner is asked only the owner's questions, together, each with a recommendation (REQ-10, D-36).
 - **R-CHAIN-37.** The checks pass on a fixture of a project that adopted the chain with its history, and a verbatim export of another tool has one place outside docs/, linked from the document that absorbed it (REQ-13).
+- **R-CHAIN-38.** A TP's architecture, each UX flow, and the states of an FRD that has states are drawn as a Mermaid diagram that GitHub renders with no tool installed; one page of practices says which diagram fits which question and how to keep it small and readable, and the checks lint what text can show (REQ-15).
+- **R-CHAIN-39.** Every path a spec names is a tracked file unless the spec creates it, and a call in one spec has the argument count its sibling spec declares (REQ-14).
 
 ## Principles honored
 Principle 2 shapes R-CHAIN-4 and R-CHAIN-5: nothing is approved over an open question or an unapproved parent. Principle 3 shapes R-CHAIN-3: the owner alone approves. Principle 4 shapes R-CHAIN-10, R-CHAIN-15 and R-CHAIN-16: a rule counts only when a script enforces it. Principle 5 shapes R-CHAIN-14: a small change skips the full chain. Principle 6 shapes R-CHAIN-6 and R-CHAIN-7: short documents that start with what matters. Principle 7 shapes R-CHAIN-9, R-CHAIN-23 and R-CHAIN-24: drift is detected, coverage is scanned and history is read from git, none of it assumed.

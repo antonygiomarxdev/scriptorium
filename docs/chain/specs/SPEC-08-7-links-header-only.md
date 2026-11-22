@@ -1,7 +1,7 @@
 # SPEC-08-7: Only the first Links line of the header is left out
 
 Status: Approved (2026-11-21)
-Approval: content GjMgHtsOPeD1; rests on ../frd/FRD-08-adopted-documents-as-they-are.md WYJ57q40FnTn
+Approval: content GjMgHtsOPeD1; rests on ../frd/FRD-08-adopted-documents-as-they-are.md m4Xr-BfH5eG6
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

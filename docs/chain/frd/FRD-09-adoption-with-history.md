@@ -1,7 +1,7 @@
 # FRD-09: Adoption with history is tested
 
 Status: Approved (2026-11-21)
-Approval: content ZUz9wr_iEtpE; rests on ../PRD.md _I099qjvgjrm
+Approval: content ZUz9wr_iEtpE; rests on ../PRD.md ASR_OGQqlGDj
 
 ## Summary
 

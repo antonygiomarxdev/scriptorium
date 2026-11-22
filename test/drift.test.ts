@@ -270,3 +270,36 @@ test("FRD-08/EX-19: a second Links line in the header is drift, and a change of 
   const r = driftFails(root).fails;
   expect(r.some((f) => f.includes("PRODUCT.md") && f.includes("body changed since approval"))).toBe(true);
 });
+
+// covers: chain/FRD-08/EX-26
+test("FRD-08/EX-26: a body line that starts with Approval: or Status: is drift", () => {
+  for (const [line, anchor] of [
+    ["Approval: the owner agreed to 10 places", "## Summary\n"],
+    ["Status: Approved by the owner on a call", "## Summary\n"],
+  ] as const) {
+    const { root, product } = approved();
+    edit(product, anchor, anchor + line + "\n");
+    const r = driftFails(root).fails;
+    expect([line, r.some((f) => f.includes("PRODUCT.md") && f.includes("body changed since approval"))]).toEqual([line, true]);
+  }
+  const { root } = approved(); // mutant: untouched, no drift
+  expect(driftFails(root).fails).toEqual([]);
+});
+
+// covers: chain/FRD-08/EX-27
+test("FRD-08/EX-27: a document approved before this change, with Status and Approval only in its header, is not drift in either fingerprint form", () => {
+  const doc = "# Product\n\nStatus: Approved (2026-11-01)\nApproval: content PLACEHOLDER\n\n## Summary\n\nA.\n\nLast change: 2026-11-01, x\n\n| a | b |\n|---|---|\n| one | two |\n\nR-1 the system shall work.\n";
+  // both stored values were taken from the fingerprint code of the day: the earlier form, and the form with formatting ignored
+  for (const [form, stored] of [
+    ["earlier", "BVN8Iy58CAc4"],
+    ["current", "WI0pREjVV2i_"],
+  ] as const) {
+    const root = mkdtempSync(join(tmpdir(), "drift-header-"));
+    mkdirSync(join(root, "docs"), { recursive: true });
+    const product = join(root, "docs", "PRODUCT.md");
+    writeFileSync(product, doc.replace("PLACEHOLDER", stored));
+    expect([form, driftFails(root).fails]).toEqual([form, []]);
+    writeFileSync(product, doc.replace("PLACEHOLDER", stored).replace("one | two", "one | three")); // mutant: a real change still fails
+    expect([form, driftFails(root).fails.length]).toEqual([form, 1]);
+  }
+});

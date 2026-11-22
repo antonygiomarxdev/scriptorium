@@ -1,7 +1,7 @@
 # SPEC-08-5: A Links line is not part of the approval
 
 Status: Approved (2026-11-21)
-Approval: content n7HJ0OpCgIMS; rests on ../frd/FRD-08-adopted-documents-as-they-are.md WYJ57q40FnTn
+Approval: content n7HJ0OpCgIMS; rests on ../frd/FRD-08-adopted-documents-as-they-are.md m4Xr-BfH5eG6
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

@@ -1,7 +1,7 @@
 # FRD-07: A TP that rests on a request or a registry
 
 Status: Approved (2026-11-21)
-Approval: content iWE6ErQcSy7r; rests on ../PRD.md _I099qjvgjrm
+Approval: content iWE6ErQcSy7r; rests on ../PRD.md ASR_OGQqlGDj
 
 ## Summary
 

@@ -8,11 +8,12 @@ import { toPosix } from "./paths.ts";
 
 const STATUS = /^\**Status:?\**\s*(Draft|Approved)/i;
 const APPROVAL = /^Approval: /;
-const IGNORED = (l: string) => STATUS.test(l) || APPROVAL.test(l) || /^Last change:/.test(l); // header lines that may change after approval
+const IGNORED = (l: string) => /^Last change:/.test(l); // the Last change line sits under the Summary, so it is left out wherever it is
 
-// Index of the first line starting "<key>:" above the first "## " heading, or -1. A line with that key in the body, or a second one in the header, is not it.
-export function headerLine(lines: string[], key: string): number {
-  const i = lines.findIndex((l) => l.startsWith(key + ":"));
+// Index of the first line starting "<key>:" (or matching the pattern) above the first "## " heading, or -1.
+// A line with that key in the body, or a second one in the header, is not it.
+export function headerLine(lines: string[], key: string | RegExp): number {
+  const i = lines.findIndex((l) => (typeof key === "string" ? l.startsWith(key + ":") : key.test(l)));
   const h = lines.findIndex((l) => /^## /.test(l));
   return i >= 0 && (h < 0 || i < h) ? i : -1;
 }
@@ -25,7 +26,7 @@ export function normalizeV1(text: string): string {
   return text
     .split(/\r?\n/)
     .map((l) => l.replace(/\s+$/, ""))
-    .filter((l, i, all) => !IGNORED(l) && i !== linksLine(all))
+    .filter((l, i, all) => !IGNORED(l) && ![linksLine(all), headerLine(all, STATUS), headerLine(all, APPROVAL)].includes(i)) // only the header Status, Approval and Links lines
     .join("\n")
     .trim();
 }

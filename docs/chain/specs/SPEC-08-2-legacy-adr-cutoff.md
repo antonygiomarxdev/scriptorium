@@ -1,7 +1,7 @@
 # SPEC-08-2: ADRs below the adoption cutoff are kept as they are
 
 Status: Approved (2026-11-21)
-Approval: content wRJOZCjwQxR5; rests on ../frd/FRD-08-adopted-documents-as-they-are.md WYJ57q40FnTn
+Approval: content wRJOZCjwQxR5; rests on ../frd/FRD-08-adopted-documents-as-they-are.md m4Xr-BfH5eG6
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary
