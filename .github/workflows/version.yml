@@ -1,39 +1,58 @@
 name: Version
 
-# On every push to main: while changesets are pending, keep a "Version Packages" pull request open.
-# When that pull request is merged (no changeset pending, package.json carries a version with no tag yet), tag it and publish the GitHub release.
+# After CI passes on a push to main: while changesets are pending, version them, commit to main, tag it and create the GitHub release.
+# With no changeset pending nothing happens. No pull request is opened. Nothing is published to a package registry.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency: version-${{ github.ref }}
 
 jobs:
   version:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - name: Open or update the Version Packages pull request
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: bun run version
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Only once no changeset is pending, that is after the Version Packages pull request was merged.
-      # While one is pending the action leaves the checkout on changeset-release/main, whose package.json already holds the next version.
-      - name: Tag and release a version that has no tag yet
-        if: steps.changesets.outputs.hasChangesets == 'false'
+      - name: Look for pending changesets
+        id: pending
+        run: |
+          # A later push moves main past the commit CI passed on: that push has its own run, so this one leaves it alone.
+          if [ "$(git rev-parse HEAD)" != "${{ github.event.workflow_run.head_sha }}" ]; then echo "pending=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if ls .changeset/*.md 2>/dev/null | grep -qv 'README.md$'; then echo "pending=true" >> "$GITHUB_OUTPUT"; else echo "pending=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Look for a version that has no tag yet
+        id: untagged
+        run: |
+          # The release of an earlier run may have stopped after its commit (no tag, no release): the version in package.json that no tag has yet is still due.
+          # Main has moved past the commit CI passed on: that push has its own run.
+          if [ "$(git rev-parse HEAD)" != "${{ github.event.workflow_run.head_sha }}" ]; then echo "untagged=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          VERSION=$(bun -e 'console.log(require("./package.json").version)')
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then echo "untagged=false" >> "$GITHUB_OUTPUT"; else echo "untagged=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Version the pending changesets
+        if: steps.pending.outputs.pending == 'true'
+        run: |
+          bunx changeset version
+          bun scripts/sync-version.ts
+      - name: Commit the version and the changelog to main
+        if: steps.pending.outputs.pending == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(release): version packages"
+          git push origin HEAD:main
+      - name: Tag and release the new version
+        if: steps.pending.outputs.pending == 'true' || steps.untagged.outputs.untagged == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
