@@ -1,5 +1,16 @@
 # scriptorium
 
+## 0.6.0
+
+### Minor Changes
+
+- 26ae2d2: Releases happen by themselves: after CI passes on a push to main that carries changesets, the version workflow versions, commits, tags and creates the GitHub release. No Version Packages pull request is opened. A version that was committed but never tagged is tagged by the next run. Nothing is published to npm.
+
+### Patch Changes
+
+- ac9e456: The line cap leaves out the header Approval line, which approve writes, so approving a document at its cap no longer takes it over the cap.
+- cde7b62: The approval fingerprint leaves out only the header Status and Approval lines. A body line that starts with "Status:" or "Approval:" is now covered by the approval, so text on it can no longer change unseen. Documents with those lines only in the header keep their fingerprints.
+
 ## 0.5.0
 
 ### Minor Changes
