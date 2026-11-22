@@ -118,3 +118,9 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-80 | 2026-11-22 | chain FRD-01 | C-1 | The fingerprint leaves out every line starting with "Approval: " or "Status: ", not only the header ones, so body text on such a line is not covered by the approval; no example puts one in the body. |
 | R-81 | 2026-11-22 | SPEC-08-11 | C-1 | A builder edited scripts/ in the checkout that adopting projects run in their hooks; a half-done drift.ts edit failed 157 and 184 approved documents there until the lead restored it. Builds now run in a separate worktree. |
 | R-82 | 2026-11-22 | SPEC-08-11 | C-1 | No example uses a bold "**Status:**" line or "Approval:" with no space in the fingerprint rule; both mutants survive, and the cap and the fingerprint define the Approval line slightly differently. |
+| R-83 | 2026-11-22 | SPEC-11-3 | C-1 | The spec says the page holds renderable syntax and cited ids, but no row or test pins those rules; removing any of them passes. |
+| R-84 | 2026-11-22 | SPEC-11-2 | C-1 | The build allowed fifteen Mermaid types where FR-CHAIN-11-2 allows six, and passed because EX-4 tested only one type outside the list. |
+| R-85 | 2026-11-22 | SPEC-10-2 | C-1 | No example has a default, optional, rest or generic parameter, so the argument count check fails correct specs that use them. |
+| R-86 | 2026-11-22 | SPEC-08-8 | C-1 | Status marks every legacy ADR approved before it reads its status line, so a spec resting on a superseded legacy ADR passes; no example had one. |
+| R-87 | 2026-11-22 | SPEC-01-6 | C-1 | Eleven of twelve workflow mutants survive: the tests read for words, and RL-2 accepts any "exit 0". A failed tag after the version commit leaves that version untagged forever. |
+| R-88 | 2026-11-22 | SPEC-11-1 | C-1 | The build let a Mermaid block replace the ST rows in States, which no row says; a test pinned the loosening. |

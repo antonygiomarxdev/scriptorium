@@ -375,3 +375,128 @@ test("EX-25: an approved spec of 81 lines with its Approval line gets one more c
   expect(r[0]).toContain("SPEC is 81 lines, over its cap of 80");
   expect(specCapReasons(specCap(80, { approval: true }))).toEqual([]); // one fewer content line is within the cap
 });
+
+// A TP whose Architecture holds the given Mermaid body, linted at pin 4: its findings and its warnings.
+const diagram = (body: string) => "# TP\n\n## Architecture\n```mermaid\n" + body + "\n```\n";
+function mermaidLint(body: string, config = '{"format":4}') {
+  const root = adrProject({ "inbox/tp/TP-01-a.md": diagram(body) }, config);
+  const warnings: string[] = [];
+  const fails = lintDocs(root, [], warnings);
+  return { fails: fails.map((f) => f.line + ": " + f.reason), warnings, raw: fails };
+}
+const chainOf = (n: number) => "flowchart LR\n" + Array.from({ length: n - 1 }, (_, i) => "  n" + (i + 1) + " --> n" + (i + 2)).join("\n");
+
+// covers: chain/FRD-11/EX-4
+test("EX-4: a Mermaid type GitHub is not known to render fails", () => {
+  const r = mermaidLint("architecture-beta\n  service db(database)[Database]");
+  expect(r.fails.some((f) => f.includes("Mermaid type architecture-beta is not one GitHub is known to render"))).toBe(true);
+  for (const type of ["pie", "gantt", "journey", "mindmap", "timeline", "gitGraph", "quadrantChart", "requirementDiagram", "stateDiagram"]) {
+    // only the six types of FR-CHAIN-11-2 render on GitHub with nothing installed; plain stateDiagram is not stateDiagram-v2
+    expect([type, mermaidLint(type + "\n").fails.some((f) => f.includes("is not one GitHub is known to render"))]).toEqual([type, true]);
+  }
+  for (const type of ["flowchart LR", "graph TD", "sequenceDiagram", "stateDiagram-v2", "erDiagram", "classDiagram"]) {
+    expect([type, mermaidLint(type + "\n").fails.some((f) => f.includes("is not one GitHub is known to render"))]).toEqual([type, false]);
+  }
+});
+
+// covers: chain/FRD-11/EX-5
+test("EX-5: an unquoted label with a bracket or a colon fails, naming the line and asking for double quotes", () => {
+  const r = mermaidLint("flowchart LR\n  A[Book (slot)] --> B");
+  const hit = r.raw.find((f) => f.reason.includes("double quotes"));
+  expect(hit).toBeDefined();
+  expect(hit?.line).toBe(6);
+  for (const label of ["A[Book: slot] --> B", "A{Pick [one]} --> B", "A[<b>bold</b>] --> B"]) {
+    expect([label, mermaidLint("flowchart LR\n  " + label).fails.length > 0]).toEqual([label, true]);
+  }
+});
+
+// covers: chain/FRD-11/EX-6
+test("EX-6: a quoted label reports nothing for that line, and a node named end in lowercase fails", () => {
+  const ok = mermaidLint('flowchart LR\n  A["Book (slot)"] --> B["Next: step"]');
+  expect(ok.fails).toEqual([]);
+  expect(ok.warnings).toEqual([]);
+  expect(mermaidLint("flowchart LR\n  A --> end").fails.length).toBe(1); // mutant: the keyword end breaks GitHub's renderer
+});
+
+// covers: chain/FRD-11/EX-7
+test("EX-7: a flowchart of 16 nodes warns about its size and passes; 15 nodes do not warn", () => {
+  const big = mermaidLint(chainOf(16));
+  expect(big.fails).toEqual([]);
+  expect(big.warnings.some((w) => w.includes("16 nodes, keep a diagram at 15 or fewer"))).toBe(true);
+  expect(mermaidLint(chainOf(15)).warnings.some((w) => w.includes("nodes, keep a diagram at 15 or fewer"))).toBe(false);
+});
+
+// covers: chain/FRD-11/EX-9
+test("EX-9: a sequence diagram of 6 participants and 9 messages reports nothing", () => {
+  const participants = ["A", "B", "C", "D", "E", "F"].map((p) => "  participant " + p);
+  const messages = ["A->>B: ask", "B->>C: ask", "C->>D: ask", "D->>E: ask", "E->>F: ask", "F-->>E: reply", "E-->>D: reply", "D-->>C: reply", "C-->>B: reply"].map((m) => "  " + m);
+  const r = mermaidLint("sequenceDiagram\n" + participants.concat(messages).join("\n"));
+  expect(r.fails).toEqual([]);
+  expect(r.warnings.filter((w) => w.includes("nodes"))).toEqual([]);
+});
+
+// covers: chain/FRD-11/EX-5
+test("EX-5: HTML fails even inside a quoted label, and an unquoted bracket label fails in a graph too", () => {
+  for (const node of ['A["a<br>b"] --> B', 'A["<b>bold</b>"] --> B']) {
+    const r = mermaidLint("flowchart LR\n  " + node);
+    expect([node, r.raw.some((f) => f.line === 6)]).toEqual([node, true]);
+  }
+  expect(mermaidLint('flowchart LR\n  A["a b"] --> B').fails).toEqual([]); // mutant: the same node without HTML passes
+  const graph = mermaidLint("graph TD\n  A[Book (slot)] --> B");
+  expect(graph.raw.find((f) => f.reason.includes("double quotes"))?.line).toBe(6);
+});
+
+// covers: chain/FRD-11/EX-6
+test("EX-6: a node named end in lowercase fails after an arrow with a head of x or o, and as a node with a label", () => {
+  for (const line of ["A --x end", "A --o end", "end[Done]", "A --> end", "end --> B"]) {
+    const r = mermaidLint("flowchart LR\n  " + line);
+    expect([line, r.fails.length > 0]).toEqual([line, true]);
+  }
+  for (const line of ["A --x End", "A --o End", "End[Done]", "A --> Endpoint", "A --> ending"]) {
+    const r = mermaidLint("flowchart LR\n  " + line);
+    expect([line, r.fails]).toEqual([line, []]); // End, or a name that only starts with end, is fine
+  }
+});
+
+// covers: chain/FRD-11/EX-7
+test("EX-7: any Mermaid block over 15 nodes warns: 16 states and 16 classes", () => {
+  const states = (n: number) => "stateDiagram-v2\n" + Array.from({ length: n - 1 }, (_, i) => "  s" + (i + 1) + " --> s" + (i + 2)).join("\n");
+  const classes = (n: number) => "classDiagram\n" + Array.from({ length: n }, (_, i) => "  class C" + (i + 1)).join("\n");
+  for (const [name, body] of [
+    ["states", states(16)],
+    ["classes", classes(16)],
+  ] as const) {
+    const r = mermaidLint(body);
+    expect([name, r.fails]).toEqual([name, []]);
+    expect([name, r.warnings.some((w) => w.includes("16 nodes, keep a diagram at 15 or fewer"))]).toEqual([name, true]);
+  }
+  for (const [name, body] of [
+    ["states", states(15)],
+    ["classes", classes(15)],
+  ] as const) {
+    expect([name, mermaidLint(body).warnings.some((w) => w.includes("nodes, keep a diagram at 15 or fewer"))]).toEqual([name, false]);
+  }
+});
+
+// covers: chain/FRD-11/EX-9
+test("EX-9: a sequence diagram of 20 participants stays quiet", () => {
+  const names = Array.from({ length: 20 }, (_, i) => "P" + (i + 1));
+  const body =
+    "sequenceDiagram\n" +
+    names.map((n) => "  participant " + n).join("\n") +
+    "\n" +
+    names
+      .slice(1)
+      .map((n, i) => "  " + names[i] + "->>" + n + ": ask")
+      .join("\n");
+  const r = mermaidLint(body);
+  expect(r.fails).toEqual([]);
+  expect(r.warnings).toEqual([]);
+});
+
+// covers: chain/FRD-11/EX-4
+test("EX-4: under format 3 a type GitHub is not known to render is a warning, not a failure", () => {
+  const r = mermaidLint("architecture-beta\n  service db(database)[Database]", '{"format":3}');
+  expect(r.fails).toEqual([]);
+  expect(r.warnings.some((w) => w.startsWith("WARN (format 4): ") && w.includes("architecture-beta is not one GitHub is known to render"))).toBe(true);
+});

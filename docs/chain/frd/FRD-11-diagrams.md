@@ -1,6 +1,7 @@
 # FRD-11: Diagrams where they explain
 
-Status: Draft
+Status: Approved (2026-11-22)
+Approval: content rh70IXLPkBx4; rests on ../PRD.md ASR_OGQqlGDj
 
 ## Summary
 

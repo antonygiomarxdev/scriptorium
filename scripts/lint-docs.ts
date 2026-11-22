@@ -102,6 +102,96 @@ export function avoidWords(glossary: string): string[] {
   return [...new Set(out)];
 }
 
+// Mermaid types GitHub is known to render.
+const MERMAID_TYPES = new Set(["flowchart", "graph", "sequenceDiagram", "stateDiagram-v2", "erDiagram", "classDiagram"]); // the six types FR-CHAIN-11-2 allows
+const EDGE = /<?(?:-->|---|==>|-\.->|--[ox]|~~~)>?(?:\|[^|]*\|)?|&/;
+const NOT_NODE = /^\s*(subgraph|classDef|class|style|linkStyle|click|direction|%%)\b/;
+
+// The node ids of a diagram body, by type: flowchart and graph nodes, states, classes and entities. Sequence diagrams have none.
+const CLASS_REL = /\s+(?:<\|--|--\|>|\*--|--\*|o--|--o|<--|-->|\.\.>|<\.\.|\.\.\|>|--|\.\.)\s+/;
+const ER_REL = /\s+[|o}{]{1,2}(?:--|\.\.)[|o}{]{1,2}\s+/;
+function countable(type: string, body: string[]): string[] {
+  const id = (s: string) => /^\s*([A-Za-z_][\w-]*)/.exec(s)?.[1];
+  // the ids at the ends of a relation line; a line with no relation holds none
+  const ends = (s: string, rel: RegExp) => (rel.test(s) ? s.split(rel).flatMap((p) => id(p) ?? []) : []);
+  const out: string[] = [];
+  let inBlock = false; // inside an entity's attribute list
+  for (const s of body) {
+    if (!s.trim() || /^\s*(note|direction|%%)/.test(s)) continue;
+    if (type === "classDiagram") {
+      const decl = /^\s*class\s+([A-Za-z_]\w*)/.exec(s)?.[1];
+      out.push(...(decl ? [decl] : ends(s, CLASS_REL)));
+    } else if (type === "erDiagram") {
+      if (inBlock) inBlock = !s.includes("}");
+      else {
+        const ent = /^\s*([A-Za-z_][\w-]*)\s*\{/.exec(s)?.[1];
+        if (ent) inBlock = !s.includes("}");
+        out.push(...(ent ? [ent] : ends(s, ER_REL)));
+      }
+    } else {
+      const decl = type === "stateDiagram-v2" ? /^\s*state\s+(?:"[^"]*"\s+as\s+)?([A-Za-z_]\w*)/.exec(s)?.[1] : undefined;
+      if (decl) out.push(decl);
+      else if (!NOT_NODE.test(s) && s.trim() !== "end") for (const p of s.split(new RegExp(EDGE.source, "g"))) out.push(...(id(p) && !/^\s*state\b/.test(p) ? [id(p)!] : []));
+    }
+  }
+  return out;
+}
+
+// Findings in the Mermaid blocks of a document, read from its raw lines (fenced code is not prose). Failures are format 4;
+// a size warning carries "[warn] " and goes to the warnings. Labels are checked in flowcharts: quote any label that holds ( ) [ ] { } : or HTML.
+function mermaidFindings(text: string): { line: number; reason: string }[] {
+  const out: { line: number; reason: string }[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^\s*```mermaid\b/.test(lines[i]!)) continue;
+    const start = i + 2;
+    const body: { n: number; s: string }[] = [];
+    for (i++; i < lines.length && !/^\s*```\s*$/.test(lines[i]!); i++) body.push({ n: i + 1, s: lines[i]! });
+    const first = body.find((l) => l.s.trim() && !/^\s*%%/.test(l.s));
+    const type = first?.s.trim().split(/\s+/)[0] ?? "";
+    if (!MERMAID_TYPES.has(type)) {
+      out.push({ line: first?.n ?? start, reason: "[format 4] Mermaid type " + (type || "(none)") + " is not one GitHub is known to render" });
+      continue;
+    }
+    if (type === "sequenceDiagram") continue; // participants and messages are not nodes
+    const nodes = new Set<string>(
+      countable(
+        type,
+        body.filter((l) => l.s !== first!.s).map((l) => l.s),
+      ),
+    );
+    if (type !== "flowchart" && type !== "graph") {
+      if (nodes.size > 15) out.push({ line: start, reason: "[warn] " + nodes.size + " nodes, keep a diagram at 15 or fewer" });
+      continue;
+    }
+    for (const { n, s } of body) {
+      if (s === first!.s || NOT_NODE.test(s) || s.trim() === "end") continue; // a lone "end" closes a subgraph
+      // labels: id[...] id(...) id{...}; the text inside must be in double quotes if it holds a bracket, a colon or HTML
+      for (const m of s.matchAll(/([A-Za-z_][\w-]*)\s*([[({])/g)) {
+        const open = m[2]!;
+        const close = { "[": "]", "(": ")", "{": "}" }[open]!;
+        let depth = 0;
+        let j = m.index! + m[0].length - 1;
+        const from = j + 1;
+        for (; j < s.length; j++) {
+          if (s[j] === open) depth++;
+          else if (s[j] === close && --depth === 0) break;
+        }
+        const label = s
+          .slice(from, j)
+          .replace(/^[([{/\\]+/, "")
+          .replace(/[)\]}/\\]+$/, "");
+        if (/<\/?[A-Za-z][^>]*>/.test(label)) out.push({ line: n, reason: "[format 4] label " + label + " holds HTML, which GitHub does not render in a label: write the words" });
+        else if (!/^".*"$/.test(label) && /[()[\]{}:<>]/.test(label)) out.push({ line: n, reason: "[format 4] label " + label + " holds a bracket, a colon or HTML: put the label in double quotes" });
+      }
+      // a node named end, in lowercase, breaks the renderer: after any edge form (-->, --x, --o ...), before one, or alone with a label
+      if (s.split(new RegExp(EDGE.source, "g")).some((part) => /^\s*end(?![\w-])/.test(part))) out.push({ line: n, reason: '[format 4] a node named end breaks the renderer on GitHub: name it End or "end"' });
+    }
+    if (nodes.size > 15) out.push({ line: start, reason: "[warn] " + nodes.size + " nodes, keep a diagram at 15 or fewer" });
+  }
+  return out;
+}
+
 export function lintFile(rel: string, text: string, phrases: string[], upstream: string[] = [], dirOnDisk?: string, avoid: string[] = [], projectRoot?: string): Fail[] {
   const fails: Fail[] = [];
   const f = (line: number, reason: string) => fails.push({ file: rel, line, reason });
@@ -151,6 +241,8 @@ export function lintFile(rel: string, text: string, phrases: string[], upstream:
     if (!body) f(h.n, "section is empty: " + h.s);
     else if (/^(TBD|TODO|n\/a)\.?$/i.test(body)) f(h.n, "section holds only " + body + ": " + h.s);
   });
+
+  for (const m of mermaidFindings(text)) f(m.line, m.reason);
 
   // A Links header line holds markdown links to https URLs, commas and spaces, nothing else (it is left out of the fingerprint).
   for (const { n, s } of lines) if (/^Links:/.test(s) && /[^,\s]/.test(s.slice(6).replace(/\[[^\]]*\]\(https:\/\/[^)\s]+\)/g, ""))) f(n, "Links line holds text that is not a link");
@@ -253,6 +345,10 @@ export function lintDocs(root: string, phrases: string[], warnings: string[] = [
     );
   }
   return fails.filter((x) => {
+    if (x.reason.startsWith("[warn] ")) {
+      warnings.push("WARN: docs/" + x.file + ":" + x.line + ": " + x.reason.slice(7)); // a size warning is never a failure
+      return false;
+    }
     const g = gate([x.reason], pin);
     if (g.fails.length) x.reason = g.fails[0]!;
     else warnings.push(g.warnings[0]!.replace(/^(WARN \(format \d+\): )/, "$1docs/" + x.file + ":" + x.line + ": "));

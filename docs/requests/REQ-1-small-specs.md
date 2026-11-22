@@ -32,7 +32,7 @@ One level, no sub-spec and no brief: the small spec is the hand-over.
 ```mermaid
 flowchart LR
   FRD --> S1[SPEC-01-1] & S2[SPEC-01-2] & S3[SPEC-01-3]
-  FIX[REQ: bug] --> S4[SPEC-01-4]
+  FIX["REQ: bug"] --> S4[SPEC-01-4]
   S4 -. rests on .-> FRD
 ```
 

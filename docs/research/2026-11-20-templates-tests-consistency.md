@@ -63,12 +63,12 @@ An entry is not closed by a lesson. It is closed by a prevention that is proven.
 
 ```mermaid
 flowchart LR
-  F[Failure found] --> E[Entry: step and class]
-  E --> P[Prevention: check, test, lint, hook, template field]
+  F[Failure found] --> E["Entry: step and class"]
+  E --> P["Prevention: check, test, lint, hook, template field"]
   P --> RP{Replay of the failure fails the prevention?}
   RP -- no --> P
   RP -- yes --> C[Closed, archived]
-  C -. same class again .-> RO[Reopen: prevention failed, move up the chain] --> P
+  C -. same class again .-> RO["Reopen: prevention failed, move up the chain"] --> P
 ```
 
 ## Sources
