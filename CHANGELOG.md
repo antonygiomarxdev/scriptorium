@@ -1,5 +1,12 @@
 # scriptorium
 
+## 0.7.0
+
+### Minor Changes
+
+- 828d512: The docs lint reads Mermaid blocks: a type GitHub does not render, a label with a bracket, a colon or HTML outside double quotes, HTML in any label, and a node named end in lowercase fail as format 4 rules (a warning for projects pinned below 4). A diagram over 15 nodes gets a warning; sequence diagrams are not counted.
+- 091fb43: Format 4. The spec check fails a path in Files, Tests first or Done that git does not track, unless a Files row marks it Create, and fails a call whose argument count fits no declaration of the same name in a sibling spec. A TP's Architecture, each UX Flows section and an FRD's States (unless n/a) must hold a Mermaid block. skills/scriptorium/diagrams.md holds the diagram practices, linked from the PRODUCT, PRD, FRD, UX and TP skills. Projects pinned below 4 see these as warnings until they migrate.
+
 ## 0.6.0
 
 ### Minor Changes
