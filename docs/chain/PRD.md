@@ -1,7 +1,7 @@
 # Chain PRD
 
 Status: Approved (2026-11-22)
-Approval: content ASR_OGQqlGDj; rests on ../PRODUCT.md F7LrvhspMBeq
+Approval: content ASR_OGQqlGDj; rests on ../PRODUCT.md WYQLLUQoIF4u
 
 ## Summary
 

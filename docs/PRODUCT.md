@@ -1,7 +1,7 @@
 # Scriptorium: product overview
 
-Status: Approved (2026-11-21)
-Approval: content F7LrvhspMBeq
+Status: Approved (2026-11-23)
+Approval: content WYQLLUQoIF4u
 
 ## Summary
 
@@ -12,7 +12,7 @@ Scriptorium makes a project write down what it is building, and why, before an a
 - Every rule that can be checked is a script, and every check says what it cannot see (principle 4).
 - Review is closed: a change fails only against an approved acceptance criterion or a failed gate, and every recurring failure becomes a proven check (D-19, L-6, L-10).
 
-Last change: 2026-11-21, the retro gives way to the rework queue and the rework skill (REQ-12, D-33)
+Last change: 2026-11-22, the two diagram labels with a colon are quoted (owner)
 
 What every slice shares. Product decisions: [DECISIONS.md](DECISIONS.md). Terms: [GLOSSARY.md](GLOSSARY.md). Research: [research/](research/).
 
@@ -37,11 +37,11 @@ flowchart LR
   CTP -.-> ADR
   Q{{Open questions closed?}} -. gate .- PRD & FRD & TP & S
   SP[Fix, CI, configuration] --> S
-  R[Request: who and why] --> PRD
+  R["Request: who and why"] --> PRD
   R --> SP
   FRD --> UX[UX, when the interface changes] --> TP
   C --> RV{Accepted first time?}
-  RV -- no: log step and cause --> M[(Rework queue)] --> RT[Rework plan: fix templates and checks]
+  RV -- no: log step and cause --> M[(Rework queue)] --> RT["Rework plan: fix templates and checks"]
 ```
 
 It starts a chain in a new project, adopts the documents an existing project already has, maps undocumented code into draft documents, and shows the status of every document. It runs with one owner and agents, or with an agent team.
