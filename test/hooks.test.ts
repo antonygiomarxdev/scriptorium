@@ -368,3 +368,12 @@ test("EX-15: pre-commit at pin 2 passes with the failing rework log and prints t
   expect(out).toContain("C-1 (FRD) found 2 times with no prevention: R-1, R-2");
   expect(run('{"format":3}').code).toBe(1); // mutant: under format 3 the same log blocks
 }, 60000);
+
+// covers: chain/FRD-08/EX-33
+test("EX-33: the edit hook checks docs/adr/0031-x.md as an ADR: no Summary section fails", () => {
+  const adr = "# ADR-0031: x\n\n## Status\nAccepted\n\n## Context\nc\n## Options considered\no\n## Decision\nd\n## Consequences\nc\n";
+  const root = project({ "docs/PRODUCT.md": PRODUCT, "docs/adr/0031-x.md": adr });
+  expect(runDocChecks(root, "docs/adr/0031-x.md").some((f) => f.includes("no ## Summary within the first 20 lines"))).toBe(true);
+  const ok = project({ "docs/PRODUCT.md": PRODUCT, "docs/adr/0031-x.md": adr.replace("## Context", "## Summary\n\ns\n\n## Context") }); // mutant: with its Summary it passes
+  expect(runDocChecks(ok, "docs/adr/0031-x.md")).toEqual([]);
+});

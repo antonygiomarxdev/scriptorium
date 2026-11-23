@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { lintDocs, loadPhrases } from "./lint-docs.ts";
 import { pinProblem } from "./format.ts";
+import { kindOf } from "./kinds.ts";
 import { toPosix, typed } from "./paths.ts";
 
 const CHECK = join(import.meta.dir, "check.ts");
@@ -23,26 +24,22 @@ export function splitDocPath(file: string): { root: string; rel: string } | unde
 
 export function checksFor(root: string, rel: string): Check[] {
   const parts = rel.split("/"); // parts[0] === "docs"
-  const name = parts[parts.length - 1];
+  const kind = kindOf(rel.slice("docs/".length)); // the one rule: no name pattern of its own here
   const summary: Check = { args: ["summary", rel] };
   const read = (p: string) => (existsSync(join(root, p)) ? readFileSync(join(root, p), "utf8") : "");
-  if (parts.length === 2) return name === "PRODUCT.md" ? [summary] : [];
-  const top = parts[1];
-  if (["retro", "decisions", "research"].includes(top)) return [];
-  if (top === "requests") return /^REQ-/.test(name) ? [summary] : [];
-  if (top === "adr") return /^ADR-/.test(name) ? [summary] : [];
-  if (top === "tp") return name === "TP.md" ? [{ args: ["tp", rel, "docs/adr"] }, summary] : [];
-  const dir = "docs/" + top;
+  if (kind === "PRODUCT" || kind === "ADR" || kind === "REQUEST") return [summary];
+  if (kind === "TP" && parts.length === 3) return [{ args: ["tp", rel, "docs/adr"] }, summary]; // the cross-cutting TP, docs/tp/TP.md
+  if (!kind || !["PRD", "FRD", "UX", "TP", "SPEC"].includes(kind)) return [];
+  const dir = "docs/" + parts[1];
   const prd = read(dir + "/PRD.md");
   // The slice id is the one the PRD's requirements use: R-<ID>-n.
-  const id = prd.match(/\bR-([A-Z0-9]+)-\d+\b/)?.[1] ?? top.toUpperCase();
-  const sub = parts[2];
-  if (parts.length === 3 && name === "PRD.md") return [{ args: ["prd", rel, id] }, summary];
-  if (sub === "frd" && /^FRD-\d{2}-/.test(name)) return [{ args: ["frd", dir, id], only: name }, summary];
-  if (sub === "ux" && /^UX-\d{2}-/.test(name)) return [{ args: ["ux", dir], only: name }, summary];
-  if (sub === "tp" && /^TP-\d{2}-/.test(name)) return [{ args: ["tp", rel, "docs/adr"] }, summary];
-  if (sub === "specs" && /^SPEC-\d{2}-/.test(name)) return [{ args: ["spec", rel] }, summary];
-  return [];
+  const id = prd.match(/\bR-([A-Z0-9]+)-\d+\b/)?.[1] ?? parts[1]!.toUpperCase();
+  const name = parts[parts.length - 1]!;
+  if (kind === "PRD") return [{ args: ["prd", rel, id] }, summary];
+  if (kind === "FRD") return [{ args: ["frd", dir, id], only: name }, summary];
+  if (kind === "UX") return [{ args: ["ux", dir], only: name }, summary];
+  if (kind === "TP") return [{ args: ["tp", rel, "docs/adr"] }, summary];
+  return [{ args: ["spec", rel] }, summary];
 }
 
 function run(root: string, script: string, args: string[]): { code: number; out: string } {

@@ -21,6 +21,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
 import { history } from "./history.ts";
+import { ADR_NAME, docNumber, kindOf, RESERVED } from "./kinds.ts";
 import { cells } from "./lint-docs.ts";
 import { reworkFails } from "./rework.ts";
 import { gate, legacyAdrsThrough, pinProblem, readFormat } from "./format.ts";
@@ -29,7 +30,7 @@ import { gate, legacyAdrsThrough, pinProblem, readFormat } from "./format.ts";
 // shortcut: fixed list, make it configurable per project when a project needs other words.
 const TECH = /\b(Bun|Node(\.js)?|TypeScript|Python|SQLite|Postgres|MySQL|Redis|JSONL?|CSV|YAML|HTTP|REST|GraphQL|HMAC|npm|endpoint|webhook handler|MCP tool)\b/;
 // Folders under docs/ that are not slices.
-export const RESERVED = ["requests", "tp", "adr", "retro", "decisions", "research"];
+export { RESERVED }; // the one list lives in kinds.ts, next to the rule that uses it
 const VAGUE = /^(fast|quick|secure|easy|simple|robust|user-friendly|good|nice)\.?$/i;
 
 const STATUS = /^\**Status:?\**\s*(Draft\b|Approved \(\d{4}-\d{2}-\d{2}\)|Superseded by \S.*? \(\d{4}-\d{2}-\d{2}\))/im;
@@ -179,13 +180,13 @@ export function checkFrds(dir: string, slice: string): { fails: string[]; files:
   const fails: string[] = [];
   const files = existsSync(frdDir)
     ? readdirSync(frdDir)
-        .filter((f) => /^FRD-\d{2}-[a-z0-9-]+\.md$/.test(f))
+        .filter((f) => kindOf("x/frd/" + f) === "FRD")
         .sort()
     : [];
   if (!files.length) fails.push("no FRD files named FRD-NN-name.md in " + frdDir);
   const covered = new Set<string>();
   for (const f of files) {
-    const r = checkFrd(readFileSync(join(frdDir, f), "utf8"), f, slice, f.slice(4, 6), prdReqs);
+    const r = checkFrd(readFileSync(join(frdDir, f), "utf8"), f, slice, docNumber(f)!, prdReqs);
     fails.push(...r.fails);
     r.covered.forEach((c) => covered.add(c));
   }
@@ -193,7 +194,7 @@ export function checkFrds(dir: string, slice: string): { fails: string[]; files:
   return { fails, files: files.length, reqs: prdReqs.size };
 }
 
-const nnFile = (d: string, prefix: string, nn: string) => (existsSync(d) ? readdirSync(d).find((f) => f.startsWith(prefix + "-" + nn + "-") && f.endsWith(".md")) : undefined);
+const nnFile = (d: string, prefix: string, nn: string) => (existsSync(d) ? readdirSync(d).find((f) => f.startsWith(prefix + "-" + nn + "-") && kindOf("x/" + basename(d) + "/" + f)) : undefined);
 
 // diagrams: also hold the Flows section to a Mermaid block (format 4).
 export function checkUx(dir: string, diagrams = true): { fails: string[]; files: number } {
@@ -209,7 +210,7 @@ export function checkUx(dir: string, diagrams = true): { fails: string[]; files:
     if (!STATUS.test(s)) fails.push(f + ": " + NO_STATUS);
     fails.push(...missing(s, ["Summary", "Flows", "Screens", "States", "Design system", "Accessibility and language", "Open questions"]).map((x) => f + ": " + x));
     fails.push(...answererFails(s, f + ": "), ...(diagrams ? diagramFails(s, "Flows", f + ": ") : []));
-    const nn = f.slice(3, 5);
+    const nn = docNumber(f)!;
     if (!nnFile(join(dir, "frd"), "FRD", nn)) fails.push(f + ": FRD-" + nn + " does not exist in " + join(dir, "frd"));
   }
   return { fails, files: files.length };
@@ -226,7 +227,7 @@ export const frDefs = (frd: string) =>
 // A TP lists its decisions as "### TD-n: title", each with at least two options and a chosen one backed by an ADR or an explained "none".
 // knownFrs: every FR id defined in the project, so the TP can only cite real requirements.
 // An ADR file is ADR-<id>-name.md or <id>-name.md (legacy), the dash after the id kept.
-const ADR_FILE = /^(ADR-)?\d{3,}-[a-z0-9-]+\.md$/;
+const ADR_FILE = ADR_NAME;
 
 // The number of an ADR file or path (ADR-0021-x.md and 0021-x.md both give 21).
 export function adrNumber(file: string): number | undefined {
@@ -615,17 +616,18 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     if (d.by && !existsSync(fromDoc(path, d.by))) fails.push(path + ": superseded by " + d.by + ", which does not exist");
     if (d.approved && kind !== "ADR" && kind !== "REQUEST" && /\bQ-\d+\b/.test(section(text, "Open questions") ?? "")) fails.push(path + ": approved, but its Open questions section still holds a Q-n");
   };
-  const ls = (d: string, re: RegExp) =>
+  // the files of a folder that are chain documents, by the one kind rule; under is the folder's path under docs/ with a slice name in front
+  const ls = (d: string, under: string) =>
     existsSync(d)
       ? readdirSync(d)
-          .filter((f) => re.test(f))
+          .filter((f) => kindOf(under + "/" + f))
           .sort()
       : [];
   const dd = join(root, "docs");
   const product = join(dd, "PRODUCT.md");
   const crossTp = join(dd, "tp", "TP.md");
   add(product, "PRODUCT");
-  for (const f of ls(join(dd, "requests"), /^REQ-\d+-.*\.md$/)) add(join(dd, "requests", f), "REQUEST");
+  for (const f of ls(join(dd, "requests"), "requests")) add(join(dd, "requests", f), "REQUEST");
   add(crossTp, "TP", product);
   const slices = existsSync(dd)
     ? readdirSync(dd, { withFileTypes: true })
@@ -641,17 +643,17 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
       return f ? join(d, sub, f) : join(d, sub, prefix + "-" + nn + "-?.md");
     };
     add(prd, "PRD", product);
-    for (const f of ls(join(d, "frd"), /^FRD-\d{2}-.*\.md$/)) add(join(d, "frd", f), "FRD", prd);
-    for (const f of ls(join(d, "ux"), /^UX-\d{2}-.*\.md$/)) add(join(d, "ux", f), "UX", sib("frd", "FRD", f.slice(3, 5)));
-    for (const f of ls(join(d, "tp"), /^TP-\d{2}-.*\.md$/)) {
+    for (const f of ls(join(d, "frd"), "x/frd")) add(join(d, "frd", f), "FRD", prd);
+    for (const f of ls(join(d, "ux"), "x/ux")) add(join(d, "ux", f), "UX", sib("frd", "FRD", docNumber(f)!));
+    for (const f of ls(join(d, "tp"), "x/tp")) {
       const tpPath = join(d, "tp", f);
       const on = restsOn(readFileSync(tpPath, "utf8"));
       const parent = on ? fromDoc(tpPath, on) : undefined;
       // A Rests on line wins over the FRD of its number; resting on a request or a registry, a TP owes the cross-cutting TP nothing.
       const own = parent && (/^REQ-\d+/.test(basename(parent)) || REGISTRY.test(basename(parent)));
-      add(tpPath, "TP", parent ?? sib("frd", "FRD", f.slice(3, 5)), own ? [] : [crossTp]);
+      add(tpPath, "TP", parent ?? sib("frd", "FRD", docNumber(f)!), own ? [] : [crossTp]);
     }
-    for (const f of ls(join(d, "specs"), /^SPEC-\d{2}-.*\.md$/)) {
+    for (const f of ls(join(d, "specs"), "x/specs")) {
       const sp = join(d, "specs", f),
         on = restsOn(readFileSync(sp, "utf8"));
       add(sp, "SPEC", on ? fromDoc(sp, on) : undefined);
@@ -659,7 +661,7 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     }
   }
   // An ADR has no parent: it may be Accepted while its TP is a draft. The TP is what waits for its ADRs (below).
-  for (const f of ls(join(dd, "adr"), /^ADR-\d{3,}-.*\.md$/)) add(join(dd, "adr", f), "ADR");
+  for (const f of ls(join(dd, "adr"), "adr")) add(join(dd, "adr", f), "ADR");
   // An ADR numbered at or below legacyAdrsThrough was written before adoption: listed as "legacy", counted as accepted, never failed for its status line.
   let through: number | undefined;
   try {
@@ -826,8 +828,17 @@ if (import.meta.main) {
   }
   if (kind === "summary") {
     if (!a) usage();
+    // the kind comes from the path under docs/, by the one rule; an ADR at or below the cutoff was written before adoption and is asked nothing
+    const abs = toPosix(resolve(a));
+    const at = abs.lastIndexOf("/docs/");
+    const adr = at >= 0 ? kindOf(abs.slice(at + "/docs/".length)) === "ADR" : kindOf("adr/" + basename(abs)) === "ADR";
+    let through: number | undefined;
+    try {
+      through = legacyAdrsThrough(projectRoot(a) ?? ".");
+    } catch {} // lint-docs reports a bad value
+    if (adr && through !== undefined && (adrNumber(basename(abs)) ?? Infinity) <= through) finish([], a + ": summary");
     finish(
-      checkSummary(read(a), /^ADR-\d{3}-/.test(a.split(/[\\/]/).pop()!)).map((f) => a + ": " + f),
+      checkSummary(read(a), adr).map((f) => a + ": " + f),
       a + ": summary",
     );
   }

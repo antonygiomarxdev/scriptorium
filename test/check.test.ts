@@ -2,7 +2,9 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runDocChecks } from "../scripts/hook-doc-check.ts";
+import { runDocChecks, checksFor } from "../scripts/hook-doc-check.ts";
+import { lintFile, CAPS } from "../scripts/lint-docs.ts";
+import { traceFails } from "../scripts/trace.ts";
 import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus, excerpt } from "../scripts/check.ts";
 
 const SUM = "## Summary\n\ns\n\nLast change: 2026-11-20, written\n";
@@ -1418,4 +1420,183 @@ test("EX-1: a Files row whose path cell holds a placeholder with < or > is not r
   const real = trackedSpec({ files: "| `docs/other/specs/` | Change | x |\n| `scripts/paths.ts` | Change | x |", tracked: ["scripts/paths.ts"], pin: 4 }); // mutant: a real untracked folder still fails
   expect(real.code).toBe(1);
   expect(real.out).toContain("docs/other/specs/ is not a tracked file");
+});
+
+// The kind of a document, read from its path by one rule (FR-CHAIN-08-15). A project of files under docs/, the config beside it.
+function kindProject(files: Record<string, string>) {
+  const root = mkdtempSync(join(tmpdir(), "scriptorium-kind-"));
+  for (const [p, t] of Object.entries(files)) {
+    mkdirSync(join(root, p, ".."), { recursive: true });
+    writeFileSync(join(root, p), t);
+  }
+  return root;
+}
+const ADR_OK = "# ADR-0021: x\n\n## Status\nAccepted\n\n## Summary\n\nA summary.\n\n## Context\nc\n## Options considered\no\n## Decision\nd\n## Consequences\nc\n";
+const ADR_NO_SUMMARY = ADR_OK.replace("## Summary\n\nA summary.\n\n", "");
+const CUT30 = '{"format":4,"legacyAdrsThrough":30}';
+const summaryOf = (rel: string, text: string, config?: string) => {
+  const root = kindProject({ ["docs/" + rel]: text, ...(config ? { ".scriptorium/config.json": config } : {}) });
+  return cliIn(root, "summary", join(root, "docs", rel));
+};
+
+// covers: chain/FRD-08/EX-28
+test("EX-28: the summary check does not ask an accepted ADR-NNNN-name.md for a Last change line", () => {
+  const r = summaryOf("adr/ADR-0021-x.md", ADR_OK);
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("Last change");
+  expect(summaryOf("chain/frd/FRD-01-x.md", ADR_OK).code).toBe(1); // mutant: a document that is not an ADR still needs its Last change line
+});
+
+// covers: chain/FRD-08/EX-29
+test("EX-29: the same ADR saved as ADR-001-x.md and as 0021-x.md passes the summary check too", () => {
+  for (const rel of ["adr/ADR-001-x.md", "adr/0021-x.md"]) {
+    const r = summaryOf(rel, ADR_OK);
+    expect([rel, r.code, r.out.includes("Last change")]).toEqual([rel, 0, false]);
+  }
+});
+
+// covers: chain/FRD-08/EX-30
+test("EX-30: with no cutoff an ADR without a Summary section fails the summary check", () => {
+  const r = summaryOf("adr/ADR-0031-x.md", ADR_NO_SUMMARY);
+  expect(r.code).toBe(1);
+  expect(r.out).toContain("no ## Summary within the first 20 lines");
+});
+
+// covers: chain/FRD-08/EX-31
+test("EX-31: an ADR at or below the cutoff without a Summary reports nothing, and one above it still fails", () => {
+  const r = summaryOf("adr/ADR-0021-x.md", ADR_NO_SUMMARY, CUT30);
+  expect(r.code).toBe(0);
+  expect(r.out).not.toContain("Summary");
+  const above = summaryOf("adr/ADR-0031-x.md", ADR_NO_SUMMARY, CUT30);
+  expect(above.code).toBe(1);
+  expect(above.out).toContain("no ## Summary within the first 20 lines");
+});
+
+// covers: chain/FRD-08/EX-32
+test("EX-32: status lists docs/adr/0031-x.md with the kind ADR and the status Accepted", () => {
+  const root = kindProject({ "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n", "docs/adr/0031-x.md": ADR_OK });
+  const entry = chainStatus(root).docs.find((d) => d.path.replace(/\\/g, "/").endsWith("docs/adr/0031-x.md"));
+  expect(entry).toBeDefined();
+  expect(entry?.kind).toBe("ADR");
+  expect(entry?.status).toBe("Accepted");
+});
+
+// covers: chain/FRD-08/EX-34
+test("EX-34: an FRD numbered 100 and its spec are listed by status, checked by the hook and traced", () => {
+  const frd = "# FRD-100: x\n\nStatus: Approved (2026-11-21)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n";
+  const specText = "Status: Draft\nRests on: ../frd/FRD-100-x.md\n";
+  const root = kindProject({ ".scriptorium/config.json": '{"format":2}', "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n", "docs/chain/PRD.md": "Status: Approved (2026-11-17)\n", "docs/chain/frd/FRD-100-x.md": frd, "docs/chain/specs/SPEC-100-1-x.md": specText, "test/a.test.ts": "// nothing\n" });
+  const docs = chainStatus(root).docs;
+  const kindOfPath = (name: string) => docs.find((d) => d.path.replace(/\\/g, "/").endsWith(name))?.kind;
+  expect(kindOfPath("frd/FRD-100-x.md")).toBe("FRD");
+  expect(kindOfPath("specs/SPEC-100-1-x.md")).toBe("SPEC");
+  const first = (rel: string) => checksFor(root, rel).map((x) => x.args?.[0]);
+  expect(first("docs/chain/frd/FRD-100-x.md")).toContain("frd");
+  expect(first("docs/chain/specs/SPEC-100-1-x.md")).toContain("spec");
+  const fails = traceFails(join(root, "docs"), [join(root, "test")]).fails;
+  expect(fails.some((f) => f.includes("FRD-100/EX-1"))).toBe(true);
+  writeFileSync(join(root, "test", "a.test.ts"), "// " + "cov" + "ers: chain/FRD-100/EX-1\n");
+  expect(traceFails(join(root, "docs"), [join(root, "test")]).fails).toEqual([]); // mutant: with its tag it is covered
+});
+
+// The paths no chain document has: EX-35 and the near misses of FR-CHAIN-08-15.
+const NOT_CHAIN = ["adr/ADR-21-x.md", "adr/ADR-0021.md", "requests/REQ-notes.md", "notes/0021-x.md", "chain/frd/FRD-1-x.md"];
+
+// covers: chain/FRD-08/EX-35
+test("EX-35: a file with a near-miss name is no chain document to status, the hook, the lint, trace or the summary check", () => {
+  const files: Record<string, string> = { ".scriptorium/config.json": '{"format":2}', "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n", "test/a.test.ts": "// nothing\n" }; // pin 2: an FRD read by trace with an uncovered example is a failure
+  for (const p of NOT_CHAIN) files["docs/" + p] = p.includes("FRD-1-x") ? "# FRD-1: x\n\nStatus: Approved (2026-11-21)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n" : "Status: Draft\n";
+  const root = kindProject(files);
+  const docs = chainStatus(root).docs.map((d) => d.path.replace(/\\/g, "/"));
+  for (const p of NOT_CHAIN) {
+    expect([p, docs.some((d) => d.endsWith("docs/" + p))]).toEqual([p, false]); // status does not list it
+    expect([p, checksFor(root, "docs/" + p)]).toEqual([p, []]); // the hook runs no check on it
+    const lint = lintFile(p, "## A\n" + "x\n".repeat(1000), [], []);
+    expect([p, lint.some((f) => f.reason.includes("over its cap"))]).toEqual([p, false]); // the lint gives it no kind, so no cap
+  }
+  const traced = traceFails(join(root, "docs"), [join(root, "test")]);
+  expect(traced.fails).toEqual([]); // trace reads no FRD from FRD-1-x.md
+  expect(traced.warnings).toEqual([]);
+  // mutant: the same file with a two-digit number is an FRD, and its uncovered example is a failure
+  const real = kindProject({ ...files, "docs/chain/frd/FRD-01-x.md": files["docs/chain/frd/FRD-1-x.md"] as string });
+  expect(traceFails(join(real, "docs"), [join(real, "test")]).fails.some((f) => f.includes("FRD-01/EX-1"))).toBe(true);
+});
+
+// covers: chain/FRD-08/EX-36
+test("EX-36: the shared rule, status, the edit hook, the docs lint and the summary check give the same kind to every path", async () => {
+  const { kindOf } = await import("../scripts/kinds.ts");
+  const PATHS: [string, string | undefined][] = [
+    ["PRODUCT.md", "PRODUCT"],
+    ["DECISIONS.md", "DECISIONS"],
+    ["chain/PRD.md", "PRD"],
+    ["chain/frd/FRD-01-a.md", "FRD"],
+    ["chain/frd/FRD-100-a.md", "FRD"],
+    ["chain/ux/UX-01-a.md", "UX"],
+    ["chain/ux/UX-100-a.md", "UX"],
+    ["tp/TP.md", "TP"],
+    ["chain/tp/TP-01-a.md", "TP"],
+    ["chain/tp/TP-100-a.md", "TP"],
+    ["adr/ADR-001-a.md", "ADR"],
+    ["adr/ADR-0021-a.md", "ADR"],
+    ["adr/0021-a.md", "ADR"],
+    ["adr/021-a.md", "ADR"],
+    ["chain/specs/SPEC-01-1-a.md", "SPEC"],
+    ["chain/specs/SPEC-100-1-a.md", "SPEC"],
+    ["requests/REQ-1-a.md", "REQUEST"],
+    ["research/a.md", undefined],
+    ["tp/PRD.md", undefined], // a PRD name in a folder that is no slice: the reserved folders hold no slice
+    ["adr/PRD.md", undefined],
+    ["requests/PRD.md", undefined],
+    ...NOT_CHAIN.map((p): [string, undefined] => [p, undefined]),
+  ];
+  const STATUS_KINDS = ["PRODUCT", "PRD", "FRD", "UX", "TP", "SPEC", "ADR", "REQUEST"];
+  const HOOK_CHECK: Record<string, string> = { PRD: "prd", FRD: "frd", UX: "ux", TP: "tp", SPEC: "spec", PRODUCT: "summary", ADR: "summary", REQUEST: "summary" };
+  const files: Record<string, string> = {};
+  for (const [p] of PATHS) files["docs/" + p] = ADR_OK; // the text of an ADR with no Last change line, so the summary check tells an ADR from the rest by the path alone
+  const root = kindProject(files);
+  // the summary check on every path at once: one spawn each, in parallel, so the test stays well under its time limit
+  const summaries = await Promise.all(
+    PATHS.map(async ([p]) => {
+      const proc = Bun.spawn([process.execPath, join(import.meta.dir, "..", "scripts", "check.ts"), "summary", join(root, "docs", p)], { stdout: "pipe", stderr: "pipe" });
+      return [p, await proc.exited] as const;
+    }),
+  );
+  const summaryCode = new Map(summaries);
+  const docs = chainStatus(root).docs.map((d) => ({ path: d.path.replace(/\\/g, "/"), kind: d.kind }));
+  const bad: string[] = [];
+  for (const [p, kind] of PATHS) {
+    if (kindOf(p) !== kind) bad.push(p + ": kindOf gave " + kindOf(p) + ", expected " + kind);
+    const listed = docs.find((d) => d.path.endsWith("docs/" + p));
+    const statusKind = listed?.kind;
+    if (statusKind !== (kind && STATUS_KINDS.includes(kind) ? kind : undefined)) bad.push(p + ": status gave " + statusKind);
+    const hook = checksFor(root, "docs/" + p).map((x) => x.args?.[0]);
+    const wantHook = kind ? HOOK_CHECK[kind] : undefined;
+    if (hook[0] !== wantHook || (wantHook === undefined && hook.length > 0)) bad.push(p + ": the hook ran " + JSON.stringify(hook));
+    const lint = lintFile(p, "## A\n" + "x\n".repeat(1000), [], []).find((f) => f.reason.includes("over its cap"));
+    const lintKind = lint?.reason.split(" ")[0];
+    if (lintKind !== (kind && kind in CAPS ? kind : undefined)) bad.push(p + ": the lint gave " + lintKind);
+    // the summary check asks an ADR for no Last change line and every other kind for one
+    const isAdr = summaryCode.get(p) === 0;
+    if (isAdr !== (kind === "ADR")) bad.push(p + ": the summary check " + (isAdr ? "took" : "did not take") + " it as an ADR");
+  }
+  expect(bad).toEqual([]);
+}, 30000);
+
+// covers: chain/FRD-08/EX-37
+test("EX-37: a file under research, retro or decisions is no chain document, whatever its name", async () => {
+  const { kindOf } = await import("../scripts/kinds.ts");
+  const PATHS = ["research/PRD.md", "research/frd/FRD-01-a.md", "retro/specs/SPEC-01-1-a.md", "decisions/adr/ADR-001-a.md"];
+  const files: Record<string, string> = { "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n" };
+  for (const p of PATHS) files["docs/" + p] = ADR_OK;
+  const root = kindProject(files);
+  const listed = chainStatus(root).docs.map((d) => d.path.replace(/\\/g, "/"));
+  for (const p of PATHS) {
+    expect([p, kindOf(p)]).toEqual([p, undefined]); // the shared rule
+    expect([p, listed.some((d) => d.endsWith("docs/" + p))]).toEqual([p, false]); // status
+    expect([p, checksFor(root, "docs/" + p)]).toEqual([p, []]); // the edit hook
+    const lint = lintFile(p, "## A\n" + "x\n".repeat(1000), [], []);
+    expect([p, lint.some((f) => f.reason.includes("over its cap"))]).toEqual([p, false]); // the docs lint gives it no kind, so no cap
+  }
+  // mutant: the same names outside those folders are chain documents
+  for (const p of ["chain/PRD.md", "chain/frd/FRD-01-a.md", "chain/specs/SPEC-01-1-a.md", "adr/ADR-001-a.md"]) expect([p, kindOf(p) !== undefined]).toEqual([p, true]);
 });

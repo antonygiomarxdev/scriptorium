@@ -1,13 +1,13 @@
 # FRD-08: Adopted documents checked as they are
 
-Status: Approved (2026-11-22)
-Approval: content m4Xr-BfH5eG6; rests on ../PRD.md ASR_OGQqlGDj
+Status: Approved (2026-11-23)
+Approval: content RtuWFdihKJCj; rests on ../PRD.md ASR_OGQqlGDj
 
 ## Summary
 
 A project that adopts the chain keeps its existing ADR file names and its accepted ADRs as they are, and a formatter run at commit does not invalidate an approval. An ADR file may be named NNNN-name.md or ADR-NNNN-name.md, an ADR numbered at or below the cutoff set at adoption is not held to the ADR line cap or template, and the approval fingerprint ignores spacing, blank lines and table padding.
 
-Last change: 2026-11-22, the fingerprint leaves out only the header Status and Approval lines (owner)
+Last change: 2026-11-22, every check reads a document's kind from its path by one rule, so an accepted ADR-NNNN-name.md is not asked for a Last change line (RULE-4, EX-28 to EX-37; owner)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
@@ -35,6 +35,10 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | FR-CHAIN-08-14 | WHEN | WHEN the fingerprint of a document is computed, it shall leave out only the first "Status:" line and the first "Approval:" line above the first "## " heading, and fingerprint every other line that starts with those words. |
 | FR-CHAIN-08-5 | WHEN | WHEN the fingerprint of a document is computed, it shall ignore runs of spaces, blank lines and the dashes, colons and padding of a table separator row. |
 | FR-CHAIN-08-6 | WHEN | WHEN a document was approved with the earlier fingerprint, the checks shall accept that fingerprint until it is approved again. |
+| FR-CHAIN-08-15 | always | The checks, the hooks, the docs lint and trace shall always read the kind of a document from its path by one shared rule: an ADR is ADR-NNN-name.md or NNN-name.md in the ADR folder, with three or more digits; an FRD, UX, TP or spec number has two or more digits; a request is REQ-N-name.md in the requests folder. |
+| FR-CHAIN-08-16 | WHEN | WHEN the summary check runs on an ADR under either name, it shall not ask for a Last change line, and it shall report nothing for an ADR at or below the cutoff. |
+| FR-CHAIN-08-17 | WHEN | WHEN an ADR file is named NNN-name.md, status and the hooks shall check it as an ADR, as the docs lint and the TP check do. |
+| FR-CHAIN-08-18 | always | The shared rule shall always give no kind to a file under the research, retro or decisions folder, whatever its name. |
 
 ## Rules and examples
 
@@ -43,6 +47,7 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | RULE-1 | An ADR is found under either name. | FR-CHAIN-08-1, FR-CHAIN-08-2 |
 | RULE-2 | An ADR written before adoption is kept as it is, below a cutoff the project sets. | FR-CHAIN-08-3, FR-CHAIN-08-4, FR-CHAIN-08-7, FR-CHAIN-08-11 |
 | RULE-3 | Formatting and links are not a change. | FR-CHAIN-08-5, FR-CHAIN-08-6, FR-CHAIN-08-8, FR-CHAIN-08-9, FR-CHAIN-08-10, FR-CHAIN-08-12, FR-CHAIN-08-13, FR-CHAIN-08-14 |
+| RULE-4 | Every check reads the kind of a document from its path the same way. | FR-CHAIN-08-15, FR-CHAIN-08-16, FR-CHAIN-08-17, FR-CHAIN-08-18 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -73,6 +78,16 @@ R-CHAIN-5, R-CHAIN-6, R-CHAIN-9.
 | EX-8 | RULE-3 | positive | An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row | status runs | it reports no drift |
 | EX-9 | RULE-3 | negative | An approved spec where one word of a row changes | status runs | it fails with "body changed since approval" |
 | EX-10 | RULE-3 | positive | A document approved before this change, with no change since | status runs | it reports no drift |
+| EX-28 | RULE-4 | positive | docs/adr/ADR-0021-x.md is an accepted ADR with a Summary section and no Last change line | the summary check runs on it | it passes |
+| EX-29 | RULE-4 | boundary | The same ADR is saved as docs/adr/ADR-001-x.md and as docs/adr/0021-x.md | the summary check runs on each | both pass |
+| EX-30 | RULE-4 | negative | The config has no legacyAdrsThrough and docs/adr/ADR-0031-x.md has no Summary section | the summary check runs on it | it fails with "no ## Summary within the first 20 lines" |
+| EX-31 | RULE-4 | positive | The config says "legacyAdrsThrough": 30 and docs/adr/ADR-0021-x.md has no Summary section | the summary check runs on it | it reports nothing |
+| EX-32 | RULE-4 | positive | The config has no legacyAdrsThrough and docs/adr/0031-x.md has the ADR sections with "## Status" followed by "Accepted" | status runs | it lists docs/adr/0031-x.md with the kind ADR and the status Accepted |
+| EX-33 | RULE-4 | negative | An agent edits docs/adr/0031-x.md, which has no Summary section, and the config has no legacyAdrsThrough | the edit hook runs | it fails with "no ## Summary within the first 20 lines" |
+| EX-34 | RULE-4 | positive | docs/chain/frd/FRD-100-x.md is an FRD with EX-1, and docs/chain/specs/SPEC-100-1-x.md rests on it | status, the edit hook and trace run | status lists them with the kinds FRD and SPEC, the hook runs the FRD and spec checks on them, and trace reports EX-1 of FRD-100 |
+| EX-35 | RULE-4 | negative | The files docs/adr/ADR-21-x.md, docs/adr/ADR-0021.md, docs/requests/REQ-notes.md, docs/notes/0021-x.md and docs/chain/frd/FRD-1-x.md | status, the edit hook, the docs lint, trace and the gate read them | none treats any of them as a chain document: status does not list it, the hook runs no check on it, the lint gives it no kind, trace reads no FRD from it and the gate asks for no tests from it |
+| EX-36 | RULE-4 | positive | One path for each kind and each name form, and the paths of EX-35 | the kind of each path is read by the shared rule, by status, by the edit hook and by the docs lint | all four give the same kind, or none, for every path |
+| EX-37 | RULE-4 | negative | The files docs/research/PRD.md, docs/research/frd/FRD-01-a.md, docs/retro/specs/SPEC-01-1-a.md and docs/decisions/adr/ADR-001-a.md | status, the edit hook and the docs lint read them | none treats any of them as a chain document, as status already skips the research, retro and decisions folders |
 
 ## Decision table
 n/a: each rule is one condition; the examples cover them.
@@ -81,7 +96,7 @@ n/a: each rule is one condition; the examples cover them.
 n/a: the checks keep no state.
 
 ## Invariants
-n/a: the repository keeps no invariants register yet; RULE-1 to RULE-3 are covered by the examples.
+n/a: the repository keeps no invariants register yet; RULE-1 to RULE-4 are covered by the examples, and EX-36 holds RULE-4 for every path.
 
 ## Quality criteria
 
@@ -136,3 +151,13 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-25** (EX-8): Given An approved spec whose tables a formatter pads, with spaces added around the dashes of each separator row, when status runs, then it reports no drift.
 - **AC-26** (EX-9): Given An approved spec where one word of a row changes, when status runs, then it fails with "body changed since approval".
 - **AC-27** (EX-10): Given A document approved before this change, with no change since, when status runs, then it reports no drift.
+- **AC-28** (EX-28): Given docs/adr/ADR-0021-x.md is an accepted ADR with a Summary section and no Last change line, when the summary check runs on it, then it passes.
+- **AC-29** (EX-29): Given The same ADR is saved as docs/adr/ADR-001-x.md and as docs/adr/0021-x.md, when the summary check runs on each, then both pass.
+- **AC-30** (EX-30): Given The config has no legacyAdrsThrough and docs/adr/ADR-0031-x.md has no Summary section, when the summary check runs on it, then it fails with "no ## Summary within the first 20 lines".
+- **AC-31** (EX-31): Given The config says "legacyAdrsThrough": 30 and docs/adr/ADR-0021-x.md has no Summary section, when the summary check runs on it, then it reports nothing.
+- **AC-32** (EX-32): Given The config has no legacyAdrsThrough and docs/adr/0031-x.md has the ADR sections with "## Status" followed by "Accepted", when status runs, then it lists docs/adr/0031-x.md with the kind ADR and the status Accepted.
+- **AC-33** (EX-33): Given An agent edits docs/adr/0031-x.md, which has no Summary section, and the config has no legacyAdrsThrough, when the edit hook runs, then it fails with "no ## Summary within the first 20 lines".
+- **AC-34** (EX-34): Given docs/chain/frd/FRD-100-x.md is an FRD with EX-1, and docs/chain/specs/SPEC-100-1-x.md rests on it, when status, the edit hook and trace run, then status lists them with the kinds FRD and SPEC, the hook runs the FRD and spec checks on them, and trace reports EX-1 of FRD-100.
+- **AC-35** (EX-35): Given The files docs/adr/ADR-21-x.md, docs/adr/ADR-0021.md, docs/requests/REQ-notes.md, docs/notes/0021-x.md and docs/chain/frd/FRD-1-x.md, when status, the edit hook, the docs lint, trace and the gate read them, then none treats any of them as a chain document: status does not list it, the hook runs no check on it, the lint gives it no kind, trace reads no FRD from it and the gate asks for no tests from it.
+- **AC-36** (EX-36): Given One path for each kind and each name form, and the paths of EX-35, when the kind of each path is read by the shared rule, by status, by the edit hook and by the docs lint, then all four give the same kind, or none, for every path.
+- **AC-37** (EX-37): Given The files docs/research/PRD.md, docs/research/frd/FRD-01-a.md, docs/retro/specs/SPEC-01-1-a.md and docs/decisions/adr/ADR-001-a.md, when status, the edit hook and the docs lint read them, then none treats any of them as a chain document, as status already skips the research, retro and decisions folders.

@@ -4,6 +4,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
 import { adrNumber } from "./check.ts";
+import { kindOf } from "./kinds.ts";
 import { headerLine } from "./drift.ts"; // the one rule for which header line is left out
 import { gate, legacyAdrsThrough, readFormat } from "./format.ts";
 import { toPosix } from "./paths.ts";
@@ -15,21 +16,6 @@ const REGISTRY: Record<string, string> = { DECISIONS: "Goes into", INVARIANTS: "
 const COPY_WORDS = 12;
 
 export type Fail = { file: string; line: number; reason: string };
-
-// rel is the path under docs/, with forward slashes.
-export function docKind(rel: string): string | undefined {
-  const base = rel.split("/").pop()!;
-  const top = rel.split("/").length === 1;
-  if (top && /^(PRODUCT|DECISIONS|INVARIANTS|CHECKS|CROSS-CUTTING)\.md$/.test(base)) return base.slice(0, -3);
-  if (/^requests\/REQ-/.test(rel)) return "REQUEST";
-  if (/(^|\/)adr\/(ADR-|\d+-)/.test(rel)) return "ADR";
-  if (rel === "tp/TP.md" || /\/tp\/TP-\d+/.test(rel)) return "TP";
-  if (/^[^/]+\/PRD\.md$/.test(rel)) return "PRD";
-  if (/\/frd\/FRD-/.test(rel)) return "FRD";
-  if (/\/ux\/UX-/.test(rel)) return "UX";
-  if (/\/specs\/SPEC-/.test(rel)) return "SPEC";
-  return undefined;
-}
 
 // Lines outside fenced code, with their 1-based numbers.
 function prose(text: string): { n: number; s: string }[] {
@@ -195,7 +181,7 @@ function mermaidFindings(text: string): { line: number; reason: string }[] {
 export function lintFile(rel: string, text: string, phrases: string[], upstream: string[] = [], dirOnDisk?: string, avoid: string[] = [], projectRoot?: string): Fail[] {
   const fails: Fail[] = [];
   const f = (line: number, reason: string) => fails.push({ file: rel, line, reason });
-  const kind = docKind(rel);
+  const kind = kindOf(rel);
   const lines = prose(text);
 
   if (!rel.startsWith("research/"))

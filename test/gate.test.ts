@@ -139,3 +139,17 @@ test("a covers tag for the same FRD number in another slice does not count", () 
   const right = project({ ...twoSlices, "test/a.test.ts": tagOf("chain", "FRD-01", "EX-4") }, true); // mutant: the tag of its own slice counts
   expect(gateFile(right, "scripts/a.ts")).toBeUndefined();
 });
+
+// covers: chain/FRD-08/EX-35
+test("EX-35: a file named FRD-1-x.md is not an FRD to the gate: its rows ask for no tests", () => {
+  const build = (frdName: string) => {
+    const frd = "# FRD\n\nStatus: Draft\nRests on: ../PRD.md\n\n" + SUM + "\n## Rows\n| EX-1 | a | b |\n";
+    const sp = spec(row("scripts/a.ts")).replace("../frd/FRD-01-a.md", "../frd/" + frdName);
+    const root = project({ "docs/chain/frd/FRD-01-a.md": FRD, ["docs/chain/frd/" + frdName]: frd, [SPEC]: sp });
+    for (const p of ["docs/PRODUCT.md", "docs/chain/PRD.md", "docs/chain/frd/" + frdName, SPEC]) approve(join(root, p), root, "2026-11-21");
+    return root;
+  };
+  expect(gateFile(build("FRD-1-x.md"), "scripts/a.ts")).toBeUndefined(); // one digit: not an FRD, no tests asked for
+  const real = gateFile(build("FRD-02-x.md"), "scripts/a.ts"); // mutant: two digits is an FRD, so its rows need tests
+  expect(real).toContain("write the tests first");
+});

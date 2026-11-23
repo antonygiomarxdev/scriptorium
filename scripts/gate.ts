@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { chainStatus, restsOn } from "./check.ts";
 import { driftReport } from "./drift.ts";
+import { kindOf } from "./kinds.ts";
 import { fromDoc, toPosix, typed } from "./paths.ts";
 import { frdIds, scanTags } from "./trace.ts";
 
@@ -24,8 +25,8 @@ function untested(root: string, specPath: string, text: string): string[] {
   const on = restsOn(text);
   const frd = on ? fromDoc(specPath, on) : "";
   const num = /^FRD-\d+/.exec(basename(frd))?.[0];
-  if (!num || !existsSync(frd)) return [];
   const slice = basename(dirname(dirname(frd))); // docs/<slice>/frd/FRD-NN-*.md
+  if (!num || kindOf(slice + "/frd/" + basename(frd)) !== "FRD" || !existsSync(frd)) return []; // only a file the kind rule calls an FRD is read as one
   const defined = new Set(frdIds(readFileSync(frd, "utf8")));
   const dirs = ["test", "tests"].map((d) => join(root, d)).filter(existsSync);
   const tags = scanTags(...dirs);

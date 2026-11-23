@@ -3,6 +3,7 @@
 //   bun scripts/trace.ts <docs root> <test dir>...     exit 0 pass, 1 fail ("FAIL <reason>"), 2 usage or unreadable path
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { kindOf } from "./kinds.ts";
 import { toPosix } from "./paths.ts";
 import { gate, readFormat } from "./format.ts";
 
@@ -61,8 +62,8 @@ function loadFrds(docsRoot: string): Frd[] {
     const dir = join(docsRoot, s.name, "frd");
     if (!s.isDirectory() || !existsSync(dir)) continue;
     for (const f of readdirSync(dir).sort()) {
-      const m = /^(FRD-\d+)-.*\.md$/.exec(f);
-      if (!m) continue;
+      if (kindOf(s.name + "/frd/" + f) !== "FRD") continue; // the one kind rule decides what an FRD file is
+      const m = /^(FRD-\d+)-/.exec(f)!;
       const path = join(dir, f),
         text = readFileSync(path, "utf8");
       out.push({ slice: s.name, frd: m[1]!, path, approved: /^Status:\s*Approved/m.test(text), superseded: /^Status:\s*Superseded by /m.test(text), ids: frdIds(text), waive: waivers(text) });

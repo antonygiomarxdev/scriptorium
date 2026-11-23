@@ -2,7 +2,8 @@ import { test, expect } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { lintFile, lintDocs, loadPhrases, docKind, avoidWords, CAPS } from "../scripts/lint-docs.ts";
+import { kindOf } from "../scripts/kinds.ts";
+import { lintFile, lintDocs, loadPhrases, avoidWords, CAPS } from "../scripts/lint-docs.ts";
 
 const PH = ["delve", "serves as", "it's important to note", "not just"];
 const lint = (rel: string, text: string, up: string[] = [], dir?: string) => lintFile(rel, text, PH, up, dir);
@@ -10,7 +11,7 @@ const reasons = (rel: string, text: string, up: string[] = [], dir?: string) => 
 const has = (xs: string[], s: string) => xs.some((x) => x.includes(s));
 
 test("document kind comes from the path", () => {
-  expect(["PRODUCT.md", "x/PRD.md", "x/frd/FRD-01-a.md", "x/ux/UX-01-a.md", "tp/TP.md", "x/tp/TP-01-a.md", "adr/ADR-001-a.md", "x/specs/SPEC-01-a.md", "requests/REQ-1-a.md", "DECISIONS.md", "research/a.md"].map(docKind)).toEqual([
+  expect(["PRODUCT.md", "x/PRD.md", "x/frd/FRD-01-a.md", "x/ux/UX-01-a.md", "tp/TP.md", "x/tp/TP-01-a.md", "adr/ADR-001-a.md", "x/specs/SPEC-01-a.md", "requests/REQ-1-a.md", "DECISIONS.md", "research/a.md"].map(kindOf)).toEqual([
     "PRODUCT",
     "PRD",
     "FRD",
@@ -202,9 +203,9 @@ test("EX-9: a Version line only warns under format 1 and fails under format 2", 
 
 // covers: chain/FRD-08/EX-3
 test("EX-3: an ADR named NNNN-name.md has the ADR kind and its cap", () => {
-  expect(docKind("adr/0021-baselines.md")).toBe("ADR");
-  expect(docKind("docs/adr/0021-baselines.md")).toBe("ADR");
-  expect(docKind("notes/0021-baselines.md")).toBeUndefined(); // mutant: only under adr/
+  expect(kindOf("adr/0021-baselines.md")).toBe("ADR");
+  expect(kindOf("docs/adr/0021-baselines.md")).toBe("ADR");
+  expect(kindOf("notes/0021-baselines.md")).toBeUndefined(); // mutant: only under adr/
   expect(has(reasons("adr/0021-baselines.md", "## A\n" + "x\n".repeat(89)), "ADR is 90 lines, over its cap of 80")).toBe(true);
   expect(has(reasons("adr/0021-baselines.md", "## A\n" + "x\n".repeat(79)), "over its cap")).toBe(false); // 80 lines is within the cap
 });

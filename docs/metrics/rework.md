@@ -19,13 +19,13 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 |---|---|---|---|---|---|
 | C-1 | FRD | An example is missing, usually a negative one: another id, folder or slice, an error, a value going the wrong way. | 24 | none | n/a |
 | C-2 | Spec | A clause of a Files row's Holds column, or of the summary, has no row behind it. | 4 | none | n/a |
-| C-3 | Spec | The Files table misses a file the change needs. | 3 | none | n/a |
+| C-3 | Spec | The Files table misses a file the change needs. | 4 | none | n/a |
 | C-4 | Spec | The spec asks for behavior no row and no user needs. | 3 | none | n/a |
 | C-5 | FRD | A row describes something a test cannot assert. | 2 | none | n/a |
 | C-6 | Lead | The lead wrote text or code with no review against its source. | 2 | none | n/a |
 | C-7 | Lead | One instruction says two opposite things. | 1 | none | n/a |
 | C-8 | Team practice | A rule lives only in prose or in a message, so nothing enforces it. | 2 | none | n/a |
-| C-9 | Check | Two checks apply the same rule differently. | 2 | none | n/a |
+| C-9 | Check | Two checks apply the same rule differently. | 3 | none | n/a |
 | C-10 | Check | A document error no check catches. | 3 | none | n/a |
 | C-11 | CI | A workflow step runs in a case it should not. | 1 | none | n/a |
 | C-12 | Test | A test fixture reads as a real tag or document to the repository's own checks. | 2 | none | n/a |
@@ -124,4 +124,6 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-86 | 2026-11-22 | SPEC-08-8 | C-1 | Status marks every legacy ADR approved before it reads its status line, so a spec resting on a superseded legacy ADR passes; no example had one. |
 | R-87 | 2026-11-22 | SPEC-01-6 | C-1 | Eleven of twelve workflow mutants survive: the tests read for words, and RL-2 accepts any "exit 0". A failed tag after the version commit leaves that version untagged forever. |
 | R-88 | 2026-11-22 | SPEC-11-1 | C-1 | The build let a Mermaid block replace the ST rows in States, which no row says; a test pinned the loosening. |
+| R-91 | 2026-11-23 | SPEC-08-12 | C-3 | The Files tables missed scripts/mutation.ts for the new scripts/kinds.ts, the third time after R-33 and R-40; the lead split the gate into SPEC-08-15 to fit it. Prevention to propose: the spec check fails a spec that creates a scripts/*.ts file and has no scripts/mutation.ts row. |
+| R-90 | 2026-11-22 | SPEC-08-1 | C-9 | The summary command took an ADR as ADR-NNN-name.md only, while the hook sent it every ADR-* file, so an accepted ADR-NNNN-name.md was asked for a Last change line. Seven sites read an ADR name with four digit rules; FRD, UX, TP, SPEC and REQ names disagreed too. Found by another project's builder. Fix: one kind rule (SPEC-08-12 to SPEC-08-14), and EX-36 compares every reader on every name form. |
 | R-89 | 2026-11-22 | SPEC-11-2 | C-14 | The lead committed an approved FRD whose other specs were not built yet; the trace check in CI failed on its uncovered rows. The lead ran the lint tests, not the CI gate set (trace). |

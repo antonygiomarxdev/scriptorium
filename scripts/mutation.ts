@@ -18,6 +18,7 @@ export const MAP: Record<string, string[]> = {
   "scripts/hook-gate.ts": ["test/hooks.test.ts"],
   "scripts/hook-stop.ts": ["test/hooks.test.ts"],
   "scripts/install.ts": ["test/install.test.ts"],
+  "scripts/kinds.ts": ["test/check.test.ts", "test/lint-docs.test.ts", "test/hooks.test.ts"],
   "scripts/lint-docs.ts": ["test/lint-docs.test.ts", "test/frozen-formats.test.ts"],
   "scripts/migrate.ts": ["test/migrate.test.ts"],
   "scripts/mutation.ts": ["test/mutation.test.ts"],

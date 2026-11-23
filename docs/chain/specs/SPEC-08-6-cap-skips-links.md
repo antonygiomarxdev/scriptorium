@@ -1,7 +1,7 @@
 # SPEC-08-6: The line cap leaves out the Links line
 
 Status: Approved (2026-11-21)
-Approval: content 0ntakjs1Kmli; rests on ../frd/FRD-08-adopted-documents-as-they-are.md m4Xr-BfH5eG6
+Approval: content 0ntakjs1Kmli; rests on ../frd/FRD-08-adopted-documents-as-they-are.md RtuWFdihKJCj
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

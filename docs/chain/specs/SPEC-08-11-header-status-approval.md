@@ -1,7 +1,7 @@
 # SPEC-08-11: Only the header Status and Approval lines are left out
 
 Status: Approved (2026-11-22)
-Approval: content _GSXZ9olPO_b; rests on ../frd/FRD-08-adopted-documents-as-they-are.md m4Xr-BfH5eG6
+Approval: content _GSXZ9olPO_b; rests on ../frd/FRD-08-adopted-documents-as-they-are.md RtuWFdihKJCj
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary

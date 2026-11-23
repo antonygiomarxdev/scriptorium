@@ -1,7 +1,7 @@
 # SPEC-08-10: The line cap leaves out the Approval line
 
 Status: Approved (2026-11-22)
-Approval: content CMytYoKPpBNv; rests on ../frd/FRD-08-adopted-documents-as-they-are.md m4Xr-BfH5eG6
+Approval: content CMytYoKPpBNv; rests on ../frd/FRD-08-adopted-documents-as-they-are.md RtuWFdihKJCj
 Rests on: ../frd/FRD-08-adopted-documents-as-they-are.md
 
 ## Summary
