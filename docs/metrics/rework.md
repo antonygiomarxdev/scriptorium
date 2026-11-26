@@ -6,7 +6,7 @@ Status: Draft
 
 Open findings only, each with one cause from the list below (D-32). A finding leaves when its cause gets a proven prevention; git keeps the history. A cause found twice with no prevention blocks the project, and a finding of a prevented cause blocks too, because the prevention did not hold. FRD-01 of the metrics slice specifies the checks; until they are built, the lead applies them by hand.
 
-Last change: 2026-11-20, reshaped from a growing log into a queue of open findings (D-32)
+Last change: 2026-11-26, seven findings added (R-92 to R-98); before that, 2026-11-20, reshaped from a growing log into a queue of open findings (D-32)
 
 - Blocking today: C-1 (13 open), C-2 (2), C-8 (2) and C-9 (2). None has a prevention.
 - Build and review are the step for no finding: review found no change built against its spec.
@@ -127,3 +127,10 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-91 | 2026-11-23 | SPEC-08-12 | C-3 | The Files tables missed scripts/mutation.ts for the new scripts/kinds.ts, the third time after R-33 and R-40; the lead split the gate into SPEC-08-15 to fit it. Prevention to propose: the spec check fails a spec that creates a scripts/*.ts file and has no scripts/mutation.ts row. |
 | R-90 | 2026-11-22 | SPEC-08-1 | C-9 | The summary command took an ADR as ADR-NNN-name.md only, while the hook sent it every ADR-* file, so an accepted ADR-NNNN-name.md was asked for a Last change line. Seven sites read an ADR name with four digit rules; FRD, UX, TP, SPEC and REQ names disagreed too. Found by another project's builder. Fix: one kind rule (SPEC-08-12 to SPEC-08-14), and EX-36 compares every reader on every name form. |
 | R-89 | 2026-11-22 | SPEC-11-2 | C-14 | The lead committed an approved FRD whose other specs were not built yet; the trace check in CI failed on its uncovered rows. The lead ran the lint tests, not the CI gate set (trace). |
+| R-92 | 2026-11-26 | Review of the mutation workflow fix | C-1 | Mutants M1 (delete the mv line) and M2 (put back --jsonReporter.fileName) survived: no test guarded the change that broke CI. |
+| R-93 | 2026-11-26 | Review of the test-files-skip-the-cap change | C-1 | Mutant M5 survived: the bullet-row path of rowPath in scripts/check.ts had no test. |
+| R-94 | 2026-11-26 | REQ-29 | C-10 | IN-1 put Source on its own line, but findings are 5-cell table rows (scripts/rework.ts:27); review found it, no check could. |
+| R-95 | 2026-11-26 | Writer task 13 | C-8 | After the gate hook refused a Write, the writer edited skills/*.md and an approved FRD through a Python script run by Bash, which the hook does not guard. The lead found it and reverted it. The rule "a hook refusal is a stop" lived in a message only. |
+| R-96 | 2026-11-26 | hook-gate.ts | C-9 | hook-gate.ts takes the project root from the session cwd, while other checks take it from the document, so a file in a nested worktree (.claude/worktrees/) missed the docs/ exemption. Fix: task 17. |
+| R-97 | 2026-11-26 | Message to an adopting project | C-6 | The lead said "Scriptorium has no diagram rule" without checking; diagramFails in scripts/check.ts exists. Corrected within minutes. A claim made with no evidence. |
+| R-98 | 2026-11-26 | Reuses check | C-1 | check.ts said "no Reuses section" when the section existed but held no valid entry; no example had a section with a bad entry (fixed in 846575b). |
