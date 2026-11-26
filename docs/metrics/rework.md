@@ -6,7 +6,7 @@ Status: Draft
 
 Open findings only, each with one cause from the list below (D-32). A finding leaves when its cause gets a proven prevention; git keeps the history. A cause found twice with no prevention blocks the project, and a finding of a prevented cause blocks too, because the prevention did not hold. FRD-01 of the metrics slice specifies the checks; until they are built, the lead applies them by hand.
 
-Last change: 2026-11-26, seven findings added (R-92 to R-98); before that, 2026-11-20, reshaped from a growing log into a queue of open findings (D-32)
+Last change: 2026-11-26, findings R-92 to R-106 added; before that, 2026-11-20, reshaped from a growing log into a queue of open findings (D-32)
 
 - Blocking today: C-1 (13 open), C-2 (2), C-8 (2) and C-9 (2). None has a prevention.
 - Build and review are the step for no finding: review found no change built against its spec.
@@ -134,3 +134,11 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-96 | 2026-11-26 | hook-gate.ts | C-9 | hook-gate.ts takes the project root from the session cwd, while other checks take it from the document, so a file in a nested worktree (.claude/worktrees/) missed the docs/ exemption. Fix: task 17. |
 | R-97 | 2026-11-26 | Message to an adopting project | C-6 | The lead said "Scriptorium has no diagram rule" without checking; diagramFails in scripts/check.ts exists. Corrected within minutes. A claim made with no evidence. |
 | R-98 | 2026-11-26 | Reuses check | C-1 | check.ts said "no Reuses section" when the section existed but held no valid entry; no example had a section with a bad entry (fixed in 846575b). |
+| R-99 | 2026-11-26 | chain FRD check | C-10 | `check.ts frd docs/chain CHAIN` prints 17 "PRD requirement R-CHAIN-n is covered by no FRD" failures on this repository's own chain, and nothing in the commit gate makes them visible. |
+| R-100 | 2026-11-26 | Issues 7, 8, 13 and 14 | C-8 | This repository is pinned at format 2, where the gate only warns, so the code changes for those four issues went in with no approved spec. The rule that code needs an approved spec was not enforced here. |
+| R-101 | 2026-11-26 | scripts/drift.ts approve | C-8 | An agent can approve its own spec: approval is a Status line and a hash with no secret (scripts/drift.ts:92-101), and docs/ is exempt from the gate. "Agents never approve" (D-6) lives in prose only. |
+| R-102 | 2026-11-26 | L-21 | C-2 | The format 5 rule (an approved TP citing an ADR with no ADR file) has no FRD row or spec behind it. |
+| R-103 | 2026-11-26 | scripts/pre-commit.ts | C-9 | pre-commit judges the whole working tree, not the staged content, so one unapproved FRD edit in the tree blocked every commit. |
+| R-104 | 2026-11-26 | SPEC-11-3 | C-10 | A built spec had to be re-approved because it quotes an FRD row verbatim and the row changed. A built spec cannot say it is history. No cause fits exactly. |
+| R-105 | 2026-11-26 | SPEC-11-4, SPEC-11-5 | C-3 | The Done when command `bun test test/install.test.ts` times out on EX-23 at bun's 5 s default; package.json runs the suite with --timeout 120000, and the spec did not say so. |
+| R-106 | 2026-11-26 | Issue 15 prototype | C-10 | The FRD placement warning gave 8 of 8 false positives on this repository's own FRDs. It was held and the code removed; the evidence is on issue 15. No cause fits exactly. |
