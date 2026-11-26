@@ -1,7 +1,7 @@
 # SPEC-11-2: The docs lint keeps a diagram renderable and small
 
 Status: Approved (2026-11-22)
-Approval: content qb6hcg7pEk2h; rests on ../frd/FRD-11-diagrams.md rh70IXLPkBx4
+Approval: content qb6hcg7pEk2h; rests on ../frd/FRD-11-diagrams.md qfR-j-oUKtrv
 Rests on: ../frd/FRD-11-diagrams.md
 
 ## Summary

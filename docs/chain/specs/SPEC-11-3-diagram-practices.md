@@ -1,7 +1,7 @@
 # SPEC-11-3: One page of diagram practices, linked from the skills
 
-Status: Approved (2026-11-22)
-Approval: content 88y6gVMcGQAw; rests on ../frd/FRD-11-diagrams.md rh70IXLPkBx4
+Status: Approved (2026-11-26)
+Approval: content Wx7Au6X19Myl; rests on ../frd/FRD-11-diagrams.md qfR-j-oUKtrv
 Rests on: ../frd/FRD-11-diagrams.md
 
 ## Summary
@@ -12,7 +12,7 @@ Last change: 2026-11-22, first draft
 
 ## Rows
 
-| FR-CHAIN-11-5 | always | The skills for PRODUCT, PRD, FRD, UX and TP shall always link the page of diagram practices, which keeps a diagram optional in PRODUCT and PRD. |
+| FR-CHAIN-11-5 | always | The skills for PRODUCT, PRD, FRD, UX, TP, spec, fix and adopt shall always link the page of diagram practices, which keeps a diagram optional in PRODUCT and PRD. Example: the spec skill links it at "Write each spec". |
 
 ## Files
 | Path | Create or change | Holds |
