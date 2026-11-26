@@ -15,7 +15,7 @@
 //   bun scripts/check.ts trace [root] [test dir]...  covers tags against the ids the FRDs define (default test dir: test)
 //   bun scripts/check.ts history <doc>             one line per commit, from git
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { fromDoc, toPosix, typed } from "./paths.ts";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
@@ -331,6 +331,7 @@ function reusesFails(text: string, specPath: string): string[] {
       const abs = resolve(root, file);
       const inside = !relative(root, abs).startsWith("..") && !isAbsolute(file); // a path that leaves the project counts as not existing
       if (!inside || !existsSync(abs)) fails.push("Reuses: " + file + " does not exist");
+      else if (statSync(abs).isDirectory()) fails.push("Reuses: " + file + " is a directory, name a file");
       else if (!new RegExp("(?<![\\w$])" + code[2]!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\w$])").test(readFileSync(abs, "utf8"))) fails.push("Reuses: " + code[2] + " is not in " + file);
     } else if (nothing) {
       entries++;
@@ -342,7 +343,8 @@ function reusesFails(text: string, specPath: string): string[] {
       if (!found) fails.push("Reuses: precedent " + prec[1] + " does not exist");
     }
   }
-  if (!entries) return ["no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>"].map((f) => "[format 3] " + f);
+  if (!entries)
+    return [body === undefined ? "no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>" : "Reuses section has no valid entry, write one of: - `path` `name`, Nothing to reuse: <reason>, Precedent: SPEC-....md"].map((f) => "[format 3] " + f);
   return fails.map((f) => "[format 3] " + f);
 }
 

@@ -734,7 +734,15 @@ test("EX-3: a Reuses path that leaves the project fails even when the file exist
 test("EX-2: a Reuses entry with no bullet still says what to write", () => {
   const r = reuses("`scripts/paths.ts` `typed`: reads a path", 3);
   expect(r.code).toBe(1);
-  expect(r.out).toContain("name the code and the precedent spec it builds on, or Nothing to reuse: <reason>");
+  expect(r.out).toContain("Reuses section has no valid entry, write one of: - `path` `name`, Nothing to reuse: <reason>, Precedent: SPEC-....md");
+  expect(r.out).not.toContain("no Reuses section"); // the section is there, so it is not called absent
+});
+
+// issue 13
+test("a Reuses entry naming a directory fails without a throw", () => {
+  const r = reuses("- `scripts` `typed`: a folder", 3);
+  bad(r, "Reuses: scripts is a directory, name a file");
+  expect(r.out).not.toContain("EISDIR");
 });
 
 function uxTpRoot(pin: number, q: string) {
