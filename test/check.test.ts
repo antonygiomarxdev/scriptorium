@@ -6,6 +6,7 @@ import { runDocChecks, checksFor } from "../scripts/hook-doc-check.ts";
 import { lintFile, CAPS } from "../scripts/lint-docs.ts";
 import { traceFails } from "../scripts/trace.ts";
 import { docStatus, checkPrd, checkFrds, checkUx, checkTp, checkAdr, checkSpec, checkSummary, chainStatus, excerpt } from "../scripts/check.ts";
+import { gate } from "../scripts/format.ts";
 
 const SUM = "## Summary\n\ns\n\nLast change: 2026-11-20, written\n";
 
@@ -395,6 +396,24 @@ test("status: a TP-NN rests on the cross-cutting TP, and a TP cites only Accepte
   expect(run(ok, "Accepted")).toEqual([]);
   expect(run("Status: Draft\n", "Accepted").some((f) => f.includes("TP-01-a.md: approved, but") && /[\\/]tp[\\/]TP\.md is still Draft/.test(f))).toBe(true);
   expect(run(ok, "Proposed").some((f) => f.includes("TP-01-a.md: approved, but ADR-001 is still Proposed"))).toBe(true);
+});
+
+// issue 7: status finds a cited ADR by the one file rule, and fails one it cannot find
+test("status: a cited ADR is found by any accepted name form, and a missing one fails", () => {
+  const ok = "Status: Approved (2026-11-18)\n";
+  const cite = (id: string, adrFile: string | undefined, status = "Proposed") =>
+    chainStatus(project(ok, ok, { "docs/tp/TP.md": ok, "docs/inbox/tp/TP-01-a.md": ok + "### TD-1: x\nADR: " + id + "\n", ...(adrFile ? { ["docs/adr/" + adrFile]: "## Status\n" + status + "\n" } : {}) })).fails;
+  expect(cite("ADR-0029", "ADR-0029-x.md", "Accepted")).toEqual([]);
+  expect(cite("ADR-0029", "ADR-0029-x.md").some((f) => f.includes("ADR-0029 is still Proposed"))).toBe(true); // four digits
+  expect(cite("ADR-0021", "0021-x.md").some((f) => f.includes("ADR-0021 is still Proposed"))).toBe(true); // legacy name
+  expect(cite("ADR-0029", undefined).some((f) => f.includes("TP-01-a.md: approved, but ADR-0029 has no ADR file"))).toBe(true);
+  expect(cite("ADR-0029", "ADR-00290-x.md").some((f) => f.includes("ADR-0029 has no ADR file"))).toBe(true); // a longer number is another ADR
+  // the missing-ADR rule is format 5: a warning at pin 4, a failure at pin 5
+  const missing = cite("ADR-0029", undefined);
+  const at4 = gate(missing, 4);
+  expect(at4.fails).toEqual([]);
+  expect(at4.warnings.some((w) => w.startsWith("WARN (format 5): ") && w.includes("ADR-0029 has no ADR file"))).toBe(true);
+  expect(gate(missing, 5).fails.some((f) => f.includes("ADR-0029 has no ADR file"))).toBe(true);
 });
 
 // covers: chain/FRD-02/EX-14

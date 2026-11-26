@@ -692,8 +692,11 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
     // A TP is approved only when every ADR it cites ("ADR: ADR-NNN") is Accepted.
     if (x.kind === "TP")
       for (const id of new Set([...readFileSync(x.path, "utf8").matchAll(/\bADR:\s*(ADR-\d{3,})/g)].map((m) => m[1]))) {
-        const a = docs.find((y) => y.kind === "ADR" && y.path.split(/[\\/]/).pop()!.startsWith(id));
-        if (a && !a.approved) fails.push(x.path + ": approved, but " + id + " is still " + a.status);
+        const name = (y: { path: string }) => y.path.split(/[\\/]/).pop()!;
+        const f = adrFileFor(docs.filter((y) => y.kind === "ADR").map(name), id); // the same file rule as the tp check, legacy names included
+        const a = docs.find((y) => y.kind === "ADR" && name(y) === f);
+        if (!a) fails.push("[format 5] " + x.path + ": approved, but " + id + " has no ADR file"); // new rule: a warning below pin 5
+        else if (!a.approved) fails.push(x.path + ": approved, but " + id + " is still " + a.status);
       }
   }
   return { docs, fails: fails.map(toPosix) };

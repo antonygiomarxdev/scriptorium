@@ -44,7 +44,7 @@ test("an unknown pin: the CLI exits 1 saying update Scriptorium, the hook passes
   mkdirSync(join(root, ".scriptorium"));
   writeFileSync(join(root, "docs", "PRODUCT.md"), "x");
   writeFileSync(join(root, ".scriptorium", "config.json"), '{"format": 9}');
-  const msg = "this project uses format 9; this Scriptorium knows up to 4: update Scriptorium";
+  const msg = "this project uses format 9; this Scriptorium knows up to 5: update Scriptorium";
   const cli = Bun.spawnSync([process.execPath, join(scripts, "check.ts"), "status", "."], { cwd: root });
   expect(cli.exitCode).toBe(1);
   expect(cli.stdout.toString()).toContain(msg);

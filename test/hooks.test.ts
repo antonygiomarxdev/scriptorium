@@ -231,7 +231,7 @@ test("the stop hook in a project pinned to an unknown format passes with the upd
   const root = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 9}' });
   const r = hook("hook-stop.ts", { cwd: root });
   expect(r.code).toBe(0);
-  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 4: update Scriptorium");
+  expect(r.err).toContain("this project uses format 9; this Scriptorium knows up to 5: update Scriptorium");
   const ok = project({ "docs/PRODUCT.md": "x", ".scriptorium/config.json": '{"format": 2}' }); // mutant: a known pin gives no warning
   expect(hook("hook-stop.ts", { cwd: ok }).err).not.toContain("update Scriptorium");
 });
@@ -273,6 +273,39 @@ test("a project without docs/PRODUCT.md: the edit hook does nothing", () => {
   expect(r.code).toBe(0);
   expect(r.err + r.out).toBe("");
 });
+
+// A session in the main repo editing a file of a nested git worktree: the file's own project decides, not the session folder.
+const NESTED = ".claude/worktrees/w/";
+const nestedAt = (root: string, rel: string) => hook("hook-gate.ts", { cwd: root, input: { cwd: root, tool_input: { file_path: join(root, NESTED + rel) } } });
+const DRAFT = "# SPEC-01-1: b\n\nStatus: Draft\n\n## Files\n| File | Change |\n|---|---|\n| scripts/b.ts | new |\n";
+
+test("a file in a registered nested worktree is gated by that worktree's project, not the session's", () => {
+  const root = committed({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2, ".gitignore": ".claude/\n" });
+  expect(git(root, "-c", "user.name=t", "-c", "user.email=t@t", "worktree", "add", "-q", NESTED, "-b", "w").exitCode).toBe(0);
+  mkdirSync(join(root, NESTED, "docs/inbox/specs"), { recursive: true });
+  writeFileSync(join(root, NESTED, "docs/inbox/specs/SPEC-01-1-b.md"), DRAFT);
+  expect(nestedAt(root, "docs/inbox/frd/FRD-01-x.md").code).toBe(0); // docs/ is exempt under the worktree's own root; with cwd it reads .claude/worktrees/w/docs/... and is refused
+  const r = nestedAt(root, "scripts/b.ts");
+  expect(r.code).toBe(2);
+  expect(r.err).toContain("scripts/b.ts: no approved spec names it");
+  expect(r.err).toContain("docs/inbox/specs/SPEC-01-1-b.md lists it but is not approved"); // the worktree's spec, not the session project's
+  expect(r.err).not.toContain(".claude/worktrees/w/scripts/b.ts");
+}, 60000);
+
+test("a nested folder that holds a chain project but is not a git worktree is gated by the session root", () => {
+  const root = committed({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2 });
+  mkdirSync(join(root, NESTED, "docs/inbox/specs"), { recursive: true });
+  writeFileSync(join(root, NESTED, "docs/PRODUCT.md"), PRODUCT);
+  const r = nestedAt(root, "docs/inbox/frd/FRD-01-x.md");
+  expect(r.code).toBe(2); // judged from the session root: .claude/worktrees/w/docs/... is not exempt there
+  expect(r.err).toContain(".claude/worktrees/w/docs/inbox/frd/FRD-01-x.md");
+  const plain = project({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2, [NESTED + "docs/PRODUCT.md"]: PRODUCT }); // not a git repo: git fails, so the session root decides
+  const g = nestedAt(plain, "docs/inbox/frd/FRD-01-x.md");
+  expect(g.code).toBe(2);
+  expect(g.err).toContain(".claude/worktrees/w/docs/inbox/frd/FRD-01-x.md");
+  const bare = project({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2, "plain/x.ts": "x" }); // no git at all: the session root stays
+  expect(hook("hook-gate.ts", { cwd: bare, input: { cwd: bare, tool_input: { file_path: join(bare, "plain/x.ts") } } }).code).toBe(2);
+}, 60000);
 
 // covers: chain/FRD-03/EX-26
 test("EX-26: pre-commit blocks a staged pin lower than HEAD's", () => {
