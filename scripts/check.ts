@@ -16,7 +16,7 @@
 //   bun scripts/check.ts history <doc>             one line per commit, from git
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { fromDoc, toPosix, typed } from "./paths.ts";
+import { fromDoc, isTest, toPosix, typed } from "./paths.ts";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { approve, clear, driftReport, driftFails } from "./drift.ts";
 import { traceFails } from "./trace.ts";
@@ -495,7 +495,9 @@ export function checkSpec(text: string, specPath: string): string[] {
   for (const id of rowIds) if (!tested.has(id)) fails.push(id + " is in Rows but Tests first does not cite it");
   for (const id of tested) if (!rowIds.has(id)) fails.push(id + " is in Tests first but not in Rows");
   const files = filesLines(text);
-  const nFiles = files.filter((l) => !l.trim().startsWith("|")).length + Math.max(0, files.filter((l) => l.trim().startsWith("|")).length - 1);
+  // The cap counts code files: a table's header row and any test file (skills/spec/SKILL.md) do not count.
+  const rowPath = (l: string) => typed((l.trim().startsWith("|") ? l.split("|")[1]! : l.replace(/^\s*[-*]\s+/, "").split(/\s/)[0]!).trim().replace(/`/g, ""));
+  const nFiles = files.filter((l, i) => !(l.trim().startsWith("|") && files.findIndex((x) => x.trim().startsWith("|")) === i) && !isTest(rowPath(l))).length;
   if (nFiles > 3) fails.push("Files lists " + nFiles + " rows; the cap is 3");
   const cmds = (section(text, "Done when") ?? "").match(/`[^`\n]+`/g) ?? [];
   if (cmds.length !== 1) fails.push("Done when must hold exactly one backticked command, found " + cmds.length);

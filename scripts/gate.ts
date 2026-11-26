@@ -4,11 +4,10 @@ import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { chainStatus, restsOn } from "./check.ts";
 import { driftReport } from "./drift.ts";
 import { kindOf } from "./kinds.ts";
-import { fromDoc, toPosix, typed } from "./paths.ts";
+import { fromDoc, isTest, toPosix, typed } from "./paths.ts";
 import { frdIds, scanTags } from "./trace.ts";
 
-// Same exemptions as the changeset rule in pre-commit.ts (not exported there): docs, changesets, tests.
-const isTest = (p: string) => /(^|\/)(tests?|__tests__)\//.test(p) || /\.(test|spec)\./.test(p);
+// Same exemptions as the changeset rule in pre-commit.ts (both use isTest from paths.ts): docs, changesets, tests.
 const exempt = (p: string) => p.startsWith("docs/") || p.startsWith(".changeset/") || isTest(p);
 
 // First cell of each row under "## Files", backticks removed; a trailing slash names a folder.
