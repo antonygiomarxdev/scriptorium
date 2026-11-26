@@ -1,6 +1,7 @@
 # SPEC-11-5: The adopt and review skills link "Draw before you build"
 
-Status: Draft
+Status: Approved (2026-11-26)
+Approval: content vEPaI28N8jGK; rests on ../../requests/REQ-23-draw-before-you-build.md RYynaZYes5Au
 Rests on: ../../requests/REQ-23-draw-before-you-build.md
 
 ## Summary
@@ -30,7 +31,7 @@ One spec is one agent run: at most 80 lines, 3 files and one done command. Too b
 DG-9, written before the text, without it in view. The link test is the one at test/install.test.ts:209, whose list gains the adopt and review skills; the docs lint on both skills covers the rest.
 
 ## Build
-The markdown, written by the lead from the saved patch draw-before-you-build.patch; the test edit is two strings added to an existing list. No new check.
+The markdown, written by the builder from the saved patch draw-before-you-build.patch; the test edit is two strings added to an existing list. No new check.
 
 ## Done when
 `bun test test/install.test.ts`

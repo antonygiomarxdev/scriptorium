@@ -1,7 +1,7 @@
 # SPEC-11-1: A diagram is required where it carries the content
 
 Status: Approved (2026-11-22)
-Approval: content wFAyGbWzQWZa; rests on ../frd/FRD-11-diagrams.md rh70IXLPkBx4
+Approval: content wFAyGbWzQWZa; rests on ../frd/FRD-11-diagrams.md qfR-j-oUKtrv
 Rests on: ../frd/FRD-11-diagrams.md
 
 ## Summary

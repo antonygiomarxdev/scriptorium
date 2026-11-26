@@ -1,7 +1,7 @@
 # FRD-11: Diagrams where they explain
 
-Status: Approved (2026-11-22)
-Approval: content rh70IXLPkBx4; rests on ../PRD.md ASR_OGQqlGDj
+Status: Approved (2026-11-26)
+Approval: content qfR-j-oUKtrv; rests on ../PRD.md ASR_OGQqlGDj
 
 ## Summary
 
@@ -25,7 +25,7 @@ R-CHAIN-38.
 | FR-CHAIN-11-2 | IF | IF a Mermaid block opens with a diagram type other than flowchart, graph, sequenceDiagram, stateDiagram-v2, erDiagram or classDiagram, THEN the docs lint shall fail and name the type. |
 | FR-CHAIN-11-3 | IF | IF a Mermaid label holds an HTML tag, or a node label holds one of ( ) [ ] { } : without double quotes around it, or a node is named "end" in lowercase, THEN the docs lint shall fail and name the line. |
 | FR-CHAIN-11-4 | WHEN | WHEN a Mermaid block has more than 15 nodes, the docs lint shall warn and name it, and not fail. |
-| FR-CHAIN-11-5 | always | The skills for PRODUCT, PRD, FRD, UX and TP shall always link the page of diagram practices, which keeps a diagram optional in PRODUCT and PRD. |
+| FR-CHAIN-11-5 | always | The skills for PRODUCT, PRD, FRD, UX, TP, spec, fix and adopt shall always link the page of diagram practices, which keeps a diagram optional in PRODUCT and PRD. Example: the spec skill links it at "Write each spec". |
 | FR-CHAIN-11-6 | WHERE | WHERE a project is pinned to a format before the one that adds these rules, the checks shall print each failure as a warning and pass. |
 
 ## Rules and examples
