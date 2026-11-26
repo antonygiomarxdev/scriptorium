@@ -135,7 +135,10 @@ test("the Stryker run line of each file appends the file to failed.txt when the 
   const run = stepWith("@stryker-mutator/core@10.1.1");
   const body = loop(run);
   const cmd = body.slice(body.indexOf("npx"), body.indexOf("failed.txt", body.indexOf("npx")));
-  expect(cmd).toContain("@stryker-mutator/core@10.1.1 run");
+  expect(cmd).toContain("-p @stryker-mutator/core@10.1.1 -p typescript@5.6.3 -- stryker run");
+  expect(cmd).not.toContain("--jsonReporter"); // Stryker 10 rejects the flag
+  expect(cmd).toContain('"bun test --timeout 120000 $tests"'); // the 5 s default would fail slow test files
+  expect(body).toContain('mv reports/mutation/mutation.json "reports/$name.json"'); // the report lands where the check and the summary look
   expect(cmd).not.toContain("[ -s"); // the first failed.txt write comes from the tool's own command, not the report check
   expect(cmd).toMatch(/\|\|\s*echo "\$file"\s*>>\s*$/); // the || echo belongs to the tool's own command
   expect(run).toMatch(/:\s*>\s*failed\.txt/); // the list starts empty for each run
