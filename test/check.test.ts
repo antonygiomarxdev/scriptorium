@@ -1515,9 +1515,9 @@ test("EX-32: status lists docs/adr/0031-x.md with the kind ADR and the status Ac
 
 // covers: chain/FRD-08/EX-34
 test("EX-34: an FRD numbered 100 and its spec are listed by status, checked by the hook and traced", () => {
-  const frd = "# FRD-100: x\n\nStatus: Approved (2026-11-21)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n";
-  const specText = "Status: Draft\nRests on: ../frd/FRD-100-x.md\n";
-  const root = kindProject({ ".scriptorium/config.json": '{"format":2}', "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n", "docs/chain/PRD.md": "Status: Approved (2026-11-17)\n", "docs/chain/frd/FRD-100-x.md": frd, "docs/chain/specs/SPEC-100-1-x.md": specText, "test/a.test.ts": "// nothing\n" });
+  const frd = "# FRD-100: x\n\nStatus: Approved (2026-11-21)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n| EX-2 | b |\n";
+  const specText = "Status: Approved (2026-11-21)\nRests on: ../frd/FRD-100-x.md\n\n## Rows\n\n| EX-1 | a |\n| EX-2 | b |\n\n## Files\n"; // D-37: started once EX-2 is tagged
+  const root = kindProject({ ".scriptorium/config.json": '{"format":2}', "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n", "docs/chain/PRD.md": "Status: Approved (2026-11-17)\n", "docs/chain/frd/FRD-100-x.md": frd, "docs/chain/specs/SPEC-100-1-x.md": specText, "test/a.test.ts": "// " + "cov" + "ers: chain/FRD-100/EX-2\n" });
   const docs = chainStatus(root).docs;
   const kindOfPath = (name: string) => docs.find((d) => d.path.replace(/\\/g, "/").endsWith(name))?.kind;
   expect(kindOfPath("frd/FRD-100-x.md")).toBe("FRD");
@@ -1527,7 +1527,7 @@ test("EX-34: an FRD numbered 100 and its spec are listed by status, checked by t
   expect(first("docs/chain/specs/SPEC-100-1-x.md")).toContain("spec");
   const fails = traceFails(join(root, "docs"), [join(root, "test")]).fails;
   expect(fails.some((f) => f.includes("FRD-100/EX-1"))).toBe(true);
-  writeFileSync(join(root, "test", "a.test.ts"), "// " + "cov" + "ers: chain/FRD-100/EX-1\n");
+  writeFileSync(join(root, "test", "a.test.ts"), "// " + "cov" + "ers: chain/FRD-100/EX-1\n// " + "cov" + "ers: chain/FRD-100/EX-2\n");
   expect(traceFails(join(root, "docs"), [join(root, "test")]).fails).toEqual([]); // mutant: with its tag it is covered
 });
 
@@ -1550,7 +1550,9 @@ test("EX-35: a file with a near-miss name is no chain document to status, the ho
   expect(traced.fails).toEqual([]); // trace reads no FRD from FRD-1-x.md
   expect(traced.warnings).toEqual([]);
   // mutant: the same file with a two-digit number is an FRD, and its uncovered example is a failure
-  const real = kindProject({ ...files, "docs/chain/frd/FRD-01-x.md": files["docs/chain/frd/FRD-1-x.md"] as string });
+  // the spec is started (EX-2 is tagged), so the untagged EX-1 it also quotes is a failure and not a pending note (D-37)
+  const spec = "Status: Approved (2026-11-21)\nRests on: ../frd/FRD-01-x.md\n\n## Rows\n\n| EX-1 | a |\n| EX-2 | b |\n\n## Files\n";
+  const real = kindProject({ ...files, "docs/chain/frd/FRD-01-x.md": (files["docs/chain/frd/FRD-1-x.md"] as string) + "| EX-2 | b |\n", "docs/chain/specs/SPEC-01-1-x.md": spec, "test/a.test.ts": "// " + "cov" + "ers: chain/FRD-01/EX-2\n" });
   expect(traceFails(join(real, "docs"), [join(real, "test")]).fails.some((f) => f.includes("FRD-01/EX-1"))).toBe(true);
 });
 
