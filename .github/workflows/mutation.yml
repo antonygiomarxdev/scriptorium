@@ -47,9 +47,11 @@ jobs:
           unmapped=$(bun scripts/mutation.ts list 2>&1 >/dev/null || true)
           while IFS=$'\t' read -r file tests; do
             name=$(echo "$file" | tr '/' '_')
-            npx --yes @stryker-mutator/core@10.1.1 run --mutate "$file" --testRunner command --coverageAnalysis off \
-              --commandRunner.command "bun test $tests" --incremental --incrementalFile ".stryker-incremental/$name.json" \
-              --reporters json --jsonReporter.fileName "reports/$name.json" </dev/null || echo "$file" >> failed.txt
+            npx --yes -p @stryker-mutator/core@10.1.1 -p typescript@5.6.3 -- stryker run --mutate "$file" --testRunner command --coverageAnalysis off \
+              --commandRunner.command "bun test --timeout 120000 $tests" --incremental --incrementalFile ".stryker-incremental/$name.json" \
+              --reporters json </dev/null || echo "$file" >> failed.txt
+            # Stryker 10 writes reports/mutation/mutation.json and has no flag to rename it
+            mv reports/mutation/mutation.json "reports/$name.json" 2>/dev/null
             [ -s "reports/$name.json" ] || echo "$file" >> failed.txt
           done < <(bun scripts/mutation.ts list 2>/dev/null)
           sort -u failed.txt -o failed.txt
