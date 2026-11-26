@@ -91,10 +91,11 @@ test("EX-22: a CRLF spec gets its Rests on line ending in CRLF", () => {
 
 // covers: chain/FRD-03/EX-21
 test("EX-21: the dry run lists an example no test tags, and not one that has a tag", () => {
-  const frd = "# FRD-01: x\n\nStatus: Approved (2026-11-20)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n";
-  const files = { "docs/inbox/frd/FRD-01-a.md": frd };
-  const bare = migrate(project({ ...files, "test/a.test.ts": "// nothing\n" }));
+  const frd = "# FRD-01: x\n\nStatus: Approved (2026-11-20)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n| EX-2 | b |\n";
+  const spec = "Status: Approved (2026-11-20)\nRests on: ../frd/FRD-01-a.md\n\n## Rows\n\n| EX-1 | a |\n| EX-2 | b |\n\n## Files\n"; // D-37: a row fails once a spec that quotes it is started
+  const files = { "docs/inbox/frd/FRD-01-a.md": frd, "docs/inbox/specs/SPEC-01-1-a.md": spec };
+  const bare = migrate(project({ ...files, "test/a.test.ts": "// " + "cov" + "ers: inbox/FRD-01/EX-2\n" }));
   expect(bare.lines.join("\n")).toContain("FRD-01/EX-1");
-  const tagged = migrate(project({ ...files, "test/a.test.ts": "// " + "cov" + "ers: inbox/FRD-01/EX-1\n" })); // mutant: the tag is there
+  const tagged = migrate(project({ ...files, "test/a.test.ts": "// " + "cov" + "ers: inbox/FRD-01/EX-1\n// " + "cov" + "ers: inbox/FRD-01/EX-2\n" })); // mutant: both tags are there
   expect(tagged.lines.join("\n")).not.toContain("FRD-01/EX-1");
 });

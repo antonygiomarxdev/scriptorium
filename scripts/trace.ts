@@ -72,10 +72,36 @@ function loadFrds(docsRoot: string): Frd[] {
   return out;
 }
 
-// fails break the run; notes (DT ids nobody tags) are reported only; warnings are format 2 rules under a format 1 pin.
+// D-37: the rows each Approved, non-superseded spec quotes in its Rows, with the FRD (a path) it rests on.
+// Done is computed by running a command and nothing is written, so trace reads a spec's tags instead: see traceFails.
+type QuotingSpec = { frd: string; ids: Set<string> };
+function quotingSpecs(docsRoot: string): QuotingSpec[] {
+  const out: QuotingSpec[] = [];
+  for (const s of readdirSync(docsRoot, { withFileTypes: true })) {
+    const dir = join(docsRoot, s.name, "specs");
+    if (!s.isDirectory() || !existsSync(dir)) continue;
+    for (const f of readdirSync(dir)) {
+      if (kindOf(s.name + "/specs/" + f) !== "SPEC") continue;
+      const text = readFileSync(join(dir, f), "utf8");
+      if (!/^Status:\s*Approved/m.test(text)) continue; // a draft or superseded spec claims no build
+      const lines = text.split(/\r?\n/);
+      const on = /^Rests on:\s*`?([^\s`]+)/m.exec(lines.slice(0, 20).join("\n"))?.[1];
+      if (!on || !/^FRD-\d+-/.test(on.split("/").pop()!)) continue;
+      const start = lines.findIndex((x) => /^## Rows\s*$/.test(x));
+      const end = start < 0 ? -1 : lines.findIndex((x, i) => i > start && /^## /.test(x));
+      const rows = start < 0 ? "" : lines.slice(start + 1, end < 0 ? undefined : end).join("\n");
+      const ids = new Set(frdIds(rows));
+      if (ids.size) out.push({ frd: resolve(dir, on), ids });
+    }
+  }
+  return out;
+}
+
+// fails break the run; notes (DT ids nobody tags, and the untagged rows of an approved FRD that no started Approved spec quotes, D-37) are reported only; warnings are format 2 rules under a format 1 pin.
 // The pin sits beside docs/.
 export function traceFails(docsRoot: string, testDirs: string[], pin = readFormat(dirname(resolve(docsRoot)))): { fails: string[]; notes: string[]; warnings: string[] } {
   const frds = loadFrds(docsRoot),
+    specs = quotingSpecs(docsRoot),
     fails: string[] = [],
     notes: string[] = [];
   const covered = new Set<Frd>(),
@@ -106,7 +132,13 @@ export function traceFails(docsRoot: string, testDirs: string[], pin = readForma
     for (const id of f.ids) {
       if (hit.has(f.path + "|" + id) || f.waive[id] !== undefined) continue;
       if (id.startsWith("DT-")) notes.push("untagged: " + name(id) + " (" + relative(docsRoot, f.path) + ")");
-      else if (f.approved) fails.push("[format 2] uncovered: " + name(id) + " (" + relative(docsRoot, f.path) + ")");
+      else if (f.approved) {
+        const where = name(id) + " (" + relative(docsRoot, f.path) + ")";
+        // D-37: an untagged row is pending, a NOTE, unless an Approved spec that quotes it is started: at least one other row it quotes carries a tag
+        const started = specs.some((s) => s.frd === resolve(f.path) && s.ids.has(id) && [...s.ids].some((o) => o !== id && hit.has(f.path + "|" + o)));
+        if (started) fails.push("[format 2] uncovered: " + where);
+        else notes.push("pending: " + where + ", not built yet: no started Approved spec quotes it");
+      }
     }
   }
   const g = gate(fails.map(toPosix), pin);
