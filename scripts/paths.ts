@@ -1,4 +1,4 @@
-import { dirname, join, sep } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 
 // Paths in output use "/" on every system.
 export const toPosix = (p: string): string => p.split(sep).join("/");
@@ -11,3 +11,6 @@ export const isTest = (p: string): boolean => /(^|\/)(tests?|__tests__)\//.test(
 
 // A typed path, relative to the document it is written in.
 export const fromDoc = (docPath: string, p: string): string => join(dirname(docPath), typed(p));
+
+// A path as git prints it, for comparing: resolved, forward slashes, and without case on Windows.
+export const samePath = (p: string): string => (process.platform === "win32" ? toPosix(resolve(p)).toLowerCase() : toPosix(resolve(p)));
