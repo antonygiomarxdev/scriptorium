@@ -6,7 +6,7 @@ Status: Accepted
 
 The chain says agents write and review but never approve (D-6), yet nothing stops an agent from approving its own spec. Approval is a Status line and a hash with no secret, and docs/ is exempt from the gate. The owner accepted the need; the owner chose to enforce it through a pull request the owner merges (OA-3, D-38).
 
-Last change: 2026-11-26, the owner picked OA-3 (D-38); OA-2 and OA-4 not chosen
+Last change: 2026-11-26, build picks recorded in D-40; before that the owner picked OA-3 (D-38), OA-2 and OA-4 not chosen
 
 ## Who asked and when
 The owner, 2026-11-26, in session.
@@ -28,3 +28,4 @@ Rework R-101 (2026-11-26): an agent can approve its own spec. This run showed th
 - OA-5: Whether an agent can tell it is one mattered only for OA-4, which was not chosen; the question is closed.
 - OA-6: The owner picked OA-3 and recorded it as D-38; the build is an FRD and then specs.
 - Draft: https://claude.ai/artifact/22jNEiSuJSepc2Y95M2vhH, version 1, OK 2026-11-26
+- Draft: https://claude.ai/artifact/NJRPzKgQuPyxjHUkSv2XYU, version 1, OK 2026-11-26, D-40

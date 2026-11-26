@@ -6,7 +6,7 @@ Status: Accepted
 
 An approved spec that is built looks the same as an approved one still pending, so a reader cannot tell, and a built spec drifts when its parent changes. The owner accepted the need; the owner chose to compute it (BL-2) and to keep a built spec's quotes as history (BL-4), D-39.
 
-Last change: 2026-11-26, the owner picked BL-2 with BL-4 (D-39); BL-3 not chosen
+Last change: 2026-11-26, build picks recorded in D-40; before that the owner picked BL-2 with BL-4 (D-39), BL-3 not chosen
 
 ## Who asked and when
 The owner, 2026-11-26, in session.
@@ -28,3 +28,4 @@ An adopting project's question about how to mark a built spec; rework R-104; the
 - BL-5: Format 3's Reuses section is not required of a spec built before format 3; migrate exempts those specs.
 - BL-6: The owner picked BL-2 with BL-4 and recorded it as D-39; the build is an FRD and then specs.
 - Draft: https://claude.ai/artifact/22jNEiSuJSepc2Y95M2vhH, version 1, OK 2026-11-26
+- Draft: https://claude.ai/artifact/NJRPzKgQuPyxjHUkSv2XYU, version 1, OK 2026-11-26, D-40
