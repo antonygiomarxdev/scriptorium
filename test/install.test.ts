@@ -185,7 +185,7 @@ const PAGE_RULES: [string, string, RegExp][] = [
   ["quote a label with punctuation", "Keep it renderable", /quote a label[^\n]*(punctuation|\( \))/i],
   ["no HTML in a label, not even <br>", "Keep it renderable", /no html[^\n]*<br>/i],
   ["never a lowercase end node", "Keep it renderable", /never name a node end in lowercase/i],
-  ["no styling", "Keep it renderable", /no styling/i],
+  ["no fills, colors or themes (strokes only, DG-10)", "Keep it renderable", /no fills, colors or themes[^\n]*stroke-only/i],
   ["never install a renderer or download a browser", "Keep it renderable", /never install a renderer[^\n]*download a browser/i],
   ["cite FR ids", "Cite the rows", /\bFR id/],
   ["cite EX ids", "Cite the rows", /\bEX id/],
@@ -195,7 +195,7 @@ const PAGE_RULES: [string, string, RegExp][] = [
 const pageProblems = (text: string) => PAGE_RULES.filter(([, heading, re]) => !re.test(sectionOf(text, heading))).map(([name]) => name);
 
 // covers: chain/FRD-11/FR-CHAIN-11-5
-test("the diagram practices page exists with every rule in its place, and the five skills link it", () => {
+test("the diagram practices page exists with every rule in its place, and the nine skills link it", () => {
   const root = join(import.meta.dir, "..", "skills");
   const page = join(root, "scriptorium", "diagrams.md");
   expect(existsSync(page)).toBe(true);
@@ -204,8 +204,8 @@ test("the diagram practices page exists with every rule in its place, and the fi
   expect(text).toContain("PRODUCT");
   expect(text).toContain("PRD");
   for (const type of TYPES) expect([type, text.includes(type)]).toEqual([type, true]);
-  // the skills of PRODUCT (the scriptorium skill), PRD, FRD (its writing rules), UX and TP
-  for (const file of ["scriptorium/SKILL.md", "prd/SKILL.md", "frd/writing-rules.md", "ux/SKILL.md", "tp/SKILL.md"]) {
+  // the skills of PRODUCT (the scriptorium skill), PRD, FRD (its writing rules), UX and TP, then spec, fix, adopt and review (DG-9)
+  for (const file of ["scriptorium/SKILL.md", "prd/SKILL.md", "frd/writing-rules.md", "ux/SKILL.md", "tp/SKILL.md", "spec/SKILL.md", "fix/SKILL.md", "adopt/SKILL.md", "review/SKILL.md"]) {
     expect([file, readFileSync(join(root, file), "utf8").includes("diagrams.md")]).toEqual([file, true]);
   }
 });

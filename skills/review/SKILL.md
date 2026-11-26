@@ -30,6 +30,8 @@ Map every clause of the Files table's "Holds" column to a row. A clause with no 
 
 New code that repeats code already in the project (a copy of a helper, a second map, a rule written twice) fails the change, citing FR-CHAIN-05-5, and is logged with cause C-13. Code that calls what the spec's Reuses section names is not a finding.
 
+When a spec has a proposed diagram, its changed and new nodes must match the Files table and its existing nodes must not be rewritten; a mismatch is logged with cause C-13. See [diagrams](../scriptorium/diagrams.md).
+
 In a session review, a question put to the owner that research or the lead could have answered is logged with cause C-14.
 
 Also fail anything beyond the spec (L-13): code, files or behavior no quoted row asks for. Warn when additions far exceed deletions with no stated reason.

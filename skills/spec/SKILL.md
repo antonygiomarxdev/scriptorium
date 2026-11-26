@@ -27,6 +27,8 @@ A strong model splits; a small model runs each spec. If a run does not fit, spli
 
 ## 3. Write each spec
 
+On code that exists, draw today and proposed first and read the gaps; see [diagrams](../scriptorium/diagrams.md) ("Draw before you build"). Existing nodes are what Reuses names.
+
 Copy `${CLAUDE_PLUGIN_ROOT}/templates/SPEC.md` to `docs/$0/specs/SPEC-$1-<k>-<name>.md`, k = 1, 2, 3 in build order. Worked example: `${CLAUDE_PLUGIN_ROOT}/examples/larder/docs/pickups/specs/`.
 
 - **Rests on**: the relative path of the parent.

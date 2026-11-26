@@ -27,6 +27,8 @@ docs/<slice>/PRD.md  frd/FRD-NN-name.md  ux/UX-NN-name.md  tp/TP-NN-name.md  spe
 
 Search `$ARGUMENTS` (the whole repo if empty) for process documents: `docs/`, `doc/`, `specs/`, `rfcs/`, `adr/`, `design/`, `.github/`, and any markdown with "requirement", "PRD", "spec", "RFC", "ADR", "design", "user story", "acceptance". Skip `node_modules`, build output and vendored code. Read each one.
 
+Draw the system as the code does it before moving any document; see [diagrams](../scriptorium/diagrams.md) ("Draw before you build").
+
 Map every document to one chain step, using the templates as the target shape:
 
 | Existing | Usually becomes |
