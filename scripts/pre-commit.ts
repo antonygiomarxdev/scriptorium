@@ -12,11 +12,10 @@ import { isChainProject, runDocChecks, runStatus, runTrace, splitDocPath } from 
 import { CONFIG, gate, readFormat } from "./format.ts";
 import { gateFile } from "./gate.ts";
 import { reworkFails } from "./rework.ts";
-import { toPosix } from "./paths.ts";
+import { isTest, toPosix } from "./paths.ts";
 
 const sh = (args: string[], cwd?: string) => Bun.spawnSync(args, { cwd }).stdout.toString().trim();
 // L-15 Changesets: staged `git diff --name-status` lines; fails a change outside docs/, tests and .changeset/ that stages no new changeset.
-const isTest = (p: string) => /(^|\/)(tests?|__tests__)\//.test(p) || /\.(test|spec)\./.test(p);
 export function changesetRule(nameStatus: string[]): string[] {
   const rows = nameStatus
     .map((l) => l.split("\t"))

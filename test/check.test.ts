@@ -238,6 +238,12 @@ test("spec: document ids in Tests first are not row ids", () => {
 test("spec: at most 3 Files rows and exactly one command in Done when", () => {
   expect(sp(SPEC.replace("| a.ts | new |", "| a.ts | new |\n| b.ts | new |\n| c.ts | new |"))).toEqual([]);
   expect(sp(SPEC.replace("| a.ts | new |", "| a.ts | new |\n| b.ts | new |\n| c.ts | new |\n| d.ts | new |")).some((f) => f.includes("Files lists 4 rows"))).toBe(true);
+  const three = SPEC.replace("| a.ts | new |", "| a.ts | new |\n| b.ts | new |\n| c.ts | new |");
+  expect(sp(three.replace("| c.ts | new |", "| c.ts | new |\n| test/c.test.ts | new |\n| x.spec.ts | new |"))).toEqual([]); // test files do not count
+  expect(sp(three.replace("| c.ts | new |", "| c.ts | new |\n| d.ts | new |\n| test/c.test.ts | new |")).some((f) => f.includes("Files lists 4 rows"))).toBe(true);
+  const bullets = (rows: string[]) => SPEC.replace("| File | Change |\n|---|---|\n| a.ts | new |", rows.map((r) => "- `" + r + "` new").join("\n"));
+  expect(sp(bullets(["a.ts", "b.ts", "c.ts", "test/c.test.ts"]))).toEqual([]); // the same rules for bullet rows
+  expect(sp(bullets(["a.ts", "b.ts", "c.ts", "d.ts", "test/c.test.ts"])).some((f) => f.includes("Files lists 4 rows"))).toBe(true);
   expect(sp(SPEC.replace("`bun test`", "`bun test` and `bun run typecheck`"))).toContain("Done when must hold exactly one backticked command, found 2");
   expect(sp(SPEC.replace("`bun test`", "bun test"))).toContain("Done when must hold exactly one backticked command, found 0");
 });
