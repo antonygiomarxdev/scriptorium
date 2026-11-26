@@ -343,8 +343,7 @@ function reusesFails(text: string, specPath: string): string[] {
       if (!found) fails.push("Reuses: precedent " + prec[1] + " does not exist");
     }
   }
-  if (!entries)
-    return [body === undefined ? "no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>" : "Reuses section has no valid entry, write one of: - `path` `name`, Nothing to reuse: <reason>, Precedent: SPEC-....md"].map((f) => "[format 3] " + f);
+  if (!entries) return [body === undefined ? "no Reuses section: name the code and the precedent spec it builds on, or Nothing to reuse: <reason>" : "Reuses section has no valid entry, write one of: - `path` `name`, Nothing to reuse: <reason>, Precedent: SPEC-....md"].map((f) => "[format 3] " + f);
   return fails.map((f) => "[format 3] " + f);
 }
 
@@ -695,7 +694,8 @@ export function chainStatus(root: string): { docs: Doc[]; fails: string[] } {
         const name = (y: { path: string }) => y.path.split(/[\\/]/).pop()!;
         const f = adrFileFor(docs.filter((y) => y.kind === "ADR").map(name), id); // the same file rule as the tp check, legacy names included
         const a = docs.find((y) => y.kind === "ADR" && name(y) === f);
-        if (!a) fails.push("[format 5] " + x.path + ": approved, but " + id + " has no ADR file"); // new rule: a warning below pin 5
+        if (!a)
+          fails.push("[format 5] " + x.path + ": approved, but " + id + " has no ADR file"); // new rule: a warning below pin 5
         else if (!a.approved) fails.push(x.path + ": approved, but " + id + " is still " + a.status);
       }
   }

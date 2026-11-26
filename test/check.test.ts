@@ -401,8 +401,7 @@ test("status: a TP-NN rests on the cross-cutting TP, and a TP cites only Accepte
 // issue 7: status finds a cited ADR by the one file rule, and fails one it cannot find
 test("status: a cited ADR is found by any accepted name form, and a missing one fails", () => {
   const ok = "Status: Approved (2026-11-18)\n";
-  const cite = (id: string, adrFile: string | undefined, status = "Proposed") =>
-    chainStatus(project(ok, ok, { "docs/tp/TP.md": ok, "docs/inbox/tp/TP-01-a.md": ok + "### TD-1: x\nADR: " + id + "\n", ...(adrFile ? { ["docs/adr/" + adrFile]: "## Status\n" + status + "\n" } : {}) })).fails;
+  const cite = (id: string, adrFile: string | undefined, status = "Proposed") => chainStatus(project(ok, ok, { "docs/tp/TP.md": ok, "docs/inbox/tp/TP-01-a.md": ok + "### TD-1: x\nADR: " + id + "\n", ...(adrFile ? { ["docs/adr/" + adrFile]: "## Status\n" + status + "\n" } : {}) })).fails;
   expect(cite("ADR-0029", "ADR-0029-x.md", "Accepted")).toEqual([]);
   expect(cite("ADR-0029", "ADR-0029-x.md").some((f) => f.includes("ADR-0029 is still Proposed"))).toBe(true); // four digits
   expect(cite("ADR-0021", "0021-x.md").some((f) => f.includes("ADR-0021 is still Proposed"))).toBe(true); // legacy name

@@ -292,6 +292,24 @@ test("a file in a registered nested worktree is gated by that worktree's project
   expect(r.err).not.toContain(".claude/worktrees/w/scripts/b.ts");
 }, 60000);
 
+// The 8.3 short name of a folder (C:\Users\RUNNER~1\...), as Windows runners give the temp dir; the path itself where there is none.
+const shortOf = (p: string) => {
+  try {
+    const r = Bun.spawnSync(["powershell", "-NoProfile", "-Command", "(New-Object -ComObject Scripting.FileSystemObject).GetFolder('" + p + "').ShortPath"]);
+    return r.exitCode === 0 && r.stdout.toString().trim() ? r.stdout.toString().trim() : p;
+  } catch {
+    return p;
+  }
+};
+
+test("a registered nested worktree is found when the session path is the short 8.3 form and git prints the long one", () => {
+  const root = committed({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2, ".gitignore": ".claude/\n" });
+  expect(git(root, "-c", "user.name=t", "-c", "user.email=t@t", "worktree", "add", "-q", NESTED, "-b", "w").exitCode).toBe(0);
+  const short = shortOf(root);
+  if (short === root) return; // no short name here (not Windows, or 8.3 names are off): nothing to compare
+  expect(nestedAt(short, "docs/inbox/frd/FRD-01-x.md").code).toBe(0); // with samePath alone the worktree is not recognised and the long path under the session root is refused
+}, 60000);
+
 test("a nested folder that holds a chain project but is not a git worktree is gated by the session root", () => {
   const root = committed({ "docs/PRODUCT.md": PRODUCT, ".scriptorium/config.json": PIN2 });
   mkdirSync(join(root, NESTED, "docs/inbox/specs"), { recursive: true });

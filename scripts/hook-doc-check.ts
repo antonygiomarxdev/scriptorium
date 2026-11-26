@@ -2,7 +2,7 @@
 // L-12 layer 1, PostToolUse on Write|Edit|MultiEdit: after the agent edits a chain document, run that document's
 // check and the docs lint on it. Hook input (JSON) arrives on stdin; failures go to stderr with exit 2 so the agent sees them.
 // The same functions serve the Stop hook, the git pre-commit hook and CI (see hook-stop.ts, pre-commit.ts).
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { lintDocs, loadPhrases } from "./lint-docs.ts";
 import { pinProblem } from "./format.ts";
@@ -75,6 +75,15 @@ export function runDocChecks(root: string, rel: string, strict = false, warns?: 
 // The plugin is installed user-wide: a project without docs/PRODUCT.md is not a Scriptorium project and is never touched.
 export const isChainProject = (root: string) => existsSync(join(root, "docs", "PRODUCT.md"));
 
+// A path for comparing with what git prints: through the real path, so a short 8.3 name (C:\Users\RUNNER~1) and the long one match; samePath when the path does not resolve.
+const canon = (p: string): string => {
+  try {
+    return samePath(realpathSync.native(p));
+  } catch {
+    return samePath(p);
+  }
+};
+
 // The worktrees git lists from the session root; undefined when git fails.
 function worktreesOf(sessionRoot: string): Set<string> | undefined {
   try {
@@ -85,7 +94,7 @@ function worktreesOf(sessionRoot: string): Set<string> | undefined {
         .toString()
         .split(/\r?\n/)
         .filter((l) => l.startsWith("worktree "))
-        .map((l) => samePath(l.slice(9))),
+        .map((l) => canon(l.slice(9))),
     );
   } catch {
     return undefined; // no git binary: the same as a failing git
@@ -97,10 +106,10 @@ function worktreesOf(sessionRoot: string): Set<string> | undefined {
 export function projectOf(abs: string, sessionRoot: string): string {
   let trees: Set<string> | undefined | null = null; // read once, and only when a nested candidate shows up
   for (let dir = dirname(abs); !relative(sessionRoot, dir).startsWith(".."); dir = dirname(dir)) {
-    if (samePath(dir) === samePath(sessionRoot)) break;
+    if (canon(dir) === canon(sessionRoot)) break;
     if (isChainProject(dir)) {
       trees = trees === null ? worktreesOf(sessionRoot) : trees;
-      if (trees?.has(samePath(dir))) return dir;
+      if (trees?.has(canon(dir))) return dir;
     }
     if (dirname(dir) === dir) break;
   }
