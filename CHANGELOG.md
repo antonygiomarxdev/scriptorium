@@ -1,5 +1,19 @@
 # scriptorium
 
+## 0.8.0
+
+### Minor Changes
+
+- 30cadeb: Format 5. An approved TP that cites an ADR finds the ADR by the same file rule the tp check uses, so four-digit and legacy NNNN-name.md ADRs are found and a longer number is not mistaken for a shorter one. A cited ADR with no file fails the status check; a project pinned below format 5 gets a warning instead. Run migrate to move the pin.
+- b041eed: The diagrams page gains "Draw before you build": draw the code as it is and the proposed change, mark existing, changed and new nodes by stroke, and turn each gap into an Open question, a Files row or a Reuses entry. The spec, fix, adopt and review skills link it. FR-CHAIN-11-5 names them.
+
+### Patch Changes
+
+- 30cadeb: The edit gate takes a file's project from the file, not from the session folder, when the file sits in a nested git worktree (.claude/worktrees/NAME/) that git lists for the session's repository. Such a file is gated by that worktree's own specs, and its docs/ files are exempt. A nested folder that is not a registered worktree, or a failing git, leaves the session folder as the project.
+- b10a238: The edit hook finds a nested git worktree on Windows when the session path is an 8.3 short name.
+- 5496627: A Reuses entry that names a directory now fails with "is a directory, name a file" instead of crashing with EISDIR. A Reuses section with no valid entry now says so and lists the three entry forms; "no Reuses section" is kept for a spec that has none.
+- d49a203: The spec check no longer counts test files toward the cap of 3 Files rows, as the spec skill already says. A test file is one in a test folder or named .test. or .spec.
+
 ## 0.7.1
 
 ### Patch Changes
