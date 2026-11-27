@@ -6,7 +6,7 @@ Status: Accepted
 
 The rework queue proves a prevention by replaying the failure it catches, but it does not record whether the prevention lowered its cause afterwards, and preventions that ship together are credited together. Add a verdict per prevention (helped, hurt, no observed effect, confounded), taken from the findings after it shipped. Also name what Harness2 calls the two lenses: Scriptorium holds what a practitioner knows, puppeteering how the agent works.
 
-Last change: 2026-11-27, accepted by the owner after reading Harness2's code with the lead
+Last change: 2026-11-27, the verdict is computed by the report, not written by hand (owner)
 
 ## Who asked and when
 The owner, 2026-11-27, after the lead read google-research/harness2.
@@ -24,7 +24,10 @@ A replay shows a check catches the old failure. It does not show that rework fel
 
 ## Decision
 Accepted.
-- To specify in the metrics slice: a Verdict column on each prevention, set from the open findings of its cause in the runs after it shipped; `confounded` when another prevention or template change for the same cause shipped in the same release.
+- The rework report computes each prevention's verdict from the queue's history; nobody writes it by hand (owner, 2026-11-27). Specified in metrics FRD-04 (R-METRICS-10).
 - Answered now: README.md says that Scriptorium is the practitioner's lens and puppeteering the agent's.
+
+PRD row added when the owner approves metrics FRD-04, so the approved metrics PRD does not drift before then:
+> R-METRICS-10. The rework report gives each prevention a verdict computed from the queue's history: helped, hurt, no observed effect, or confounded when the evidence cannot single it out; nobody writes it by hand (REQ-22).
 
 Short path: `README.md`
