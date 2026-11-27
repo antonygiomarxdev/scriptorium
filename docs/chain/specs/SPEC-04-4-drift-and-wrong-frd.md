@@ -1,7 +1,7 @@
 # SPEC-04-4: A drifted spec or another FRD's tag does not count
 
 Status: Approved (2026-11-20)
-Approval: content Ktje-2MM4OSH; rests on ../frd/FRD-04-gate-before-code.md 5qbSw4IYjIsG
+Approval: content Ktje-2MM4OSH; rests on ../frd/FRD-04-gate-before-code.md uL6Edt_koZHn
 Rests on: ../frd/FRD-04-gate-before-code.md
 
 ## Summary

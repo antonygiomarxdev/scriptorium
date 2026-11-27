@@ -1,21 +1,21 @@
 # FRD-01: Drift, traceability and history
 
-Status: Approved (2026-11-20)
-Approval: content DMw49CZMI-jd; rests on ../PRD.md ASR_OGQqlGDj
+Status: Approved (2026-11-26)
+Approval: content ARVnO3EuD2Rz; rests on ../PRD.md CCI95Z47mmmD
 
 ## Summary
 
-An owner who approves a document gets a record of what it said and what it rested on. From then on a check fails the document when its body is edited or its parent changes, until the owner approves again or clears the parent change. Tests name the examples they cover, and a scan fails dead names and approved examples nobody tests. The history of a document is read from git on request, never kept in the document. No document carries a version number.
+An owner who approves a document gets a record of what it said and what it rested on. From then on a check fails the document when its body is edited or its parent changes, until the owner approves again or clears the parent change. Tests name the examples they cover, and a scan fails dead names and approved examples nobody tests. The history of a document is read from git on request, never kept in the document. No document carries a version number. An example nobody tests yet is pending until a spec that quotes it has started. An approval counts only when the owner merged it, and a built spec is history that drift skips.
 
-Last change: 2026-11-20, a missing Approval line is a warning, not a failure (FR-CHAIN-01-3, EX-5, DT-2)
+Last change: 2026-11-26, draft for the owner: the merger check is format 6, approve stamps the local day (EX-33, EX-34, REQ-33), pending rows (D-37), the merger check (D-38) and built specs skipped by drift (D-39), under D-40; before that 2026-11-20, a missing Approval line is a warning, not a failure (FR-CHAIN-01-3, EX-5, DT-2)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
 ## Why
-No request is recorded. It answers D-28 and L-14 in [the decision inbox](../../DECISIONS.md), with the [research](../../research/2026-11-20-traceability-tools.md) behind them.
+It answers D-28 and L-14 in [the decision inbox](../../DECISIONS.md), with the [research](../../research/2026-11-20-traceability-tools.md) behind them. The pending rows answer [REQ-22](../../requests/REQ-22-approve-then-build.md) (D-37), the merger check [REQ-31](../../requests/REQ-31-only-the-owner-approves.md) (D-38) and built specs [REQ-32](../../requests/REQ-32-a-built-spec-says-it-is-built.md) (D-39); D-40 holds the build picks.
 
 ## Requirements covered
-R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
+R-CHAIN-3, R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
 
 ## Behavior
 
@@ -30,9 +30,13 @@ R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
 | FR-CHAIN-01-7 | IF | IF the owner clears a document that is a draft or whose own body changed THEN the system shall refuse and leave the file unchanged. |
 | FR-CHAIN-01-8 | WHEN | WHEN status runs, the system shall list every drifted document with its cause (body edited or parent changed) and the parent concerned. |
 | FR-CHAIN-01-9 | IF | IF a test carries a covers tag that names an example, state or invariant no FRD defines THEN the scan shall fail it as a dead tag. |
-| FR-CHAIN-01-10 | IF | IF an example, state or invariant of an approved FRD has no covers tag and no waiver in that FRD THEN the scan shall fail it as uncovered. |
+| FR-CHAIN-01-10 | IF | IF an example, state or invariant of an approved FRD has no covers tag and no waiver in that FRD THEN the scan shall report it as pending in a note that lists the row, and shall fail it as uncovered only when an approved spec that is not superseded and rests on that FRD quotes it in its Rows and that spec has started, meaning at least one other row it quotes carries a covers tag. |
 | FR-CHAIN-01-11 | IF | IF a coverage waiver in the FRD gives no reason THEN the scan shall fail it. |
 | FR-CHAIN-01-14 | IF | IF a covers tag without a slice names an FRD number that more than one slice has THEN the scan shall fail it as ambiguous and name the slice-prefixed form. |
+| FR-CHAIN-01-15 | IF | IF status runs in the continuous-integration run on the main branch and a document became approved through a pull request whose merger is not one of the owners the project names, THEN status shall fail it and name the document and the merger. |
+| FR-CHAIN-01-16 | IF | IF the merger cannot be known, because the project names no owners or no host answers, THEN status shall print "not verifiable" for the merger and claim nothing about who approved. |
+| FR-CHAIN-01-17 | WHERE | WHERE a project is pinned to a format before 6, the one that adds the merger check, status shall print each failure as a warning and pass. |
+| FR-CHAIN-01-18 | always | The drift check shall skip a built spec. |
 | FR-CHAIN-01-12 | WHEN | WHEN history is asked for a document, the system shall print one line per commit that touched it, newest first, from git, and shall write no file. |
 | FR-CHAIN-01-13 | IF | IF a document carries a version number THEN the lint shall fail it. |
 
@@ -45,9 +49,11 @@ R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
 | RULE-3 | An approved document whose body fingerprint differs from its record fails. | FR-CHAIN-01-4 |
 | RULE-4 | An approved document whose parent fingerprint differs from its record is suspect and fails. | FR-CHAIN-01-5, FR-CHAIN-01-8 |
 | RULE-5 | Clearing rewrites only the parent fingerprints, and only for a suspect approved document whose own body is unchanged. | FR-CHAIN-01-6, FR-CHAIN-01-7 |
-| RULE-6 | Every covers tag names a defined id, with a slice prefix unless one slice has that FRD number. Every example, state and invariant of an approved FRD has a tag or a waiver with a reason, written "uncovered: \<id\> \<reason\>" in that FRD's Coverage waivers list, so the owner approves it with the FRD. | FR-CHAIN-01-9, FR-CHAIN-01-10, FR-CHAIN-01-11, FR-CHAIN-01-14 |
+| RULE-6 | Every covers tag names a defined id, with a slice prefix unless one slice has that FRD number. Every example, state and invariant of an approved FRD has a tag or a waiver with a reason, written "uncovered: \<id\> \<reason\>" in that FRD's Coverage waivers list, so the owner approves it with the FRD; a row with neither is pending until a started spec quotes it, and then it fails. | FR-CHAIN-01-9, FR-CHAIN-01-10, FR-CHAIN-01-11, FR-CHAIN-01-14 |
 | RULE-7 | History comes from git and is never stored in a document. | FR-CHAIN-01-12 |
 | RULE-8 | No document carries a version number. | FR-CHAIN-01-13 |
+| RULE-9 | An approval counts only when an owner the project names merged it; where that cannot be known, status says so and claims nothing. | FR-CHAIN-01-15, FR-CHAIN-01-16, FR-CHAIN-01-17 |
+| RULE-10 | A built spec is history: drift skips it. | FR-CHAIN-01-18 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -55,6 +61,8 @@ R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
 | EX-2 | RULE-1 | positive | A PRD has Status: Draft; a copy has Status: Approved (2026-11-21), an Approval line and a different Last change line | the fingerprint of each is computed | the two fingerprints are equal |
 | EX-3 | RULE-1 | negative | A copy of a PRD has "shall" changed to "should" in one requirement | the fingerprint of each is computed | the two fingerprints differ |
 | EX-4 | RULE-2 | positive | A PRD in draft rests on ../PRODUCT.md | the owner approves it on 2026-11-21 | line 3 reads "Approval: content \<12 characters\>; rests on ../PRODUCT.md \<12 characters\>", directly under "Status: Approved (2026-11-21)" |
+| EX-33 | RULE-2 | negative | The machine's clock reads 20:00 on 2026-11-26 at UTC-6, which is 02:00 on 2026-11-27 in UTC, and a PRD in draft rests on ../PRODUCT.md | the owner approves it with no date given | line 1 reads "Status: Approved (2026-11-26)", the local day, not the UTC day |
+| EX-34 | RULE-2 | positive | A PRD in draft rests on ../PRODUCT.md and the clock reads 2026-11-27 | the owner approves it with the date 2026-11-20 given, by either command | line 1 reads "Status: Approved (2026-11-20)" |
 | EX-5 | RULE-2 | negative | A PRD says "Status: Approved (2026-11-21)" and has no Approval line | the check runs | the check passes with a warning "PRD.md: approved without an Approval line; approve it again to record one" |
 | EX-6 | RULE-3 | negative | An approved FRD has one word of RULE-1 changed after approval, and its Last change line is updated | the check runs | it fails with "FRD-01-x.md: body changed since approval" |
 | EX-7 | RULE-3 | positive | An approved FRD has only its Last change line changed after approval | the check runs | it passes |
@@ -65,7 +73,8 @@ R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
 | EX-12 | RULE-5 | negative | A PRD has Status: Draft | the owner clears it | clear is refused with "not approved: nothing to clear" and the file is unchanged |
 | EX-13 | RULE-6 | positive | Approved FRD-01 defines EX-1 and EX-2, and tests carry "covers: FRD-01/EX-1" and "covers: FRD-01/EX-2" | the scan runs | it passes |
 | EX-14 | RULE-6 | negative | A test carries "covers: FRD-01/EX-9" and FRD-01 defines no EX-9 | the scan runs | it fails with "dead tag FRD-01/EX-9" and names the test file |
-| EX-15 | RULE-6 | negative | Approved FRD-01 defines EX-3 and no test carries a tag for it | the scan runs | it fails with "uncovered: FRD-01/EX-3" |
+| EX-15 | RULE-6 | negative | Approved FRD-01 defines EX-3 and EX-4, an approved spec resting on it quotes both, and a test tags EX-4 but none tags EX-3 | the scan runs | it fails with "uncovered: FRD-01/EX-3" |
+| EX-24 | RULE-6 | boundary | Approved FRD-01 defines EX-3, no test tags it, and no approved spec quotes it | the scan runs | it passes with a note "pending: FRD-01/EX-3" |
 | EX-16 | RULE-6 | boundary | Approved FRD-01 defines EX-3 and no test tags it, and its Coverage waivers list holds "uncovered: EX-3 needs a real clock" | the scan runs | it passes |
 | EX-17 | RULE-6 | negative | Approved FRD-01's Coverage waivers list holds "uncovered: EX-3" with nothing after the id | the scan runs | it fails with "waiver without a reason: FRD-01/EX-3" |
 | EX-22 | RULE-6 | negative | Slices chain and pickups both have an FRD-01, and a test carries "covers: FRD-01/EX-1" | the scan runs | it fails with "ambiguous tag FRD-01/EX-1: write chain/FRD-01/EX-1 or pickups/FRD-01/EX-1" |
@@ -74,6 +83,14 @@ R-CHAIN-9, R-CHAIN-23, R-CHAIN-24, R-CHAIN-25.
 | EX-19 | RULE-7 | boundary | A PRD exists but was never committed | history is asked for it | it prints "no history: not committed yet" and no file changes |
 | EX-20 | RULE-8 | negative | A PRD has the line "Version: 1.2" | the lint runs | it fails with "version number in a document" and names the line |
 | EX-21 | RULE-8 | positive | A PRD says in its prose that a requirement is met "by the 0.3.0 release" | the lint runs | it passes: a release named in prose is not a document version |
+| EX-25 | RULE-9 | negative | The project names the owner "ana", and a pull request merged by "ben" puts "Status: Approved (2026-11-27)" on docs/chain/PRD.md | status runs in the continuous-integration run on the main branch | it fails with "docs/chain/PRD.md: approved through a pull request merged by ben, not an owner" |
+| EX-26 | RULE-9 | positive | The project names the owner "ana", and a pull request merged by "ana" approves docs/chain/PRD.md | status runs in the continuous-integration run on the main branch | it passes |
+| EX-27 | RULE-9 | boundary | The project names no owners, and a pull request approves docs/chain/PRD.md | status runs | it prints "not verifiable: the project names no owners" and the merger check fails nothing |
+| EX-28 | RULE-9 | boundary | The project is pinned to format 5 and a pull request merged by "ben" approves docs/chain/PRD.md | status runs in the continuous-integration run on the main branch | it passes and prints the failure as a warning |
+| EX-31 | RULE-9 | boundary | The project names the owner "ana", no host answers, and a pull request approves docs/chain/PRD.md | status runs | it prints "not verifiable: no host answers" and fails nothing |
+| EX-32 | RULE-6 | boundary | Approved FRD-01 defines EX-3 and EX-4, a spec resting on it that is Draft quotes both, and a test tags EX-4 but none tags EX-3 | the scan runs | it passes with a note "pending: FRD-01/EX-3", the same for a superseded spec |
+| EX-29 | RULE-10 | positive | A built spec quotes a row of an approved FRD, and the row changed after the spec was approved | the drift check runs | it reports nothing for that spec |
+| EX-30 | RULE-10 | negative | A spec that is pending quotes a row of an approved FRD, and the row changed after the spec was approved | the drift check runs | it fails the spec as suspect, naming the FRD |
 
 ### Coverage waivers
 None.
@@ -108,18 +125,18 @@ stateDiagram-v2
 | ST-4 | Draft to Approved by clear | No: nothing to clear |
 
 ## Invariants
-n/a: the repository keeps no invariants register yet; RULE-1 to RULE-8 are covered by the examples.
+n/a: the repository keeps no invariants register yet; RULE-1 to RULE-10 are covered by the examples.
 
 ## Quality criteria
 
 | ID | Characteristic (ISO/IEC 25010) | Criterion |
 |---|---|---|
-| QC-1 | Functional suitability | All 23 examples pass in the test run: 23 of 23, and the scan reports 0 uncovered examples of this FRD. |
+| QC-1 | Functional suitability | All 34 examples pass in the test run: 34 of 34, and the scan reports 0 uncovered examples of this FRD. |
 | QC-2 | Performance efficiency | The drift check of a generated chain of 200 documents finishes in under 2 s on the CI runner, measured in one test. |
 | QC-3 | Compatibility | EX-1 passes on both CI systems (Windows and Linux): equal fingerprints for LF and CRLF copies. |
 | QC-4 | Interaction capability | Every failure message names the document, the cause and the owner's next step, asserted in one test per row of the decision table. |
 | QC-5 | Reliability | A refused clear leaves the file byte-identical, asserted in EX-11 and EX-12. |
-| QC-6 | Security | n/a: the record detects change, it does not prove who approved; the owner's review of the commit does that (R-CHAIN-3). |
+| QC-6 | Security | The record detects change and does not prove who approved; status does in the continuous-integration run, by comparing the merger to the owners the project names, asserted in EX-25 and EX-26. |
 | QC-7 | Maintainability | The scan reports 0 dead tags and 0 uncovered examples for this FRD at approval. |
 | QC-8 | Flexibility | n/a: the ignored lines and the fingerprint length are fixed, not settings. |
 | QC-9 | Safety | n/a: a wrong result delays an approval and endangers nobody. |
@@ -128,7 +145,7 @@ n/a: the repository keeps no invariants register yet; RULE-1 to RULE-8 are cover
 n/a: the repository keeps no cross-cutting register yet.
 
 ## Information
-Reads: the body, status line and parent link of every document; the covers tags in test files, the coverage waivers in each FRD; the commit log of each document. Keeps: one Approval line per approved document. A fingerprint is the first 12 characters of the base64url form of the SHA-256 of the normalized body. The record format is "Approval: content \<h\>; rests on \<path\> \<h\>", one "rests on" part per parent, with the path relative to the document's folder.
+Reads: the body, status line and parent link of every document; the covers tags in test files, the coverage waivers in each FRD; the commit log of each document; the owners the project names, and the merger of each pull request that approved a document. Keeps: one Approval line per approved document. A fingerprint is the first 12 characters of the base64url form of the SHA-256 of the normalized body. The record format is "Approval: content \<h\>; rests on \<path\> \<h\>", one "rests on" part per parent, with the path relative to the document's folder.
 
 ## Open questions
 None.
@@ -150,7 +167,7 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-12** (EX-12): Given A PRD has Status: Draft, when the owner clears it, then clear is refused with "not approved: nothing to clear" and the file is unchanged.
 - **AC-13** (EX-13): Given Approved FRD-01 defines EX-1 and EX-2, and tests carry "covers: FRD-01/EX-1" and "covers: FRD-01/EX-2", when the scan runs, then it passes.
 - **AC-14** (EX-14): Given A test carries "covers: FRD-01/EX-9" and FRD-01 defines no EX-9, when the scan runs, then it fails with "dead tag FRD-01/EX-9" and names the test file.
-- **AC-15** (EX-15): Given Approved FRD-01 defines EX-3 and no test carries a tag for it, when the scan runs, then it fails with "uncovered: FRD-01/EX-3".
+- **AC-15** (EX-15): Given Approved FRD-01 defines EX-3 and EX-4, an approved spec resting on it quotes both, and a test tags EX-4 but none tags EX-3, when the scan runs, then it fails with "uncovered: FRD-01/EX-3".
 - **AC-16** (EX-16): Given Approved FRD-01 defines EX-3 and no test tags it, and its Coverage waivers list holds "uncovered: EX-3 needs a real clock", when the scan runs, then it passes.
 - **AC-17** (EX-17): Given Approved FRD-01's Coverage waivers list holds "uncovered: EX-3" with nothing after the id, when the scan runs, then it fails with "waiver without a reason: FRD-01/EX-3".
 - **AC-18** (EX-18): Given A PRD was committed on 2026-11-18 with subject "docs: draft" and on 2026-11-20 with subject "docs: approve", when history is asked for it, then two lines print, 2026-11-20 first, each holding the date, the short commit id and the subject, and no file changes.
@@ -167,3 +184,14 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-29** (ST-2): Given the transition "Drifted to Approved by clear, when the parent changed", then it is allowed, and only the parent fingerprints change.
 - **AC-30** (ST-3): Given the transition "Drifted to Approved by clear, when the body changed", then it is refused: the owner approves again.
 - **AC-31** (ST-4): Given the transition "Draft to Approved by clear", then it is refused: nothing to clear.
+- **AC-32** (EX-24): Given Approved FRD-01 defines EX-3, no test tags it, and no approved spec quotes it, when the scan runs, then it passes with a note "pending: FRD-01/EX-3".
+- **AC-33** (EX-25): Given The project names the owner "ana", and a pull request merged by "ben" puts "Status: Approved (2026-11-27)" on docs/chain/PRD.md, when status runs in the continuous-integration run on the main branch, then it fails with "docs/chain/PRD.md: approved through a pull request merged by ben, not an owner".
+- **AC-34** (EX-26): Given The project names the owner "ana", and a pull request merged by "ana" approves docs/chain/PRD.md, when status runs in the continuous-integration run on the main branch, then it passes.
+- **AC-35** (EX-27): Given The project names no owners, and a pull request approves docs/chain/PRD.md, when status runs, then it prints "not verifiable: the project names no owners" and the merger check fails nothing.
+- **AC-36** (EX-28): Given The project is pinned to format 5 and a pull request merged by "ben" approves docs/chain/PRD.md, when status runs in the continuous-integration run on the main branch, then it passes and prints the failure as a warning.
+- **AC-37** (EX-29): Given A built spec quotes a row of an approved FRD, and the row changed after the spec was approved, when the drift check runs, then it reports nothing for that spec.
+- **AC-41** (EX-33): Given The machine's clock reads 20:00 on 2026-11-26 at UTC-6, which is 02:00 on 2026-11-27 in UTC, and a PRD in draft rests on ../PRODUCT.md, when the owner approves it with no date given, then line 1 reads "Status: Approved (2026-11-26)", the local day, not the UTC day.
+- **AC-42** (EX-34): Given A PRD in draft rests on ../PRODUCT.md and the clock reads 2026-11-27, when the owner approves it with the date 2026-11-20 given, by either command, then line 1 reads "Status: Approved (2026-11-20)".
+- **AC-39** (EX-31): Given The project names the owner "ana", no host answers, and a pull request approves docs/chain/PRD.md, when status runs, then it prints "not verifiable: no host answers" and fails nothing.
+- **AC-40** (EX-32): Given Approved FRD-01 defines EX-3 and EX-4, a spec resting on it that is Draft quotes both, and a test tags EX-4 but none tags EX-3, when the scan runs, then it passes with a note "pending: FRD-01/EX-3", the same for a superseded spec.
+- **AC-38** (EX-30): Given A spec that is pending quotes a row of an approved FRD, and the row changed after the spec was approved, when the drift check runs, then it fails the spec as suspect, naming the FRD.

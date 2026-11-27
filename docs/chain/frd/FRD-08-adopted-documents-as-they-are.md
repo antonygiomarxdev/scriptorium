@@ -1,7 +1,7 @@
 # FRD-08: Adopted documents checked as they are
 
 Status: Approved (2026-11-23)
-Approval: content RtuWFdihKJCj; rests on ../PRD.md ASR_OGQqlGDj
+Approval: content RtuWFdihKJCj; rests on ../PRD.md CCI95Z47mmmD
 
 ## Summary
 
