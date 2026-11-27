@@ -1517,7 +1517,14 @@ test("EX-32: status lists docs/adr/0031-x.md with the kind ADR and the status Ac
 test("EX-34: an FRD numbered 100 and its spec are listed by status, checked by the hook and traced", () => {
   const frd = "# FRD-100: x\n\nStatus: Approved (2026-11-21)\n\n| Example | Rule |\n|---|---|\n| EX-1 | a |\n| EX-2 | b |\n";
   const specText = "Status: Approved (2026-11-21)\nRests on: ../frd/FRD-100-x.md\n\n## Rows\n\n| EX-1 | a |\n| EX-2 | b |\n\n## Files\n"; // D-37: started once EX-2 is tagged
-  const root = kindProject({ ".scriptorium/config.json": '{"format":2}', "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n", "docs/chain/PRD.md": "Status: Approved (2026-11-17)\n", "docs/chain/frd/FRD-100-x.md": frd, "docs/chain/specs/SPEC-100-1-x.md": specText, "test/a.test.ts": "// " + "cov" + "ers: chain/FRD-100/EX-2\n" });
+  const root = kindProject({
+    ".scriptorium/config.json": '{"format":2}',
+    "docs/PRODUCT.md": "Status: Approved (2026-11-17)\n",
+    "docs/chain/PRD.md": "Status: Approved (2026-11-17)\n",
+    "docs/chain/frd/FRD-100-x.md": frd,
+    "docs/chain/specs/SPEC-100-1-x.md": specText,
+    "test/a.test.ts": "// " + "cov" + "ers: chain/FRD-100/EX-2\n",
+  });
   const docs = chainStatus(root).docs;
   const kindOfPath = (name: string) => docs.find((d) => d.path.replace(/\\/g, "/").endsWith(name))?.kind;
   expect(kindOfPath("frd/FRD-100-x.md")).toBe("FRD");
