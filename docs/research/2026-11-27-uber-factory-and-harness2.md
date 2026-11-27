@@ -1,6 +1,6 @@
 # Research: Uber's software factory and Google's Harness2
 
-Date: 2026-11-27. Read by the lead. Uber: the owner's PDF of the post, read in full. Harness2: web search summaries only, marked UNVERIFIED; the paper (arXiv 2610.14224) and the repository were not opened because the session's network did not allow those hosts.
+Date: 2026-11-27. Read by the lead. Uber: the owner's PDF of the post, read in full. Harness2: its repository, read in the code; the paper was not opened.
 
 ## Summary
 
@@ -23,12 +23,20 @@ Both are about the harness around a model, not the model itself. Uber cuts cost:
 | Next: "record papercuts from agent skill executions and auto-generate skill updates" | Planned |
 | "The core strategic shift is moving from interactive developer workflows to fully managed agents" | Position |
 
-## Harness2 (Google Research, 2026-10) — UNVERIFIED
+## Harness2 (Google Research, 2026-10)
 
-- Improves the harness (prompts, guardrails, memory, skills, tools) and never the weights.
-- Per task, Propose, Probe, Compose: the current harness runs the task once as a reference; two editors each edit a copy (one changes how the agent works, one adds domain knowledge); both candidates run the same task under matched settings and are compared with the reference; a composer keeps the edits the evidence supports, merges or revises them, or keeps the current harness.
-- Across tasks, a reflector writes lessons to a library: an executable harness and an EXPERIENCE.md with the situation, the lesson and the evidence. Weak evidence writes nothing. Each task starts from the base harness; only the library carries forward.
-- Reported: one step improved GLM-5 and Gemini 3.5 Flash by up to 11.5 points on WorkBuddy-Bench, 4.5 on JobBench and 11.8 on LAB's partial pass rate; more recursion budget gave more. No cost figures found.
+Read from the repository github.com/google-research/harness2 (commit 6868817, 2026-11-01): README.md, harness2/core/prompts.py, library.py, recursion.py. The paper (arXiv 2610.14224) was not opened.
+
+- A harness has eight editable components: system prompt, guardrails, memory, tool guidance, subagents, skills, scripts, plugins. Weights never change.
+- Per task, Propose, Probe, Compose, "without ground-truth feedback": base rollouts; two editors each edit a copy, INV ("how the agent WORKS": procedure, tools, completion) and DOM ("what a PRACTITIONER knows"), each told to stay out of the other's dimension; every candidate runs once; a composer merges, adopts one, or keeps the base. "KEEP_BASE is a real answer, not a failure. Adaptation that the evidence does not argue for is a regression."
+- Cost: "Each mode schedules 4k rollouts and 3k improvement stages" per task (recursion.py); k = 1 is 4 rollouts and 3 model stages.
+- Weighing: "A defect in 1/k is noise"; one rollout per candidate is weak evidence; "an edit earns its place when a SPECIFIC MOMENT in a trajectory shows the mechanism". The composer writes one line per decision: kept, revised or dropped, the edit, the evidence.
+- Selection is blind: candidates are anonymous and shuffled, and "picking an output from an unmodified harness is a completely valid and expected outcome".
+- The reflector writes a ledger row per changed component with a verdict: helped, hurt, no observed effect, confounded ("prefer it" when several components changed at once or one rollout is all there is). Then at most one lesson: cue (the shape of situation), lesson (an operation on a named component), evidence (the rows it rests on), confidence. "A lesson resting only on confounded rows is a guess"; with no contrast, it writes NO_ENTRY.
+- The library is per domain: the whole adopted harness plus EXPERIENCE.md, read before the next task in that domain, never a summary. Library components are copied and their facts re-verified: "an earlier task's mapping or threshold is a hypothesis here".
+- Encoding: a skill with a trigger "costs nothing until that situation arises"; always-on memory "is paid for on every run -- so if you add some, cut some".
+- Facts over procedure: write the verified workspace fact itself, labelled; "a guessed fact is worse than none".
+- Reported: one step improved GLM-5 and Gemini 3.5 Flash by up to 11.5 points on WorkBuddy-Bench, 4.5 on JobBench and 11.8 on LAB's partial pass rate (README; self-reported).
 
 ## What it means here
 
@@ -40,9 +48,11 @@ Both are about the harness around a model, not the model itself. Uber cuts cost:
 | Outcome-denominated cost and revert rate | metrics: first-pass rate, rework rounds | No cost per accepted spec, no revert rate |
 | A benchmark of the agent's own past work | rework.md holds returned changes with known causes | Not used to score reviewer configurations |
 | Keep a change only if a run proves it (Harness2 Compose; Uber's benchmarks) | A rework prevention must be proven by replay | Lessons in puppeteering's LESSONS.md need no replay |
+| Each change gets a verdict; "confounded" when several changed at once | Rework rows name a cause | No verdict per change; changes shipped together are credited together |
+| Two lenses kept apart: how the agent works, what a practitioner knows | puppeteering is the first, Scriptorium the second | Not said anywhere |
 | A lesson records situation, lesson and evidence; weak evidence writes nothing | LESSONS.md entries; rework rows | No required evidence field in LESSONS.md |
 
 ## Sources
 
 - Uber, "Running a Software Factory Efficiently at Uber Scale", uber.com/us/en/blog/efficient-software-factory/, 2026-08-27 (PDF supplied by the owner).
-- Harness2: github.com/google-research/harness2; arXiv 2610.14224 (not opened). Summaries: datacamp.com/tutorial/google-harness-2-tutorial, i-scoop.eu/harness2-google/, harness2.app/docs/tutorial, themenonlab.blog (Harness²: up to 11.8 points), layer3labs.io/guides/harness2-explained.
+- Harness2: github.com/google-research/harness2 at 6868817; arXiv 2610.14224 (not opened).
