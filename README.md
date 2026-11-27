@@ -172,7 +172,7 @@ flowchart LR
 | Checks run by script | The check the coordinator reruns before it trusts a report |
 | `/scriptorium:review` | The reviewer's closed review, capped at 3 rounds |
 
-Each works alone. Together, the team never guesses what to build, and you never guess whether it was built.
+Each works alone. Together, the team never guesses what to build, and you never guess whether it was built. Google's [Harness²](https://github.com/google-research/harness2) improves an agent with two editors kept apart, one for how the agent works and one for what a practitioner knows. Puppeteering is the first lens; Scriptorium is the second.
 
 ## Install
 
