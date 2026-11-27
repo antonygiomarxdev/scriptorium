@@ -1,7 +1,7 @@
 # FRD-03: The rework skill plans the heaviest cause
 
 Status: Approved (2026-11-21)
-Approval: content Giy4Vq0uPy1r; rests on ../PRD.md JwxEpZqGsLDf
+Approval: content Giy4Vq0uPy1r; rests on ../PRD.md AS4Wm8Y4l9CR
 
 ## Summary
 

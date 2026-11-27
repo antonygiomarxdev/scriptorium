@@ -24,10 +24,7 @@ A replay shows a check catches the old failure. It does not show that rework fel
 
 ## Decision
 Accepted.
-- The rework report computes each prevention's verdict from the queue's history; nobody writes it by hand (owner, 2026-11-27). Specified in metrics FRD-04 (R-METRICS-10).
+- The rework report computes each prevention's verdict from the queue's history; nobody writes it by hand (owner, 2026-11-27). Specified in metrics FRD-04 (R-METRICS-10), approved by the owner 2026-11-27 (Draft in the repository until its tests land, then the same content is approved): two signals, findings per review and the nightly survivors.
 - Answered now: README.md says that Scriptorium is the practitioner's lens and puppeteering the agent's.
-
-PRD row added when the owner approves metrics FRD-04, so the approved metrics PRD does not drift before then:
-> R-METRICS-10. The rework report gives each prevention a verdict computed from the queue's history: helped, hurt, no observed effect, or confounded when the evidence cannot single it out; nobody writes it by hand (REQ-22).
 
 Short path: `README.md`

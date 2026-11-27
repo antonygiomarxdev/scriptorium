@@ -1,7 +1,7 @@
 # FRD-02: Rework history
 
 Status: Approved (2026-11-21)
-Approval: content Vt8WN98uvCSd; rests on ../PRD.md JwxEpZqGsLDf
+Approval: content Vt8WN98uvCSd; rests on ../PRD.md AS4Wm8Y4l9CR
 
 ## Summary
 

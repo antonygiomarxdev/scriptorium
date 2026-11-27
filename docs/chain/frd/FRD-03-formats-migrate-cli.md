@@ -1,7 +1,7 @@
 # FRD-03: Pinned formats, migrate and the command-line tool
 
 Status: Approved (2026-11-20)
-Approval: content qE3unsi9mr_h; rests on ../PRD.md ASR_OGQqlGDj
+Approval: content qE3unsi9mr_h; rests on ../PRD.md OZpNPTgEi9vt
 
 ## Summary
 

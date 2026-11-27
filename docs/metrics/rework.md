@@ -6,7 +6,7 @@ Status: Draft
 
 Open findings only, each with one cause from the list below (D-32). A finding leaves when its cause gets a proven prevention; git keeps the history. A cause found twice with no prevention blocks the project, and a finding of a prevented cause blocks too, because the prevention did not hold. FRD-01 of the metrics slice specifies the checks; until they are built, the lead applies them by hand.
 
-Last change: 2026-11-20, reshaped from a growing log into a queue of open findings (D-32)
+Last change: 2026-11-27, R-6, R-79 and R-81 moved out of C-1, and C-15 added (owner)
 
 - Blocking today: C-1 (13 open), C-2 (2), C-8 (2) and C-9 (2). None has a prevention.
 - Build and review are the step for no finding: review found no change built against its spec.
@@ -31,6 +31,7 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | C-12 | Test | A test fixture reads as a real tag or document to the repository's own checks. | 2 | none | n/a |
 | C-13 | Build | New code repeats code that already exists in the project (REQ-7). | 3 | none | n/a |
 | C-14 | Ask | The owner was asked a question that research or the lead could answer (REQ-10). | 1 | none | n/a |
+| C-15 | Build | A name or command resolves to something outside the project: another person's package, a global tool, a path above the project. | 1 | none | n/a |
 
 ## Open findings
 
@@ -41,7 +42,7 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-3 | 2026-11-20 | SPEC-03-3 | C-1 | The dead tag failure lost its format tag and no test failed. |
 | R-4 | 2026-11-20 | SPEC-03-4 | C-1 | The migrate dry run listed spec and status failures only, not lint or coverage. |
 | R-5 | 2026-11-20 | SPEC-03-4 | C-1 | The CRLF branch of the rewrite had no test. |
-| R-6 | 2026-11-20 | SPEC-03-5 | C-1 | The hook ran `bunx scriptorium`; that name on npm is another person's package, and a test run downloaded and ran it on the owner's machine. |
+| R-6 | 2026-11-20 | SPEC-03-5 | C-15 | The hook ran `bunx scriptorium`; that name on npm is another person's package, and a test run downloaded and ran it on the owner's machine. moved from C-1: the hook called a name that resolves outside the project (owner, 2026-11-27). |
 | R-7 | 2026-11-20 | SPEC-03-5 | C-1 | Removing the hook's cd to the root broke no test. |
 | R-8 | 2026-11-20 | SPEC-03-5 | C-1 | Reading the pin from the current folder instead of the document's project broke no test. |
 | R-9 | 2026-11-20 | SPEC-03-6 | C-5 | The EX-18 test checks a proxy, not what the row says. |
@@ -114,9 +115,9 @@ A new cause needs the owner. Prevention: a CHECK-n of the project's checks, with
 | R-76 | 2026-11-21 | chain FRD-08 | C-1 | FR-CHAIN-08-3 exempted legacy ADRs in the docs lint and the TP check but not in status, so renaming them to ADR-NNNN made status fail all 26 of another project. |
 | R-77 | 2026-11-21 | SPEC-08-8 | C-1 | "legacy" was added to the status list for every ADR, so an ADR above the cutoff passes status by writing "legacy" by hand; no example had a hand-written legacy status. |
 | R-78 | 2026-11-22 | SPEC-08-9 | C-1 | No example changes only the case of a word in a quoted row, or pins that a bullet row is compared as written; both mutants survive. |
-| R-79 | 2026-11-22 | a909ad5 | C-1 | CI on main was red for eight pushes: a test wrote to the parent of the temp folder, which is / on Linux, and the lead pushed without reading the CI result of any push. |
+| R-79 | 2026-11-22 | a909ad5 | C-6 | CI on main was red for eight pushes: a test wrote to the parent of the temp folder, which is / on Linux, and the lead pushed without reading the CI result of any push. moved from C-1: the lead pushed without reading CI, a process failure, not a missing example (owner, 2026-11-27). |
 | R-80 | 2026-11-22 | chain FRD-01 | C-1 | The fingerprint leaves out every line starting with "Approval: " or "Status: ", not only the header ones, so body text on such a line is not covered by the approval; no example puts one in the body. |
-| R-81 | 2026-11-22 | SPEC-08-11 | C-1 | A builder edited scripts/ in the checkout that adopting projects run in their hooks; a half-done drift.ts edit failed 157 and 184 approved documents there until the lead restored it. Builds now run in a separate worktree. |
+| R-81 | 2026-11-22 | SPEC-08-11 | C-8 | A builder edited scripts/ in the checkout that adopting projects run in their hooks; a half-done drift.ts edit failed 157 and 184 approved documents there until the lead restored it. Builds now run in a separate worktree. moved from C-1: a builder edited the live checkout, a team-practice failure, not a missing example (owner, 2026-11-27). |
 | R-82 | 2026-11-22 | SPEC-08-11 | C-1 | No example uses a bold "**Status:**" line or "Approval:" with no space in the fingerprint rule; both mutants survive, and the cap and the fingerprint define the Approval line slightly differently. |
 | R-83 | 2026-11-22 | SPEC-11-3 | C-1 | The spec says the page holds renderable syntax and cited ids, but no row or test pins those rules; removing any of them passes. |
 | R-84 | 2026-11-22 | SPEC-11-2 | C-1 | The build allowed fifteen Mermaid types where FR-CHAIN-11-2 allows six, and passed because EX-4 tested only one type outside the list. |

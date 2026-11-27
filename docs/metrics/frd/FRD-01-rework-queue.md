@@ -1,7 +1,7 @@
 # FRD-01: The rework queue
 
 Status: Approved (2026-11-20)
-Approval: content LeMG8yiTCSTC; rests on ../PRD.md JwxEpZqGsLDf
+Approval: content LeMG8yiTCSTC; rests on ../PRD.md AS4Wm8Y4l9CR
 
 ## Summary
 

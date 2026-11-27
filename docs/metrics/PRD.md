@@ -1,13 +1,13 @@
 # Metrics PRD
 
-Status: Approved (2026-11-21)
-Approval: content JwxEpZqGsLDf; rests on ../PRODUCT.md WYQLLUQoIF4u
+Status: Approved (2026-11-27)
+Approval: content AS4Wm8Y4l9CR; rests on ../PRODUCT.md WYQLLUQoIF4u
 
 ## Summary
 
 Rework must go down, and the chain must show which step lets it through. Every finding that sends work back is queued with one cause from a fixed list. A cause that repeats with no proven prevention blocks the project until someone writes one, and a prevention that fails blocks again. The queue only holds open findings, so it shrinks when the process improves and grows when it does not.
 
-Last change: 2026-11-21, rework history and the rework skill (R-METRICS-8, R-METRICS-9; REQ-12, D-33)
+Last change: 2026-11-27, a computed verdict per prevention from two signals (R-METRICS-10; REQ-22, owner)
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -27,6 +27,7 @@ UC-8, UC-12.
 - **R-METRICS-7.** Under a project pin below the format that introduced these rules, they only warn.
 - **R-METRICS-8.** One command rebuilds every finding the queue ever held from its history, with the date each opened and closed, and prints them by week, by change and by cause, so the trend shows although closed findings leave the queue (REQ-12, D-33).
 - **R-METRICS-9.** A skill takes the cause with the most open findings, reads its findings and their history, and writes a request for the owner: the evidence, the step that let the findings through, a proposed prevention with its replay, and how the owner will see it worked. It writes nothing else (REQ-12, D-33).
+- **R-METRICS-10.** The rework report gives each prevention a verdict computed and never written by hand, from two signals: the cause's findings per review logged, clean reviews included, and the surviving mutants of the nightly job; helped, hurt, no observed effect, or confounded when the signals disagree or the evidence cannot single the prevention out (REQ-22).
 
 ## Principles honored
 Principle 4: the loop is enforced by checks, not by memory. Principle 8: the queue measures the process. Principle 6: the log stays short because closed findings leave it.
