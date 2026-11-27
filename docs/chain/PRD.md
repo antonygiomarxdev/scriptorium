@@ -1,13 +1,13 @@
 # Chain PRD
 
-Status: Approved (2026-11-22)
-Approval: content ASR_OGQqlGDj; rests on ../PRODUCT.md WYQLLUQoIF4u
+Status: Approved (2026-11-26)
+Approval: content CCI95Z47mmmD; rests on ../PRODUCT.md WYQLLUQoIF4u
 
 ## Summary
 
-The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
+The chain slice is the core of Scriptorium: the documents of a product in order, the layout they live in, the checks that gate each one, the lint that keeps them short and honest, and the hooks that run all of it without the agent choosing to. It also shows the status of every document and what drifted. Not yet met today: R-CHAIN-6 in part (default caps are enforced; a project cannot lower them yet), R-CHAIN-12 (glossary in code and test names), R-CHAIN-15 (gate before code edits), R-CHAIN-18 (inbox age), R-CHAIN-3 in part (the merger check), R-CHAIN-28 in part (the computed state of a spec). R-CHAIN-30 to R-CHAIN-34 are being built. No question is open.
 
-Last change: 2026-11-22, R-CHAIN-38 diagrams and R-CHAIN-39 specs checked against code (owner)
+Last change: 2026-11-26, draft: built needs tags in tests committed on the default branch (4A, D-41); R-CHAIN-3 adds the merger check and R-CHAIN-28 computes pending, started and built (D-38 to D-40), for the owner to approve
 
 Part of [the product overview](../PRODUCT.md). States what, not how: name no technology.
 
@@ -20,7 +20,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 ## Requirements
 - **R-CHAIN-1.** Every document type of the chain (product overview, PRD, FRD, UX, cross-cutting TP, TP, ADR, spec, request) has a template whose sections and ids match the decided model (D-27, L-7).
 - **R-CHAIN-2.** Every document lives at the place its type fixes under `docs/`, and a slice folder cannot take a reserved name (D-16).
-- **R-CHAIN-3.** Every document carries a status line, and only the owner moves it to Approved; an agent never writes an approval (D-6).
+- **R-CHAIN-3.** Every document carries a status line, and only the owner moves it to Approved; an agent never writes an approval (D-6). An approval lands only through a pull request the owner merges, and status checks the merger against the owners the project names; where it cannot check, it says so and claims nothing (REQ-31, D-38, D-40).
 - **R-CHAIN-4.** A document can be approved only if the document it rests on is approved and its own open questions section holds no Q-n (D-3, principle 2).
 - **R-CHAIN-5.** A TP can be approved only if the cross-cutting TP is approved and each ADR it cites is accepted. An ADR may be accepted before its TP is approved.
 - **R-CHAIN-6.** Every document type has a line cap, and a document over its cap fails its check, except an ADR written before the project adopted the chain, numbered at or below the cutoff the project sets when it adopts; such an ADR is also not held to the ADR template, and a TP may cite it unless it says it is not accepted (D-5, principle 6, D-2 of an adopting project: existing documents are migrated as they are).
@@ -45,7 +45,7 @@ UC-1 (start a chain), UC-4 (write and check a step), UC-5 (make a small change) 
 - **R-CHAIN-25.** No document carries a version number; git and release tags are the history (D-28).
 - **R-CHAIN-26.** A spec is small enough for one agent run: it caps its lines and files, quotes the rows it builds verbatim from its parent, and has one done command, so a small model needs no other document (REQ-1, L-15).
 - **R-CHAIN-27.** Work that is not product, such as CI, configuration, dependencies or a fix, uses the same spec, resting on a TP, an ADR, a registry row or an accepted request. A TP for such work rests on an accepted request or a registry instead of an FRD, and cites the ids of that request's Decision rows or of the registry rows (REQ-1, L-15, issue #2).
-- **R-CHAIN-28.** A replaced document says what replaced it, and the checks stop demanding coverage and freshness from it; whether a spec is done is computed by running its done command, never written by hand (REQ-2, L-15).
+- **R-CHAIN-28.** A replaced document says what replaced it, and the checks stop demanding coverage and freshness from it; whether a spec is pending, started or built is computed from the covers tags of its rows, and it is built only when every tag is in a test committed on the default branch, never written by hand, and its done command runs only in the continuous-integration run; a built spec is history that drift and the quote check skip, and it authorizes no edit (REQ-2, REQ-32, L-15, D-39, D-40).
 - **R-CHAIN-29.** In a project that uses Changesets, a commit that changes code without a changeset fails (D-22, L-15).
 - **R-CHAIN-30.** Each project pins the format of its rules in a folder of its own; a project with no pin keeps the oldest supported rules, and a pin newer than the tool is reported, never guessed (REQ-5, D-31, L-16).
 - **R-CHAIN-31.** A rule newer than a project's pin only warns, in every hook, pre-commit and CI, and names the format that brings it (REQ-5, D-31, L-16).

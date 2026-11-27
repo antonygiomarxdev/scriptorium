@@ -1,7 +1,7 @@
 # FRD-11: Diagrams where they explain
 
 Status: Approved (2026-11-26)
-Approval: content qfR-j-oUKtrv; rests on ../PRD.md ASR_OGQqlGDj
+Approval: content qfR-j-oUKtrv; rests on ../PRD.md CCI95Z47mmmD
 
 ## Summary
 

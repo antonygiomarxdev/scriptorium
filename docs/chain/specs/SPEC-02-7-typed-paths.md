@@ -1,7 +1,7 @@
 # SPEC-02-7: The other scripts and typed paths
 
 Status: Approved (2026-11-20)
-Approval: content miisfVpeXr6Z; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
+Approval: content miisfVpeXr6Z; rests on ../frd/FRD-02-small-specs-states.md 7wVIe55G7Jbp
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary

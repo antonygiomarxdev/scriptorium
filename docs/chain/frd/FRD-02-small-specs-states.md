@@ -1,18 +1,18 @@
 # FRD-02: Small specs, superseded documents and required changesets
 
-Status: Approved (2026-11-20)
-Approval: content P51qy6LO9pYx; rests on ../PRD.md ASR_OGQqlGDj
+Status: Approved (2026-11-26)
+Approval: content 7wVIe55G7Jbp; rests on ../PRD.md CCI95Z47mmmD
 
 ## Summary
 
-A spec is one agent run: it names its parent, quotes the rows it builds verbatim, touches at most three files and has one done command, so a small model needs nothing else. Work that is not product rests on a TP, an ADR, a registry or an accepted request. A replaced document says what replaced it and the checks stop demanding from it. Where Changesets is used, a commit that changes code without a changeset fails.
+A spec is one agent run: it names its parent, quotes the rows it builds verbatim, touches at most three files and has one done command, so a small model needs nothing else. Work that is not product rests on a TP, an ADR, a registry or an accepted request. A replaced document says what replaced it and the checks stop demanding from it. Where Changesets is used, a commit that changes code without a changeset fails. Status computes whether a spec is pending, started or built from the tests that cover its rows, and a spec is built only when those tests are committed on the default branch; a built spec is history that the quote check skips; the gate that takes no edit from it is in FRD-04.
 
-Last change: 2026-11-20, paths and done commands behave the same on Windows and Linux, with one path helper and no branch on the system (RULE-7, EX-21 to EX-25)
+Last change: 2026-11-26, draft for the owner: built needs the tags in tests committed on the default branch (4A, D-41, EX-36 to EX-38), spec states computed from covers tags, verify runs done commands in CI, a built spec is skipped by the quote check, the format is named 6, and the gate row moved to FRD-04 (D-39, D-40); before that 2026-11-20, paths and done commands behave the same on Windows and Linux, with one path helper and no branch on the system (RULE-7, EX-21 to EX-25)
 
 One feature of the [slice PRD](../PRD.md). No technology names. Every row has an id; tests, specs and review findings cite the ids.
 
 ## Why
-[REQ-1](../../requests/REQ-1-small-specs.md) and [REQ-2](../../requests/REQ-2-document-states.md), with the mechanism in L-15 of [the decision inbox](../../DECISIONS.md).
+[REQ-1](../../requests/REQ-1-small-specs.md) and [REQ-2](../../requests/REQ-2-document-states.md), with the mechanism in L-15 of [the decision inbox](../../DECISIONS.md). The spec states and the built spec answer [REQ-32](../../requests/REQ-32-a-built-spec-says-it-is-built.md) (D-39); D-40 holds the build picks.
 
 ## Requirements covered
 R-CHAIN-26, R-CHAIN-27, R-CHAIN-28, R-CHAIN-29.
@@ -22,11 +22,14 @@ R-CHAIN-26, R-CHAIN-27, R-CHAIN-28, R-CHAIN-29.
 | ID | Pattern | Requirement |
 |---|---|---|
 | FR-CHAIN-02-1 | IF | IF a spec has no Rests on line, or it names a file that does not exist or is not an FRD, TP, ADR, request or registry, THEN the check shall fail it. |
-| FR-CHAIN-02-2 | IF | IF a quoted row of a spec is not found verbatim in the document it is quoted from THEN the check shall fail it and name the row. |
+| FR-CHAIN-02-2 | IF | IF a quoted row of a spec that is not built is not found verbatim in the document it is quoted from THEN the check shall fail it and name the row. |
 | FR-CHAIN-02-3 | IF | IF the ids under Tests first differ from the ids of the quoted rows THEN the check shall fail the spec and name the ids that differ. |
 | FR-CHAIN-02-4 | IF | IF a spec has more than 80 lines, more than 3 rows in Files, or other than one command in Done when, THEN the check shall fail it. |
 | FR-CHAIN-02-5 | WHEN | WHEN excerpt is asked for ids of a document, the system shall print the row lines whose first cell is each id, in the order asked. |
-| FR-CHAIN-02-6 | WHEN | WHEN done is asked for an approved spec, the system shall run its Done when command and exit with its code; for a spec not approved it shall fail without running it. |
+| FR-CHAIN-02-6 | WHEN | WHEN done is asked for an approved spec, the system shall run its Done when command and exit with its code; for a spec not approved it shall fail without running it. Status shall only read, and shall never run a Done when command unless it is asked to verify. |
+| FR-CHAIN-02-12 | always | Status shall show each approved spec as pending when no row it quotes carries a covers tag, built when every row it quotes carries a covers tag in a test already committed on the default branch, and started otherwise, including when the tags are only in uncommitted tests or only on a branch other than the default branch; the state is computed from the tags and never written in the spec, and a waiver does not count. |
+| FR-CHAIN-02-13 | WHEN | WHEN status is asked to verify, the system shall run the Done when command of each built spec and fail naming the spec and its command when one exits other than 0; it is meant for the continuous-integration run. |
+| FR-CHAIN-02-15 | WHERE | WHERE a project is pinned to a format before 6, the one that adds spec states, the checks shall print each failure as a warning and pass. |
 | FR-CHAIN-02-7 | IF | IF a document says it is superseded by a path that does not exist THEN status shall fail it. |
 | FR-CHAIN-02-8 | IF | IF an approved document rests on a superseded one THEN status shall fail it. |
 | FR-CHAIN-02-9 | always | The drift check and the coverage scan shall skip superseded documents. |
@@ -44,6 +47,8 @@ R-CHAIN-26, R-CHAIN-27, R-CHAIN-28, R-CHAIN-29.
 | RULE-5 | A superseded document points to an existing replacement, nothing approved rests on it, and drift and coverage skip it. | FR-CHAIN-02-7, FR-CHAIN-02-8, FR-CHAIN-02-9 |
 | RULE-6 | A code change carries a changeset where the project uses Changesets. | FR-CHAIN-02-10 |
 | RULE-7 | A check gives the same output and the same result on Windows and Linux. | FR-CHAIN-02-11 |
+| RULE-8 | A spec is pending, started or built by the covers tags of its rows alone, built only when every tag is in a test committed on the default branch, never by a stamp or a waiver, and its done command runs only when verify is asked. | FR-CHAIN-02-12, FR-CHAIN-02-13, FR-CHAIN-02-15 |
+| RULE-9 | A built spec is history: the quote check skips it. The gate takes no edit from it, in FRD-04. | FR-CHAIN-02-2 |
 
 | Example | Rule | Kind | Given | When | Then |
 |---|---|---|---|---|---|
@@ -72,6 +77,19 @@ R-CHAIN-26, R-CHAIN-27, R-CHAIN-28, R-CHAIN-29.
 | EX-23 | RULE-7 | negative | On Windows, an approved spec rests on a superseded TP | status runs | the failure names both documents with forward slashes |
 | EX-24 | RULE-7 | positive | A spec says "Rests on: ..\tp\TP-01-x.md" and that file exists | the check runs on Windows and on Linux | the parent resolves on both |
 | EX-25 | RULE-7 | negative | A script tests the operating system, or turns backslashes into slashes outside the one path helper | the tests run | they fail and name the script and line |
+| EX-26 | RULE-8 | positive | An approved spec quotes EX-1 and EX-2 of its FRD and no test tags either | status runs | it shows the spec as pending |
+| EX-27 | RULE-8 | boundary | The same spec, and a test tags EX-1 only | status runs | it shows the spec as started |
+| EX-28 | RULE-8 | positive | The same spec, and tests committed on the default branch tag EX-1 and EX-2 | status runs | it shows the spec as built |
+| EX-36 | RULE-8 | negative | The same spec, and the tags of EX-1 and EX-2 are only in a test file that is not committed | status runs | it shows the spec as started, not built |
+| EX-38 | RULE-8 | negative | The same spec, and its FRD lists EX-1 and EX-2 in its Coverage waivers with reasons, and no test tags either | status runs | it shows the spec as pending, not built: a waiver does not count |
+| EX-37 | RULE-8 | negative | The same spec, and the tags of EX-1 and EX-2 are committed only on a branch other than the default branch | status runs | it shows the spec as started, not built |
+| EX-29 | RULE-8 | negative | An approved spec says "Built: yes" in its text and no test tags its rows | status runs | it shows the spec as pending and ignores the line |
+| EX-30 | RULE-8 | positive | A built spec's Done when is a command that exits 0 | status runs with verify | it passes |
+| EX-31 | RULE-8 | negative | A built spec's Done when is "bun test test/x.test.ts" and the command exits 1 | status runs with verify | it fails naming the spec and "bun test test/x.test.ts" |
+| EX-32 | RULE-8 | boundary | A built spec's Done when would exit 1 | status runs without verify | it passes and the command is never run |
+| EX-33 | RULE-8 | boundary | The project is pinned to format 5 and a built spec's Done when exits 1 | status runs with verify | it passes and prints the failure as a warning |
+| EX-34 | RULE-9 | positive | A built spec quotes the EX-4 row of its FRD, and the row has since changed | the check runs | the quote check reports nothing for that spec |
+| EX-35 | RULE-9 | negative | An approved spec that is not built quotes the EX-4 row, and the row has since changed | the check runs | it fails with "quoted row not found" and names the row |
 
 ### Coverage waivers
 None.
@@ -101,13 +119,13 @@ stateDiagram-v2
 | ST-2 | Superseded to Approved | No: write a new document |
 
 ## Invariants
-n/a: the repository keeps no invariants register yet; RULE-1 to RULE-6 are covered by the examples.
+n/a: the repository keeps no invariants register yet; RULE-1 to RULE-9 are covered by the examples.
 
 ## Quality criteria
 
 | ID | Characteristic (ISO/IEC 25010) | Criterion |
 |---|---|---|
-| QC-1 | Functional suitability | All 25 examples pass, and the scan reports 0 uncovered ids of this FRD. |
+| QC-1 | Functional suitability | All 38 examples pass, and the scan reports 0 uncovered ids of this FRD. |
 | QC-2 | Performance efficiency | n/a: the checks read a few files per spec; FRD-01 QC-2 bounds the full run. |
 | QC-3 | Compatibility | The quote check passes on both CI systems for a spec and an FRD with CRLF line endings. |
 | QC-4 | Interaction capability | Every failure names the spec or document, the row or id, and the fix, asserted in the negative examples. |
@@ -121,7 +139,7 @@ n/a: the repository keeps no invariants register yet; RULE-1 to RULE-6 are cover
 n/a: the repository keeps no cross-cutting register yet.
 
 ## Information
-Reads: each spec's Rests on and Quoted from lines, its Rows, Files, Tests first and Done when sections; each document's status line; the staged file list and the changesets folder. Keeps nothing new.
+Reads: each spec's Rests on and Quoted from lines, its Rows, Files, Tests first and Done when sections; each document's status line; the staged file list and the changesets folder; the covers tags of the tests, to compute the state of each spec. Keeps nothing new.
 
 ## Open questions
 None.
@@ -159,3 +177,16 @@ Generated from the examples, decision table and states; never edited by hand.
 - **AC-28** (DT-3): Given a superseded document whose replacement exists: yes, and an approved document rests on it: no, when status runs, then pass; drift and coverage skip it.
 - **AC-29** (ST-1): Given the transition "Approved to Superseded", then it is allowed, naming the replacement.
 - **AC-30** (ST-2): Given the transition "Superseded to Approved", then it is refused: write a new document.
+- **AC-31** (EX-26): Given An approved spec quotes EX-1 and EX-2 of its FRD and no test tags either, when status runs, then it shows the spec as pending.
+- **AC-32** (EX-27): Given The same spec, and a test tags EX-1 only, when status runs, then it shows the spec as started.
+- **AC-33** (EX-28): Given The same spec, and tests committed on the default branch tag EX-1 and EX-2, when status runs, then it shows the spec as built.
+- **AC-34** (EX-29): Given An approved spec says "Built: yes" in its text and no test tags its rows, when status runs, then it shows the spec as pending and ignores the line.
+- **AC-35** (EX-30): Given A built spec's Done when is a command that exits 0, when status runs with verify, then it passes.
+- **AC-36** (EX-31): Given A built spec's Done when is "bun test test/x.test.ts" and the command exits 1, when status runs with verify, then it fails naming the spec and "bun test test/x.test.ts".
+- **AC-37** (EX-32): Given A built spec's Done when would exit 1, when status runs without verify, then it passes and the command is never run.
+- **AC-38** (EX-33): Given The project is pinned to format 5 and a built spec's Done when exits 1, when status runs with verify, then it passes and prints the failure as a warning.
+- **AC-39** (EX-34): Given A built spec quotes the EX-4 row of its FRD, and the row has since changed, when the check runs, then the quote check reports nothing for that spec.
+- **AC-40** (EX-35): Given An approved spec that is not built quotes the EX-4 row, and the row has since changed, when the check runs, then it fails with "quoted row not found" and names the row.
+- **AC-41** (EX-36): Given The same spec, and the tags of EX-1 and EX-2 are only in a test file that is not committed, when status runs, then it shows the spec as started, not built.
+- **AC-42** (EX-37): Given The same spec, and the tags of EX-1 and EX-2 are committed only on a branch other than the default branch, when status runs, then it shows the spec as started, not built.
+- **AC-43** (EX-38): Given The same spec, and its FRD lists EX-1 and EX-2 in its Coverage waivers with reasons, and no test tags either, when status runs, then it shows the spec as pending, not built: a waiver does not count.

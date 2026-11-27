@@ -1,7 +1,7 @@
 # FRD-05: Reuse before writing new
 
 Status: Approved (2026-11-21)
-Approval: content WBOgLz46SVBN; rests on ../PRD.md ASR_OGQqlGDj
+Approval: content WBOgLz46SVBN; rests on ../PRD.md CCI95Z47mmmD
 
 ## Summary
 

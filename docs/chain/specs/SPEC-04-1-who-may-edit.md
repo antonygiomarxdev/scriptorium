@@ -1,7 +1,7 @@
 # SPEC-04-1: Who may edit a file
 
 Status: Approved (2026-11-20)
-Approval: content Ap-ZfnouvnvR; rests on ../frd/FRD-04-gate-before-code.md 5qbSw4IYjIsG
+Approval: content Ap-ZfnouvnvR; rests on ../frd/FRD-04-gate-before-code.md uL6Edt_koZHn
 Rests on: ../frd/FRD-04-gate-before-code.md
 
 ## Summary

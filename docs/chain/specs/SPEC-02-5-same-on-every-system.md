@@ -1,7 +1,7 @@
 # SPEC-02-5: One path helper, same output everywhere
 
 Status: Approved (2026-11-20)
-Approval: content sP8C_YEY1muB; rests on ../frd/FRD-02-small-specs-states.md P51qy6LO9pYx
+Approval: content sP8C_YEY1muB; rests on ../frd/FRD-02-small-specs-states.md 7wVIe55G7Jbp
 Rests on: ../frd/FRD-02-small-specs-states.md
 
 ## Summary
